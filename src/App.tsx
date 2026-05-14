@@ -7,6 +7,7 @@ import { categoryLabels } from "./data/catalog";
 import { HomeDashboard } from "./components/HomeDashboard";
 import { CategoryView, emptyFilters, Filters } from "./components/CategoryView";
 import { ItemForm, createBlankItem } from "./components/ItemForm";
+import { ItemDetails } from "./components/ItemDetails";
 import { StatsView } from "./components/StatsView";
 import { SettingsView } from "./components/SettingsView";
 import { FamilyView } from "./components/FamilyView";
@@ -36,6 +37,7 @@ function App() {
   const [view, setView] = useState<ViewKey>("home");
   const [filters, setFilters] = useState<Filters>(emptyFilters);
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
+  const [activeItemMode, setActiveItemMode] = useState<"details" | "edit">("details");
   const [cloudSession, setCloudSession] = useState<CloudSession | null>(() => loadCloudSession());
   const [sessionMessage, setSessionMessage] = useState("");
   const effectiveSettings = useMemo(() => withSharedCloudSettings(data.settings), [data.settings]);
@@ -63,6 +65,7 @@ function App() {
   function addItem(category: Category) {
     const item = createBlankItem(category, data.statuses[category][0]);
     upsertItem(item);
+    setActiveItemMode("edit");
   }
 
   function deleteItem(id: string) {
@@ -94,7 +97,7 @@ function App() {
 
   const mainView = () => {
     if (view === "home") {
-      return <HomeDashboard items={data.items} onOpenCategory={(next) => setView(next)} onOpenItem={(item) => setActiveItemId(item.id)} />;
+      return <HomeDashboard items={data.items} onOpenCategory={(next) => setView(next)} onOpenItem={openItemDetails} />;
     }
 
     if (view === "stats") return <StatsView items={data.items} />;
@@ -109,10 +112,15 @@ function App() {
         filters={filters}
         onFiltersChange={setFilters}
         onAdd={addItem}
-        onOpen={(item) => setActiveItemId(item.id)}
+        onOpen={openItemDetails}
       />
     );
   };
+
+  function openItemDetails(item: CulturalItem) {
+    setActiveItemId(item.id);
+    setActiveItemMode("details");
+  }
 
   async function authenticated(session: CloudSession) {
     setCloudSession(session);
@@ -133,6 +141,7 @@ function App() {
     setCloudSession(null);
     setView("home");
     setActiveItemId(null);
+    setActiveItemMode("details");
     setSessionMessage("Sessao encerrada.");
   }
 
@@ -231,7 +240,14 @@ function App() {
         </button>
       </aside>
       {mainView()}
-      {activeItem ? (
+      {activeItem && activeItemMode === "details" ? (
+        <ItemDetails
+          item={activeItem}
+          onEdit={() => setActiveItemMode("edit")}
+          onClose={() => setActiveItemId(null)}
+        />
+      ) : null}
+      {activeItem && activeItemMode === "edit" ? (
         <ItemForm
           item={activeItem}
           statuses={data.statuses[activeItem.category]}

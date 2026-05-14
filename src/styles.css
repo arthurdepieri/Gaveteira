@@ -648,6 +648,18 @@ button.danger {
   gap: 16px;
 }
 
+.modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modal-actions .ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
 .api-ready {
   display: grid;
   gap: 12px;
@@ -1113,16 +1125,58 @@ button.danger {
   width: min(1040px, 100%);
 }
 
+.archive-sheet {
+  background:
+    linear-gradient(90deg, rgba(134, 95, 62, 0.06) 1px, transparent 1px) 0 0 / 34px 34px,
+    linear-gradient(#fffaf1, #fff6e8);
+}
+
 .detail-hero {
   display: grid;
-  grid-template-columns: minmax(160px, 240px) 1fr;
-  gap: 18px;
+  grid-template-columns: minmax(180px, 260px) 1fr;
+  gap: 24px;
   align-items: start;
-  margin: 18px 0;
+  margin: 20px 0;
+  padding: 18px;
+  border: 1px solid #d8c7ad;
+  background: rgba(255, 253, 248, 0.78);
+  border-radius: 8px;
 }
 
 .detail-hero .cover {
-  height: 300px;
+  height: 340px;
+  min-height: 340px;
+  border: 8px solid #fffdf8;
+  box-shadow: 0 12px 24px rgba(66, 43, 25, 0.18);
+}
+
+.detail-identity {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-height: 100%;
+}
+
+.detail-identity h1 {
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(2rem, 5vw, 3.7rem);
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.archive-stamp {
+  justify-self: start;
+  padding: 8px 12px;
+  color: #fffaf1;
+  background: var(--red);
+  border: 2px solid rgba(255, 250, 241, 0.8);
+  box-shadow: 0 0 0 1px var(--red);
+  text-transform: uppercase;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  transform: rotate(-1.5deg);
 }
 
 .detail-summary {
@@ -1142,9 +1196,49 @@ button.danger {
   font-weight: 800;
 }
 
+.detail-rating-line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--wood-dark);
+}
+
+.detail-rating-line .stars {
+  font-size: 1.25rem;
+}
+
+.detail-section-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.archive-block {
+  margin-top: 14px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  background: rgba(255, 253, 248, 0.84);
+  border-radius: 8px;
+}
+
+.archive-block h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  color: var(--wood-dark);
+}
+
+.archive-block h3::before {
+  content: "";
+  width: 28px;
+  height: 2px;
+  background: var(--brass);
+}
+
 .detail-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 10px;
 }
 
@@ -1172,9 +1266,13 @@ button.danger {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  margin-top: 4px;
 }
 
 .detail-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   padding: 8px 10px;
   color: #fffaf1;
   background: var(--green);
@@ -1183,22 +1281,76 @@ button.danger {
   font-weight: 800;
 }
 
-.detail-list {
+.timeline-list {
+  position: relative;
   display: grid;
-  gap: 10px;
+  gap: 12px;
+  padding-left: 18px;
 }
 
-.detail-list div {
+.timeline-list::before {
+  content: "";
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  left: 5px;
+  width: 2px;
+  background: #d8c7ad;
+}
+
+.timeline-entry {
+  position: relative;
   padding: 12px;
   border: 1px solid var(--line);
   background: #fffdf8;
   border-radius: 8px;
 }
 
-.detail-list p {
+.timeline-entry::before {
+  content: "";
+  position: absolute;
+  top: 16px;
+  left: -18px;
+  width: 10px;
+  height: 10px;
+  background: var(--brass);
+  border: 2px solid #fffdf8;
+  border-radius: 999px;
+}
+
+.timeline-entry span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.timeline-entry p,
+.diary-note-card p {
   margin: 6px 0 0;
   color: var(--muted);
   white-space: pre-wrap;
+}
+
+.diary-note-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.diary-note-card {
+  min-height: 130px;
+  padding: 14px;
+  border: 1px solid #dec79b;
+  background:
+    linear-gradient(#fffaf1 31px, #eadbc6 32px) 0 0 / 100% 32px,
+    #fffaf1;
+  border-radius: 8px;
+  box-shadow: 0 10px 20px rgba(64, 43, 25, 0.08);
+}
+
+.diary-note-card strong {
+  color: var(--wood-dark);
 }
 
 .file-button input {
@@ -1277,7 +1429,12 @@ button.danger {
     grid-template-columns: 1fr;
   }
 
-  .detail-hero {
+  .detail-hero,
+  .detail-section-grid {
     grid-template-columns: 1fr;
+  }
+
+  .detail-identity h1 {
+    font-size: 2.2rem;
   }
 }
