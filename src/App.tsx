@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ElementType } from "react";
-import { BarChart3, BookOpen, Disc3, Film, Gamepad2, Home, Library, ListChecks, LogOut, Repeat2, Settings, Tv, Users } from "lucide-react";
+import { Archive, BarChart3, BookOpen, ChevronDown, Disc3, Film, Gamepad2, Home, Library, ListChecks, LogOut, Repeat2, Settings, Tv, Users } from "lucide-react";
 import { AppData, AppSettings, Category, CloudSession, CulturalItem, ViewKey } from "./types";
 import { loadData, saveData } from "./storage/localStore";
 import { categoryLabels } from "./data/catalog";
@@ -16,16 +16,19 @@ import { withSharedCloudSettings } from "./config/sharedCloud";
 
 const navItems: Array<{ key: ViewKey; label: string; icon: ElementType }> = [
   { key: "home", label: "Inicio", icon: Home },
-  { key: "games", label: "Jogos", icon: Gamepad2 },
-  { key: "books", label: "Livros", icon: BookOpen },
-  { key: "albums", label: "Albuns", icon: Disc3 },
-  { key: "movies", label: "Filmes", icon: Film },
-  { key: "series", label: "Series", icon: Tv },
   { key: "wishlist", label: "Wishlist", icon: Library },
   { key: "progress", label: "Em andamento", icon: ListChecks },
   { key: "stats", label: "Estatisticas", icon: BarChart3 },
   { key: "family", label: "Familia", icon: Users },
   { key: "settings", label: "Configuracoes", icon: Settings },
+];
+
+const drawerItems: Array<{ key: Category; label: string; icon: ElementType }> = [
+  { key: "games", label: "Jogos", icon: Gamepad2 },
+  { key: "books", label: "Livros", icon: BookOpen },
+  { key: "albums", label: "Albuns", icon: Disc3 },
+  { key: "movies", label: "Filmes", icon: Film },
+  { key: "series", label: "Series", icon: Tv },
 ];
 
 function App() {
@@ -186,15 +189,34 @@ function App() {
         </div>
         {sessionMessage ? <p className="sidebar-note">{sessionMessage}</p> : null}
         <nav>
+          <div className={`drawer-nav ${view in categoryLabels ? "active" : ""}`}>
+            <button className="drawer-nav-trigger" type="button">
+              <Archive size={18} />
+              <span>Gavetas</span>
+              <ChevronDown size={16} />
+            </button>
+            <div className="drawer-nav-menu">
+              {drawerItems.map((item) => {
+                const Icon = item.icon;
+                const active = view === item.key;
+                const count = data.items.filter((entry) => entry.category === item.key).length;
+                return (
+                  <button key={item.key} className={active ? "active" : ""} onClick={() => setView(item.key)}>
+                    <Icon size={18} />
+                    <span>{item.label}</span>
+                    <small>{count}</small>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = view === item.key;
-            const count = item.key in categoryLabels ? data.items.filter((entry) => entry.category === item.key).length : undefined;
             return (
               <button key={item.key} className={active ? "active" : ""} onClick={() => setView(item.key)}>
                 <Icon size={18} />
                 <span>{item.label}</span>
-                {count !== undefined ? <small>{count}</small> : null}
               </button>
             );
           })}
