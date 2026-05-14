@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ElementType } from "react";
-import { BarChart3, BookOpen, Disc3, Film, Gamepad2, Home, Library, ListChecks, LogOut, Settings, Tv, Users } from "lucide-react";
+import { BarChart3, BookOpen, Disc3, Film, Gamepad2, Home, Library, ListChecks, LogOut, Repeat2, Settings, Tv, Users } from "lucide-react";
 import { AppData, AppSettings, Category, CloudSession, CulturalItem, ViewKey } from "./types";
 import { loadData, saveData } from "./storage/localStore";
 import { categoryLabels } from "./data/catalog";
@@ -11,7 +11,7 @@ import { StatsView } from "./components/StatsView";
 import { SettingsView } from "./components/SettingsView";
 import { FamilyView } from "./components/FamilyView";
 import { AuthGate } from "./components/AuthGate";
-import { fetchMyItems, loadCloudSession, saveCloudSession } from "./services/supabaseCloud";
+import { changeFamilyCode, fetchMyItems, loadCloudSession, saveCloudSession } from "./services/supabaseCloud";
 import { withSharedCloudSettings } from "./config/sharedCloud";
 
 const navItems: Array<{ key: ViewKey; label: string; icon: ElementType }> = [
@@ -133,6 +133,43 @@ function App() {
     setSessionMessage("Sessao encerrada.");
   }
 
+  async function switchFamily() {
+    if (!cloudSession) return;
+
+    const currentFamilyCode = effectiveSettings.cloud?.familyCode ?? "";
+    const nextFamilyCode = window.prompt("Digite o novo codigo da familia:", currentFamilyCode)?.trim();
+
+    if (!nextFamilyCode || nextFamilyCode === currentFamilyCode) return;
+
+    const nextSettings: AppSettings = {
+      ...data.settings,
+      cloud: {
+        ...data.settings.cloud,
+        familyCode: nextFamilyCode,
+      },
+    };
+    const nextEffectiveSettings = withSharedCloudSettings(nextSettings);
+
+    try {
+      const profile = await changeFamilyCode(nextEffectiveSettings, cloudSession, nextFamilyCode);
+      setData((current) => ({
+        ...current,
+        settings: {
+          ...current.settings,
+          cloud: {
+            ...current.settings.cloud,
+            familyCode: nextFamilyCode,
+          },
+        },
+      }));
+      setCloudSession((current) => current ? { ...current, profile } : current);
+      setView("family");
+      setSessionMessage(`Familia alterada para ${nextFamilyCode}.`);
+    } catch (error) {
+      setSessionMessage(error instanceof Error ? error.message : "Nao foi possivel trocar de familia.");
+    }
+  }
+
   if (!cloudSession) {
     return <AuthGate settings={effectiveSettings} onUpdateSettings={updateSettings} onAuthenticated={authenticated} />;
   }
@@ -162,6 +199,10 @@ function App() {
             );
           })}
         </nav>
+        <button className="sidebar-action" onClick={switchFamily}>
+          <Repeat2 size={18} />
+          <span>Trocar familia</span>
+        </button>
         <button className="sidebar-logout" onClick={logout}>
           <LogOut size={18} />
           <span>Sair</span>

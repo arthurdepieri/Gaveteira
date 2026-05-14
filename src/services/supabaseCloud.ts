@@ -79,6 +79,11 @@ export async function signIn(settings: AppSettings, email: string, password: str
   return { ...session, profile };
 }
 
+export async function changeFamilyCode(settings: AppSettings, session: CloudSession, familyCode: string): Promise<SocialProfile> {
+  const displayName = session.profile?.displayName || session.user.email?.split("@")[0] || "Pessoa da familia";
+  return upsertProfile(settings, session, displayName, familyCode);
+}
+
 export async function syncMyItems(settings: AppSettings, session: CloudSession, items: CulturalItem[]) {
   const familyCode = requireFamilyCode(settings);
   await upsertProfile(settings, session, session.profile?.displayName || session.user.email?.split("@")[0] || "Pessoa da familia", familyCode);

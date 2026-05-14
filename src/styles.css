@@ -138,7 +138,7 @@ button:disabled {
   font-size: 0.86rem;
 }
 
-.sidebar-logout {
+.sidebar-action, .sidebar-logout {
   display: grid;
   grid-template-columns: 22px 1fr;
   align-items: center;
@@ -151,6 +151,15 @@ button:disabled {
   background: rgba(159, 71, 61, 0.32);
   text-align: left;
   border-radius: 8px;
+}
+
+.sidebar-action {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.sidebar-action:hover, .sidebar-logout:hover {
+  background: #fff3d8;
+  color: #3b2819;
 }
 
 .sidebar nav button {
@@ -487,6 +496,12 @@ button.danger {
 .item-card p {
   margin: 0 0 8px;
   color: var(--muted);
+}
+
+.item-card p.item-card-playtime {
+  color: var(--wood-dark);
+  font-size: 0.86rem;
+  font-weight: 800;
 }
 
 .item-card-kicker {

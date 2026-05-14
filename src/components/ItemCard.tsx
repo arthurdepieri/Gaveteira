@@ -4,6 +4,8 @@ import { Stars } from "./Rating";
 import { getGenre, getTitle, getYear } from "../utils/itemHelpers";
 
 export function ItemCard({ item, onOpen }: { item: CulturalItem; onOpen: () => void }) {
+  const gameTime = item.category === "games" ? item.timePlayed?.trim() || "--:--" : "";
+
   return (
     <button className="item-card" onClick={onOpen}>
       <Cover item={item} />
@@ -14,6 +16,7 @@ export function ItemCard({ item, onOpen }: { item: CulturalItem; onOpen: () => v
         </div>
         <h3>{getTitle(item)}</h3>
         <p>{getGenre(item) || "Sem genero"}</p>
+        {item.category === "games" ? <p className="item-card-playtime">Tempo jogado: {gameTime}</p> : null}
         <Stars value={item.rating} />
         <div className="tag-row">
           {item.tags.slice(0, 3).map((tag) => (
