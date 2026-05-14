@@ -1,6 +1,6 @@
 import { Category, CulturalItem } from "../types";
 import { categoryLabels } from "../data/catalog";
-import { getEndDate, getGenre, getRating, isCompleted, isInProgress, isWishlist } from "./itemHelpers";
+import { getEndDate, getGenres, getRating, isCompleted, isInProgress, isWishlist } from "./itemHelpers";
 
 function countBy<T extends string>(values: T[]) {
   return values.reduce<Record<string, number>>((acc, value) => {
@@ -42,7 +42,7 @@ export function buildStats(items: CulturalItem[]) {
     completedByYear: countBy(completed.map((item) => (getEndDate(item) ?? "").slice(0, 4)).filter(Boolean)),
     completedByMonth: countBy(completed.map((item) => (getEndDate(item) ?? "").slice(0, 7)).filter(Boolean)),
     averages: Object.fromEntries((Object.keys(categoryLabels) as Category[]).map((category) => [category, average(category)])),
-    genres: countBy(items.map(getGenre).filter(Boolean)),
+    genres: countBy(items.flatMap(getGenres)),
     tags: countBy(items.flatMap((item) => item.tags)),
     favorites: [...items].filter((item) => getRating(item) > 0).sort((a, b) => getRating(b) - getRating(a)).slice(0, 8),
   };

@@ -2,7 +2,7 @@ import { BarChart3 } from "lucide-react";
 import { Category, CulturalItem } from "../types";
 import { categoryLabels } from "../data/catalog";
 import { buildStats } from "../utils/stats";
-import { getGenre, getRating, getTitle, isCompleted, isInProgress, isWishlist } from "../utils/itemHelpers";
+import { getGenres, getRating, getTitle, isCompleted, isInProgress, isWishlist } from "../utils/itemHelpers";
 import { Stars } from "./Rating";
 
 const categories = Object.keys(categoryLabels) as Category[];
@@ -169,7 +169,7 @@ function buildCategoryStats(category: Category, items: CulturalItem[]) {
     wishlist: categoryItems.filter(isWishlist).length,
     abandoned: categoryItems.filter((item) => item.status.toLowerCase().includes("abandon")).length,
     average,
-    genres: topEntries(categoryItems.map(getGenre)),
+    genres: topEntries(categoryItems.flatMap(getGenres)),
     tags: topEntries(categoryItems.flatMap((item) => item.tags)),
     favorites: [...categoryItems].filter((item) => getRating(item) > 0).sort((a, b) => getRating(b) - getRating(a)).slice(0, 3),
   };

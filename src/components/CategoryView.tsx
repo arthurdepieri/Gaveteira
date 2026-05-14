@@ -1,7 +1,7 @@
 import { Plus, Search } from "lucide-react";
 import { Category, CulturalItem } from "../types";
 import { categoryLabels } from "../data/catalog";
-import { getGenre, getRating, getTitle, getYear, isInProgress, isWishlist } from "../utils/itemHelpers";
+import { getGenres, getRating, getTitle, getYear, isInProgress, isWishlist } from "../utils/itemHelpers";
 import { ItemCard } from "./ItemCard";
 
 export interface Filters {
@@ -40,7 +40,7 @@ export function CategoryView({
 
   const category = virtual ? undefined : view;
   const title = view === "wishlist" ? "Wishlist" : view === "progress" ? "Em andamento" : categoryLabels[view];
-  const genres = [...new Set(baseItems.map(getGenre).filter(Boolean))].sort();
+  const genres = [...new Set(baseItems.flatMap(getGenres))].sort();
   const years = [...new Set(baseItems.map(getYear).filter(Boolean))].sort((a, b) => Number(b) - Number(a));
   const statusOptions = category
     ? statuses[category]
@@ -51,7 +51,7 @@ export function CategoryView({
     const matchesSearch = !search || getTitle(item).toLowerCase().includes(search) || item.tags.some((tag) => tag.toLowerCase().includes(search));
     const matchesYear = !filters.year || String(getYear(item) ?? "") === filters.year;
     const matchesStatus = !filters.status || item.status === filters.status;
-    const matchesGenre = !filters.genre || getGenre(item) === filters.genre;
+    const matchesGenre = !filters.genre || getGenres(item).includes(filters.genre);
     const matchesRating = !filters.minRating || getRating(item) >= Number(filters.minRating);
     return matchesSearch && matchesYear && matchesStatus && matchesGenre && matchesRating;
   });

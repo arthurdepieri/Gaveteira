@@ -24,6 +24,17 @@ export function getGenre(item: CulturalItem) {
   return item.genre ?? "";
 }
 
+export function getGenres(item: CulturalItem) {
+  return splitGenres(getGenre(item));
+}
+
+export function splitGenres(value: string) {
+  return value
+    .split(",")
+    .map((genre) => genre.trim())
+    .filter(Boolean);
+}
+
 export function isWishlist(item: CulturalItem) {
   return wishlistStatuses.includes(item.status);
 }
