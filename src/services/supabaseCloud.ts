@@ -1,6 +1,7 @@
 import { AppSettings, CloudSession, CulturalItem, FamilyItem, SocialProfile } from "../types";
 
 const SESSION_KEY = "gaveteira-cloud-session:v1";
+const TOKEN_REFRESH_MARGIN_MS = 60_000;
 
 interface SupabaseAuthResponse {
   access_token?: string;
@@ -82,6 +83,31 @@ export async function signIn(settings: AppSettings, email: string, password: str
 export async function changeFamilyCode(settings: AppSettings, session: CloudSession, familyCode: string): Promise<SocialProfile> {
   const displayName = session.profile?.displayName || session.user.email?.split("@")[0] || "Pessoa da familia";
   return upsertProfile(settings, session, displayName, familyCode);
+}
+
+export async function refreshCloudSession(settings: AppSettings, session: CloudSession): Promise<CloudSession> {
+  if (!session.refreshToken) {
+    throw new Error("Sua sessao expirou. Entre novamente para renovar o acesso.");
+  }
+
+  const response = await authRequest(settings, "/token?grant_type=refresh_token", {
+    refresh_token: session.refreshToken,
+  });
+
+  if (!response.access_token) {
+    throw new Error("Nao foi possivel renovar a sessao. Entre novamente.");
+  }
+
+  session.accessToken = response.access_token;
+  session.refreshToken = response.refresh_token ?? session.refreshToken;
+  session.expiresAt = response.expires_in ? Date.now() + response.expires_in * 1000 : session.expiresAt;
+  session.user = {
+    id: response.user?.id ?? session.user.id,
+    email: response.user?.email ?? session.user.email,
+  };
+
+  saveCloudSession(session);
+  return session;
 }
 
 export async function syncMyItems(settings: AppSettings, session: CloudSession, items: CulturalItem[]) {
@@ -189,6 +215,27 @@ async function authRequest(settings: AppSettings, path: string, body: unknown): 
 
 async function restRequest<T>(settings: AppSettings, session: CloudSession, path: string, init: RequestInit): Promise<T> {
   const { supabaseUrl, supabaseAnonKey } = requireCloudSettings(settings);
+
+  await ensureFreshSession(settings, session);
+
+  let result = await sendRestRequest(supabaseUrl, supabaseAnonKey, session, path, init);
+  if (!result.response.ok && shouldRefreshToken(result.response.status, result.json)) {
+    await refreshCloudSession(settings, session);
+    result = await sendRestRequest(supabaseUrl, supabaseAnonKey, session, path, init);
+  }
+
+  if (result.response.status === 204) return undefined as T;
+  if (!result.response.ok) throw new Error(errorMessage(result.json, "Falha ao sincronizar com a nuvem."));
+  return result.json as T;
+}
+
+async function sendRestRequest(
+  supabaseUrl: string,
+  supabaseAnonKey: string,
+  session: CloudSession,
+  path: string,
+  init: RequestInit,
+) {
   const response = await fetch(`${supabaseUrl}${path}`, {
     ...init,
     headers: {
@@ -198,11 +245,20 @@ async function restRequest<T>(settings: AppSettings, session: CloudSession, path
       ...(init.headers ?? {}),
     },
   });
-
-  if (response.status === 204) return undefined as T;
   const json = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(errorMessage(json, "Falha ao sincronizar com a nuvem."));
-  return json as T;
+  return { response, json };
+}
+
+async function ensureFreshSession(settings: AppSettings, session: CloudSession) {
+  if (!session.expiresAt) return;
+  if (Date.now() + TOKEN_REFRESH_MARGIN_MS < session.expiresAt) return;
+  await refreshCloudSession(settings, session);
+}
+
+function shouldRefreshToken(status: number, value: unknown) {
+  if (status !== 401) return false;
+  const message = errorMessage(value, "").toLowerCase();
+  return message.includes("jwt") || message.includes("token") || message.includes("expired");
 }
 
 function requireCloudSettings(settings: AppSettings) {
