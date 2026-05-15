@@ -17,7 +17,6 @@ App web local para organizar consumo cultural como uma gaveteira pessoal: jogos,
 - Exportacao e importacao de backup JSON.
 - Area de configuracao para chaves de API, preparada para IGDB, Steam, RAWG, Google Books, Open Library, Spotify, MusicBrainz, Last.fm e TMDB.
 - Modo familiar com Supabase: login, sincronizacao e gaveteiras separadas por perfil.
-- Dados mockados iniciais para demonstracao.
 
 ## Como rodar
 

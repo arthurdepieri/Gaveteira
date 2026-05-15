@@ -1,15 +1,24 @@
 import { AppData } from "../types";
 import { defaultStatuses } from "../data/catalog";
-import { initialData } from "../data/mockData";
 
 const STORAGE_KEY = "gaveteira-da-vida:v1";
 const DEFAULT_SETTINGS = { apiKeys: {}, cloud: {} };
 
+function emptyData(): AppData {
+  return {
+    version: 1,
+    items: [],
+    statuses: defaultStatuses,
+    settings: DEFAULT_SETTINGS,
+  };
+}
+
 export function loadData(): AppData {
   const raw = localStorage.getItem(STORAGE_KEY);
   if (!raw) {
-    saveData(initialData);
-    return initialData;
+    const data = emptyData();
+    saveData(data);
+    return data;
   }
 
   try {
@@ -21,8 +30,9 @@ export function loadData(): AppData {
       settings: { ...DEFAULT_SETTINGS, ...(parsed.settings ?? {}), apiKeys: parsed.settings?.apiKeys ?? {}, cloud: parsed.settings?.cloud ?? {} },
     };
   } catch {
-    saveData(initialData);
-    return initialData;
+    const data = emptyData();
+    saveData(data);
+    return data;
   }
 }
 

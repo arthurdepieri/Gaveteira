@@ -15,6 +15,8 @@ interface OwnerGroup {
   entries: FamilyItem[];
 }
 
+const FAMILY_REFRESH_INTERVAL_MS = 30_000;
+
 export function FamilyView({
   settings,
   session,
@@ -67,6 +69,12 @@ export function FamilyView({
     }
   }, [groups, selectedOwnerId]);
 
+  useEffect(() => {
+    refreshFamily(true);
+    const intervalId = window.setInterval(() => refreshFamily(true), FAMILY_REFRESH_INTERVAL_MS);
+    return () => window.clearInterval(intervalId);
+  }, [settings.cloud?.familyCode, session.user.id]);
+
   async function uploadLocal() {
     setLoading(true);
     setMessage("");
@@ -74,7 +82,7 @@ export function FamilyView({
     try {
       await syncMyItems(settings, session, localItems);
       setMessage("Sua gaveteira foi enviada para a nuvem.");
-      await refreshFamily();
+      await refreshFamily(true);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Nao foi possivel enviar seus itens.");
     } finally {
@@ -97,16 +105,22 @@ export function FamilyView({
     }
   }
 
-  async function refreshFamily() {
-    setLoading(true);
-    setMessage("");
+  async function refreshFamily(silent = false) {
+    if (!silent) {
+      setLoading(true);
+      setMessage("");
+    }
 
     try {
       setFamilyItems(await fetchFamilyItems(settings, session));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Nao foi possivel carregar a familia.");
+      if (!silent) {
+        setMessage(error instanceof Error ? error.message : "Nao foi possivel carregar a familia.");
+      }
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   }
 
@@ -130,7 +144,7 @@ export function FamilyView({
             <div className="button-row">
               <button className="primary" onClick={uploadLocal} disabled={loading}><UploadCloud size={16} /> Enviar meus itens</button>
               <button className="ghost" onClick={downloadMine} disabled={loading}><Cloud size={16} /> Baixar minha conta</button>
-              <button className="ghost" onClick={refreshFamily} disabled={loading}><RefreshCw size={16} /> Atualizar familia</button>
+              <button className="ghost" onClick={() => refreshFamily()} disabled={loading}><RefreshCw size={16} /> Atualizar familia</button>
               <button className="danger" onClick={onLogout}><LogOut size={16} /> Sair</button>
             </div>
             {message ? <p className="form-note">{message}</p> : null}

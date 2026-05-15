@@ -130,6 +130,12 @@ export async function syncMyItems(settings: AppSettings, session: CloudSession, 
   });
 }
 
+export async function deleteMyItem(settings: AppSettings, session: CloudSession, itemId: string) {
+  await restRequest(settings, session, `/rest/v1/cultural_items?id=eq.${encodeURIComponent(itemId)}&owner_id=eq.${encodeURIComponent(session.user.id)}`, {
+    method: "DELETE",
+  });
+}
+
 export async function fetchMyItems(settings: AppSettings, session: CloudSession): Promise<CulturalItem[]> {
   const rows = await restRequest<ItemRow[]>(settings, session, "/rest/v1/cultural_items?select=item&owner_id=eq." + encodeURIComponent(session.user.id), {
     method: "GET",
@@ -199,7 +205,7 @@ async function upsertProfile(settings: AppSettings, session: CloudSession, displ
 
 async function authRequest(settings: AppSettings, path: string, body: unknown): Promise<SupabaseAuthResponse> {
   const { supabaseUrl, supabaseAnonKey } = requireCloudSettings(settings);
-  const response = await fetch(`${supabaseUrl}/auth/v1${path}`, {
+  const response = await safeFetch(`${supabaseUrl}/auth/v1${path}`, {
     method: "POST",
     headers: {
       apikey: supabaseAnonKey,
@@ -236,7 +242,7 @@ async function sendRestRequest(
   path: string,
   init: RequestInit,
 ) {
-  const response = await fetch(`${supabaseUrl}${path}`, {
+  const response = await safeFetch(`${supabaseUrl}${path}`, {
     ...init,
     headers: {
       apikey: supabaseAnonKey,
@@ -247,6 +253,14 @@ async function sendRestRequest(
   });
   const json = await response.json().catch(() => ({}));
   return { response, json };
+}
+
+async function safeFetch(url: string, init: RequestInit) {
+  try {
+    return await fetch(url, init);
+  } catch {
+    throw new Error("Nao foi possivel conectar ao Supabase. Verifique se o projeto esta ativo, se a Project URL esta correta e se a rede nao esta bloqueando supabase.co.");
+  }
 }
 
 async function ensureFreshSession(settings: AppSettings, session: CloudSession) {

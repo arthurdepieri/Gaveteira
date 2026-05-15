@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ElementType } from "react";
 import { Archive, BarChart3, BookOpen, ChevronDown, Disc3, Film, Gamepad2, Home, Library, ListChecks, LogOut, Repeat2, Settings, Tv, Users } from "lucide-react";
 import { AppData, AppSettings, Category, CloudSession, CulturalItem, ViewKey } from "./types";
@@ -12,8 +12,12 @@ import { StatsView } from "./components/StatsView";
 import { SettingsView } from "./components/SettingsView";
 import { FamilyView } from "./components/FamilyView";
 import { AuthGate } from "./components/AuthGate";
-import { changeFamilyCode, fetchMyItems, loadCloudSession, saveCloudSession } from "./services/supabaseCloud";
+import { changeFamilyCode, deleteMyItem, fetchMyItems, loadCloudSession, saveCloudSession, syncMyItems } from "./services/supabaseCloud";
 import { withSharedCloudSettings } from "./config/sharedCloud";
+
+const PENDING_DELETES_KEY = "gaveteira-pending-deletes:v1";
+const AUTO_SYNC_DELAY_MS = 900;
+const AUTO_SYNC_RETRY_MS = 30_000;
 
 const navItems: Array<{ key: ViewKey; label: string; icon: ElementType }> = [
   { key: "home", label: "Inicio", icon: Home },
@@ -39,8 +43,19 @@ function App() {
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
   const [activeItemMode, setActiveItemMode] = useState<"details" | "edit">("details");
   const [cloudSession, setCloudSession] = useState<CloudSession | null>(() => loadCloudSession());
+  const [cloudBootstrapped, setCloudBootstrapped] = useState(false);
   const [sessionMessage, setSessionMessage] = useState("");
+  const [syncMessage, setSyncMessage] = useState("");
+  const [syncRetryTick, setSyncRetryTick] = useState(0);
+  const [pendingDeletes, setPendingDeletes] = useState<string[]>(() => loadPendingDeletes());
+  const syncInFlightRef = useRef(false);
+  const syncQueuedRef = useRef(false);
+  const lastSyncedKeyRef = useRef("");
   const effectiveSettings = useMemo(() => withSharedCloudSettings(data.settings), [data.settings]);
+  const syncPayloadKey = useMemo(() => JSON.stringify({
+    items: data.items.map((item) => [item.id, item.updatedAt]),
+    deletes: pendingDeletes,
+  }), [data.items, pendingDeletes]);
 
   useEffect(() => {
     saveData(data);
@@ -49,6 +64,64 @@ function App() {
   useEffect(() => {
     saveCloudSession(cloudSession);
   }, [cloudSession]);
+
+  useEffect(() => {
+    savePendingDeletes(pendingDeletes);
+  }, [pendingDeletes]);
+
+  useEffect(() => {
+    if (!cloudSession) {
+      setCloudBootstrapped(false);
+      return;
+    }
+
+    let cancelled = false;
+    setCloudBootstrapped(false);
+    setSessionMessage("Carregando itens da sua conta...");
+
+    fetchMyItems(effectiveSettings, cloudSession)
+      .then((cloudItems) => {
+        if (cancelled) return;
+        if (cloudItems.length) {
+          mergeItems(cloudItems);
+        }
+        setSessionMessage(cloudItems.length ? "Itens da sua conta foram mesclados neste navegador." : "Conta pronta para sincronizar.");
+        setCloudBootstrapped(true);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        setSessionMessage(error instanceof Error ? error.message : "Nao foi possivel carregar seus itens da nuvem.");
+        setCloudBootstrapped(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [cloudSession?.user.id, effectiveSettings.cloud?.familyCode]);
+
+  useEffect(() => {
+    if (!cloudSession || !cloudBootstrapped) return;
+
+    const timeoutId = window.setTimeout(() => {
+      autoSync();
+    }, AUTO_SYNC_DELAY_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [cloudSession, cloudBootstrapped, syncPayloadKey, syncRetryTick, effectiveSettings.cloud?.familyCode]);
+
+  useEffect(() => {
+    function retrySync() {
+      setSyncRetryTick((current) => current + 1);
+    }
+
+    window.addEventListener("online", retrySync);
+    const intervalId = window.setInterval(retrySync, AUTO_SYNC_RETRY_MS);
+
+    return () => {
+      window.removeEventListener("online", retrySync);
+      window.clearInterval(intervalId);
+    };
+  }, []);
 
   const activeItem = useMemo(() => data.items.find((item) => item.id === activeItemId) ?? null, [activeItemId, data.items]);
 
@@ -70,6 +143,9 @@ function App() {
 
   function deleteItem(id: string) {
     setData((current) => ({ ...current, items: current.items.filter((item) => item.id !== id) }));
+    if (cloudSession) {
+      setPendingDeletes((current) => current.includes(id) ? current : [...current, id]);
+    }
     setActiveItemId(null);
   }
 
@@ -124,25 +200,51 @@ function App() {
 
   async function authenticated(session: CloudSession) {
     setCloudSession(session);
-    setSessionMessage("");
-
-    try {
-      const cloudItems = await fetchMyItems(effectiveSettings, session);
-      if (cloudItems.length) {
-        mergeItems(cloudItems);
-        setSessionMessage("Itens da sua conta foram mesclados neste navegador.");
-      }
-    } catch (error) {
-      setSessionMessage(error instanceof Error ? error.message : "Nao foi possivel carregar seus itens da nuvem.");
-    }
+    setSyncMessage("");
   }
 
   function logout() {
     setCloudSession(null);
+    setCloudBootstrapped(false);
     setView("home");
     setActiveItemId(null);
     setActiveItemMode("details");
     setSessionMessage("Sessao encerrada.");
+    setSyncMessage("");
+  }
+
+  async function autoSync() {
+    if (!cloudSession || !cloudBootstrapped) return;
+    if (lastSyncedKeyRef.current === syncPayloadKey) return;
+
+    if (syncInFlightRef.current) {
+      syncQueuedRef.current = true;
+      return;
+    }
+
+    syncInFlightRef.current = true;
+    setSyncMessage("Sincronizando alteracoes...");
+
+    try {
+      for (const itemId of pendingDeletes) {
+        await deleteMyItem(effectiveSettings, cloudSession, itemId);
+      }
+
+      await syncMyItems(effectiveSettings, cloudSession, data.items);
+      lastSyncedKeyRef.current = syncPayloadKey;
+      if (pendingDeletes.length) {
+        setPendingDeletes([]);
+      }
+      setSyncMessage("Tudo sincronizado.");
+    } catch (error) {
+      setSyncMessage(error instanceof Error ? `Pendente de sincronizacao: ${error.message}` : "Pendente de sincronizacao.");
+    } finally {
+      syncInFlightRef.current = false;
+      if (syncQueuedRef.current) {
+        syncQueuedRef.current = false;
+        setSyncRetryTick((current) => current + 1);
+      }
+    }
   }
 
   async function switchFamily() {
@@ -197,6 +299,7 @@ function App() {
           </div>
         </div>
         {sessionMessage ? <p className="sidebar-note">{sessionMessage}</p> : null}
+        {syncMessage ? <p className="sidebar-note sync-note">{syncMessage}</p> : null}
         <nav>
           <div className={`drawer-nav ${view in categoryLabels ? "active" : ""}`}>
             <button className="drawer-nav-trigger" type="button">
@@ -260,6 +363,28 @@ function App() {
       ) : null}
     </div>
   );
+}
+
+function loadPendingDeletes() {
+  const raw = localStorage.getItem(PENDING_DELETES_KEY);
+  if (!raw) return [];
+
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+  } catch {
+    localStorage.removeItem(PENDING_DELETES_KEY);
+    return [];
+  }
+}
+
+function savePendingDeletes(ids: string[]) {
+  if (!ids.length) {
+    localStorage.removeItem(PENDING_DELETES_KEY);
+    return;
+  }
+
+  localStorage.setItem(PENDING_DELETES_KEY, JSON.stringify(ids));
 }
 
 export default App;
