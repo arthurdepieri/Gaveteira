@@ -43,7 +43,7 @@ function App() {
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
   const [activeItemMode, setActiveItemMode] = useState<"details" | "edit">("details");
   const [cloudSession, setCloudSession] = useState<CloudSession | null>(() => loadCloudSession());
-  const [cloudBootstrapped, setCloudBootstrapped] = useState(false);
+  const [bootstrappedCloudScope, setBootstrappedCloudScope] = useState("");
   const [sessionMessage, setSessionMessage] = useState("");
   const [syncMessage, setSyncMessage] = useState("");
   const [syncRetryTick, setSyncRetryTick] = useState(0);
@@ -51,11 +51,19 @@ function App() {
   const syncInFlightRef = useRef(false);
   const syncQueuedRef = useRef(false);
   const lastSyncedKeyRef = useRef("");
+  const pendingDeletesRef = useRef(pendingDeletes);
   const effectiveSettings = useMemo(() => withSharedCloudSettings(data.settings), [data.settings]);
+  const cloudScopeKey = useMemo(() => JSON.stringify({
+    userId: cloudSession?.user.id ?? "",
+    familyCode: effectiveSettings.cloud?.familyCode ?? "",
+  }), [cloudSession?.user.id, effectiveSettings.cloud?.familyCode]);
+  const cloudBootstrapped = Boolean(cloudSession && bootstrappedCloudScope === cloudScopeKey);
   const syncPayloadKey = useMemo(() => JSON.stringify({
+    userId: cloudSession?.user.id ?? "",
+    familyCode: effectiveSettings.cloud?.familyCode ?? "",
     items: data.items.map((item) => [item.id, item.updatedAt]),
     deletes: pendingDeletes,
-  }), [data.items, pendingDeletes]);
+  }), [cloudSession?.user.id, data.items, effectiveSettings.cloud?.familyCode, pendingDeletes]);
 
   useEffect(() => {
     saveData(data);
@@ -66,38 +74,42 @@ function App() {
   }, [cloudSession]);
 
   useEffect(() => {
+    pendingDeletesRef.current = pendingDeletes;
     savePendingDeletes(pendingDeletes);
   }, [pendingDeletes]);
 
   useEffect(() => {
     if (!cloudSession) {
-      setCloudBootstrapped(false);
+      setBootstrappedCloudScope("");
       return;
     }
+    if (cloudBootstrapped) return;
 
     let cancelled = false;
-    setCloudBootstrapped(false);
+    setBootstrappedCloudScope("");
     setSessionMessage("Carregando itens da sua conta...");
 
     fetchMyItems(effectiveSettings, cloudSession)
       .then((cloudItems) => {
         if (cancelled) return;
-        if (cloudItems.length) {
-          mergeItems(cloudItems);
+        const pendingDeleteIds = new Set(pendingDeletesRef.current);
+        const safeCloudItems = cloudItems.filter((item) => !pendingDeleteIds.has(item.id));
+        if (safeCloudItems.length) {
+          mergeItems(safeCloudItems);
         }
-        setSessionMessage(cloudItems.length ? "Itens da sua conta foram mesclados neste navegador." : "Conta pronta para sincronizar.");
-        setCloudBootstrapped(true);
+        setSessionMessage(safeCloudItems.length ? "Itens da sua conta foram mesclados neste navegador." : "Conta pronta para sincronizar.");
+        setBootstrappedCloudScope(cloudScopeKey);
       })
       .catch((error) => {
         if (cancelled) return;
         setSessionMessage(error instanceof Error ? error.message : "Nao foi possivel carregar seus itens da nuvem.");
-        setCloudBootstrapped(true);
+        setBootstrappedCloudScope("");
       });
 
     return () => {
       cancelled = true;
     };
-  }, [cloudSession?.user.id, effectiveSettings.cloud?.familyCode]);
+  }, [cloudBootstrapped, cloudScopeKey, cloudSession, effectiveSettings, syncRetryTick]);
 
   useEffect(() => {
     if (!cloudSession || !cloudBootstrapped) return;
@@ -159,8 +171,10 @@ function App() {
 
   function mergeItems(items: CulturalItem[]) {
     setData((current) => {
+      const pendingDeleteIds = new Set(pendingDeletesRef.current);
       const byId = new Map(current.items.map((item) => [item.id, item]));
       items.forEach((item) => {
+        if (pendingDeleteIds.has(item.id)) return;
         const existing = byId.get(item.id);
         if (!existing || new Date(item.updatedAt).getTime() >= new Date(existing.updatedAt).getTime()) {
           byId.set(item.id, item);
@@ -205,7 +219,7 @@ function App() {
 
   function logout() {
     setCloudSession(null);
-    setCloudBootstrapped(false);
+    setBootstrappedCloudScope("");
     setView("home");
     setActiveItemId(null);
     setActiveItemMode("details");
@@ -230,7 +244,10 @@ function App() {
         await deleteMyItem(effectiveSettings, cloudSession, itemId);
       }
 
-      await syncMyItems(effectiveSettings, cloudSession, data.items);
+      const pendingDeleteIds = new Set(pendingDeletes);
+      const itemsToSync = pendingDeleteIds.size ? data.items.filter((item) => !pendingDeleteIds.has(item.id)) : data.items;
+
+      await syncMyItems(effectiveSettings, cloudSession, itemsToSync);
       lastSyncedKeyRef.current = syncPayloadKey;
       if (pendingDeletes.length) {
         setPendingDeletes([]);

@@ -121,12 +121,25 @@ export async function syncMyItems(settings: AppSettings, session: CloudSession, 
     updated_at: item.updatedAt,
   }));
 
+  await deleteMyItemsExcept(settings, session, rows.map((row) => row.id));
   if (!rows.length) return;
 
   await restRequest(settings, session, "/rest/v1/cultural_items?on_conflict=id,owner_id", {
     method: "POST",
     headers: { Prefer: "resolution=merge-duplicates" },
     body: JSON.stringify(rows),
+  });
+}
+
+async function deleteMyItemsExcept(settings: AppSettings, session: CloudSession, itemIds: string[]) {
+  const filters = [`owner_id=eq.${encodeURIComponent(session.user.id)}`];
+
+  if (itemIds.length) {
+    filters.push(`id=not.in.(${encodeURIComponent(postgrestStringList(itemIds))})`);
+  }
+
+  await restRequest(settings, session, `/rest/v1/cultural_items?${filters.join("&")}`, {
+    method: "DELETE",
   });
 }
 
@@ -312,6 +325,10 @@ function requireFamilyCode(settings: AppSettings) {
   const familyCode = settings.cloud?.familyCode?.trim();
   if (!familyCode) throw new Error("Configure um codigo de familia em Configuracoes.");
   return familyCode;
+}
+
+function postgrestStringList(values: string[]) {
+  return values.map((value) => `"${value.replace(/\\/g, "\\\\").replace(/"/g, "\\\"")}"`).join(",");
 }
 
 function authResponseToSession(response: SupabaseAuthResponse): CloudSession {
