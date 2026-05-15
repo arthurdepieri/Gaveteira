@@ -51,6 +51,7 @@ function App() {
   const [familyDraft, setFamilyDraft] = useState("");
   const [familySwitching, setFamilySwitching] = useState(false);
   const [familySwitchError, setFamilySwitchError] = useState("");
+  const [mobileDrawersOpen, setMobileDrawersOpen] = useState(false);
   const syncInFlightRef = useRef(false);
   const syncQueuedRef = useRef(false);
   const lastSyncedKeyRef = useRef("");
@@ -190,7 +191,7 @@ function App() {
 
   const mainView = () => {
     if (view === "home") {
-      return <HomeDashboard items={data.items} onOpenCategory={(next) => setView(next)} onOpenItem={openItemDetails} />;
+      return <HomeDashboard items={data.items} onOpenCategory={(next) => selectView(next)} onOpenItem={openItemDetails} />;
     }
 
     if (view === "stats") return <StatsView items={data.items} />;
@@ -227,6 +228,15 @@ function App() {
     setActiveItemMode("details");
   }
 
+  function selectView(nextView: ViewKey) {
+    setView(nextView);
+    setMobileDrawersOpen(false);
+  }
+
+  function categoryCount(category: Category) {
+    return data.items.filter((entry) => entry.category === category).length;
+  }
+
   async function authenticated(session: CloudSession) {
     setCloudSession(session);
     setSyncMessage("");
@@ -235,7 +245,7 @@ function App() {
   function logout() {
     setCloudSession(null);
     setBootstrappedCloudScope("");
-    setView("home");
+    selectView("home");
     setActiveItemId(null);
     setActiveItemMode("details");
     setSessionMessage("Sessao encerrada.");
@@ -334,7 +344,7 @@ function App() {
         },
       }));
       setCloudSession((current) => current ? { ...current, profile } : current);
-      setView("family");
+      selectView("family");
       setSessionMessage(`Familia alterada para ${nextFamilyCode}.`);
       setFamilySwitcherOpen(false);
     } catch (error) {
@@ -370,7 +380,7 @@ function App() {
                 const active = view === item.key;
                 const count = data.items.filter((entry) => entry.category === item.key).length;
                 return (
-                  <button key={item.key} className={active ? "active" : ""} onClick={() => setView(item.key)}>
+                  <button key={item.key} className={active ? "active" : ""} onClick={() => selectView(item.key)}>
                     <Icon size={18} />
                     <span>{item.label}</span>
                     <small>{count}</small>
@@ -383,7 +393,7 @@ function App() {
             const Icon = item.icon;
             const active = view === item.key;
             return (
-              <button key={item.key} className={active ? "active" : ""} onClick={() => setView(item.key)}>
+              <button key={item.key} className={active ? "active" : ""} onClick={() => selectView(item.key)}>
                 <Icon size={18} />
                 <span>{item.label}</span>
               </button>
@@ -402,13 +412,61 @@ function App() {
             </button>
           </>
         ) : (
-          <button className="sidebar-action" onClick={() => setView("family")}>
+          <button className="sidebar-action" onClick={() => selectView("family")}>
             <Repeat2 size={18} />
             <span>Conectar/sincronizar</span>
           </button>
         )}
       </aside>
       {mainView()}
+      <nav className="mobile-bottom-nav" aria-label="Navegacao principal mobile">
+        <button type="button" className={view === "home" ? "active" : ""} onClick={() => selectView("home")}>
+          <Home size={20} />
+          <span>Inicio</span>
+        </button>
+        <button type="button" className={view in categoryLabels ? "active" : ""} onClick={() => setMobileDrawersOpen(true)}>
+          <Archive size={20} />
+          <span>Gavetas</span>
+        </button>
+        <button type="button" className={view === "family" ? "active" : ""} onClick={() => selectView("family")}>
+          <Users size={20} />
+          <span>Familia</span>
+        </button>
+        <button type="button" className={view === "stats" ? "active" : ""} onClick={() => selectView("stats")}>
+          <BarChart3 size={20} />
+          <span>Stats</span>
+        </button>
+        <button type="button" className={view === "settings" ? "active" : ""} onClick={() => selectView("settings")}>
+          <Settings size={20} />
+          <span>Config</span>
+        </button>
+      </nav>
+      {mobileDrawersOpen ? (
+        <div className="mobile-drawer-backdrop" role="presentation" onClick={() => setMobileDrawersOpen(false)}>
+          <section className="mobile-drawer-panel" role="dialog" aria-modal="true" aria-label="Escolher gaveta" onClick={(event) => event.stopPropagation()}>
+            <div className="mobile-drawer-handle" />
+            <header>
+              <div>
+                <p className="eyebrow">Gavetas</p>
+                <h2>Escolha uma categoria</h2>
+              </div>
+              <button type="button" className="ghost compact" onClick={() => setMobileDrawersOpen(false)}>Fechar</button>
+            </header>
+            <div className="mobile-drawer-list">
+              {drawerItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <button key={item.key} type="button" className={view === item.key ? "active" : ""} onClick={() => selectView(item.key)}>
+                    <Icon size={20} />
+                    <span>{item.label}</span>
+                    <strong>{categoryCount(item.key)}</strong>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        </div>
+      ) : null}
       {activeItem && activeItemMode === "details" ? (
         <ItemDetails
           item={activeItem}

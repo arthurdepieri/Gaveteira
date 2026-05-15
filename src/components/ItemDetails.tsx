@@ -1,4 +1,5 @@
 import { Edit3, ExternalLink, X } from "lucide-react";
+import { useState } from "react";
 import { CulturalItem } from "../types";
 import { categoryLabels } from "../data/catalog";
 import { getTitle, getYear } from "../utils/itemHelpers";
@@ -18,6 +19,8 @@ export function ItemDetails({
 }) {
   const sections = detailSections(item);
   const year = getYear(item);
+  const [activeMobileSection, setActiveMobileSection] = useState(sections[0]?.title ?? "Historico");
+  const mobileSections = [...sections.map((section) => section.title), "Historico", "Diario"];
 
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
@@ -72,9 +75,22 @@ export function ItemDetails({
           </div>
         </section>
 
+        <nav className="detail-mobile-tabs" aria-label="Secoes da ficha">
+          {mobileSections.map((section) => (
+            <button
+              key={section}
+              type="button"
+              className={activeMobileSection === section ? "active" : ""}
+              onClick={() => setActiveMobileSection(section)}
+            >
+              {section}
+            </button>
+          ))}
+        </nav>
+
         <section className="detail-section-grid">
           {sections.map((section) => (
-            <section key={section.title} className="archive-block">
+            <section key={section.title} className={`archive-block detail-mobile-panel ${activeMobileSection === section.title ? "active" : ""}`}>
               <h3>{section.title}</h3>
               {section.fields.length ? (
                 <div className="detail-grid">
@@ -90,7 +106,7 @@ export function ItemDetails({
           ))}
         </section>
 
-        <section className="archive-block">
+        <section className={`archive-block detail-mobile-panel ${activeMobileSection === "Historico" ? "active" : ""}`}>
           <h3>Historico</h3>
           {item.timeline.length ? (
             <div className="timeline-list">
@@ -105,7 +121,7 @@ export function ItemDetails({
           ) : <p className="empty">Nenhum evento registrado ainda.</p>}
         </section>
 
-        <section className="archive-block">
+        <section className={`archive-block detail-mobile-panel ${activeMobileSection === "Diario" ? "active" : ""}`}>
           <h3>Diario</h3>
           {item.diary.length ? (
             <div className="diary-note-grid">

@@ -204,8 +204,11 @@ export function FamilyView({
                       className={group.ownerId === selectedGroup?.ownerId ? "active" : ""}
                       onClick={() => setSelectedOwnerId(group.ownerId)}
                     >
-                      <strong>{group.ownerId === session.user.id ? "Minha gaveteira" : group.ownerName}</strong>
-                      <small>{group.entries.length} itens</small>
+                      <span className="family-owner-avatar">{initials(group.ownerId === session.user.id ? "Eu" : group.ownerName)}</span>
+                      <span>
+                        <strong>{group.ownerId === session.user.id ? "Minha gaveteira" : group.ownerName}</strong>
+                        <small>{group.entries.length} itens</small>
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -417,4 +420,13 @@ function formatDate(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "sem data";
   return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+function initials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "G";
 }

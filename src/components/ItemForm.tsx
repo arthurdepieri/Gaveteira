@@ -63,51 +63,63 @@ export function ItemForm({
           </button>
         </header>
 
-        <MetadataLookup
-          item={item}
-          settings={settings}
-          cloudSession={cloudSession}
-          onApply={(result) => updateMetadataResult(item, result, update)}
-          onApplyCover={(result) => updateCoverResult(item, result, update)}
-        />
+        <MobileFormSection title="Dados basicos" open>
+          <MetadataLookup
+            item={item}
+            settings={settings}
+            cloudSession={cloudSession}
+            onApply={(result) => updateMetadataResult(item, result, update)}
+            onApplyCover={(result) => updateCoverResult(item, result, update)}
+          />
 
-        <div className="form-grid">
-          {item.category === "games" ? <GameFields item={draft} update={update} /> : null}
-          {item.category === "books" ? <BookFields item={draft} update={update} /> : null}
-          {item.category === "albums" ? <AlbumFields item={draft} update={update} /> : null}
-          {item.category === "movies" ? <MovieFields item={draft} update={update} /> : null}
-          {item.category === "series" ? <SeriesFields item={draft} update={update} /> : null}
+          <div className="form-grid">
+            {item.category === "games" ? <GameFields item={draft} update={update} /> : null}
+            {item.category === "books" ? <BookFields item={draft} update={update} /> : null}
+            {item.category === "albums" ? <AlbumFields item={draft} update={update} /> : null}
+            {item.category === "movies" ? <MovieFields item={draft} update={update} /> : null}
+            {item.category === "series" ? <SeriesFields item={draft} update={update} /> : null}
 
-          <Field label="Status">
-            <select value={item.status} onChange={(event) => update({ status: event.target.value })}>
-              {statuses.map((status) => <option key={status}>{status}</option>)}
-            </select>
-          </Field>
-          <Field label="Nota">
-            <RatingInput value={item.rating as Rating | undefined} onChange={(rating) => update({ rating })} />
-          </Field>
-          <Field label="Capa ou poster">
-            <input value={item.coverUrl ?? ""} onChange={(event) => update({ coverUrl: event.target.value })} placeholder="URL da imagem" />
-          </Field>
-          <Field label="Tags">
-            <TagInput value={item.tags} onChange={(tags) => update({ tags })} />
-          </Field>
-        </div>
+            <MobileFieldGroup title="Status e avaliacao">
+              <Field label="Status">
+                <select value={item.status} onChange={(event) => update({ status: event.target.value })}>
+                  {statuses.map((status) => <option key={status}>{status}</option>)}
+                </select>
+              </Field>
+              <Field label="Nota">
+                <RatingInput value={item.rating as Rating | undefined} onChange={(rating) => update({ rating })} />
+              </Field>
+            </MobileFieldGroup>
+            <MobileFieldGroup title="Capa e tags">
+              <Field label="Capa ou poster">
+                <input value={item.coverUrl ?? ""} onChange={(event) => update({ coverUrl: event.target.value })} placeholder="URL da imagem" />
+              </Field>
+              <Field label="Tags">
+                <TagInput value={item.tags} onChange={(tags) => update({ tags })} />
+              </Field>
+            </MobileFieldGroup>
+          </div>
+        </MobileFormSection>
 
-        <section className="form-section">
-          <h3>Links externos</h3>
-          <RepeatingLinks links={item.links} onChange={(links) => update({ links })} />
-        </section>
+        <MobileFormSection title="Links">
+          <section className="form-section">
+            <h3>Links externos</h3>
+            <RepeatingLinks links={item.links} onChange={(links) => update({ links })} />
+          </section>
+        </MobileFormSection>
 
-        <section className="form-section">
-          <h3>Historico</h3>
-          <TimelineEditor events={item.timeline} onChange={(timeline) => update({ timeline })} />
-        </section>
+        <MobileFormSection title="Historico">
+          <section className="form-section">
+            <h3>Historico</h3>
+            <TimelineEditor events={item.timeline} onChange={(timeline) => update({ timeline })} />
+          </section>
+        </MobileFormSection>
 
-        <section className="form-section">
-          <h3>Diario</h3>
-          <DiaryEditor entries={item.diary} onChange={(diary) => update({ diary })} />
-        </section>
+        <MobileFormSection title="Diario">
+          <section className="form-section">
+            <h3>Diario</h3>
+            <DiaryEditor entries={item.diary} onChange={(diary) => update({ diary })} />
+          </section>
+        </MobileFormSection>
 
         <footer className="modal-footer">
           <button type="button" className="danger" onClick={() => onDelete(item.id)}>
@@ -245,6 +257,24 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   return <label className="field"><span>{label}</span>{children}</label>;
 }
 
+function MobileFormSection({ title, open, children }: { title: string; open?: boolean; children: ReactNode }) {
+  return (
+    <details className="form-mobile-section" open={open ?? true}>
+      <summary>{title}</summary>
+      <div>{children}</div>
+    </details>
+  );
+}
+
+function MobileFieldGroup({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <details className="mobile-field-group" open>
+      <summary>{title}</summary>
+      {children}
+    </details>
+  );
+}
+
 function TextareaField({ label, value, onChange }: { label: string; value?: unknown; onChange: (value: string) => void }) {
   return <Field label={label}><textarea value={String(value ?? "")} onChange={(event) => onChange(event.target.value)} /></Field>;
 }
@@ -256,19 +286,25 @@ function numberValue(value: FormDataEntryValue | null) {
 function GameFields({ item, update }: { item: MutableItem; update: (patch: Record<string, unknown>) => void }) {
   return (
     <>
-      <Field label="Nome do jogo"><input value={String(item.name ?? "")} onChange={(e) => update({ name: e.target.value })} /></Field>
-      <Field label="Plataforma"><input value={String(item.platform ?? "")} onChange={(e) => update({ platform: e.target.value })} /></Field>
-      <Field label="Inicio"><input type="date" value={String(item.startDate ?? "")} onChange={(e) => update({ startDate: e.target.value })} /></Field>
-      <Field label="Conclusao ou abandono"><input type="date" value={String(item.endDate ?? "")} onChange={(e) => update({ endDate: e.target.value })} /></Field>
-      <Field label="Tempo jogado"><input value={String(item.timePlayed ?? "")} onChange={(e) => update({ timePlayed: e.target.value })} /></Field>
-      <Field label="Desenvolvedora"><input value={String(item.developer ?? "")} onChange={(e) => update({ developer: e.target.value })} /></Field>
-      <Field label="Publicadora"><input value={String(item.publisher ?? "")} onChange={(e) => update({ publisher: e.target.value })} /></Field>
-      <Field label="Ano de lancamento"><input type="number" value={String(item.releaseYear ?? "")} onChange={(e) => update({ releaseYear: numberValue(e.target.value) })} /></Field>
-      <Field label="Genero"><input value={String(item.genre ?? "")} onChange={(e) => update({ genre: e.target.value })} /></Field>
-      <Field label="Dificuldade percebida"><input value={String(item.perceivedDifficulty ?? "")} onChange={(e) => update({ perceivedDifficulty: e.target.value })} /></Field>
-      <Field label="Conclusao"><select value={String(item.completionType ?? "")} onChange={(e) => update({ completionType: e.target.value })}><option value="">Selecione</option><option>Zerou</option><option>Platinou</option><option>Terminou a historia</option><option>Nao terminou</option></select></Field>
-      <TextareaField label="Motivo de abandono" value={item.abandonmentReason} onChange={(value) => update({ abandonmentReason: value })} />
-      <TextareaField label="Comentarios/anotacoes" value={item.notes} onChange={(value) => update({ notes: value })} />
+      <MobileFieldGroup title="Dados basicos">
+        <Field label="Nome do jogo"><input value={String(item.name ?? "")} onChange={(e) => update({ name: e.target.value })} /></Field>
+        <Field label="Plataforma"><input value={String(item.platform ?? "")} onChange={(e) => update({ platform: e.target.value })} /></Field>
+        <Field label="Desenvolvedora"><input value={String(item.developer ?? "")} onChange={(e) => update({ developer: e.target.value })} /></Field>
+        <Field label="Publicadora"><input value={String(item.publisher ?? "")} onChange={(e) => update({ publisher: e.target.value })} /></Field>
+        <Field label="Ano de lancamento"><input type="number" value={String(item.releaseYear ?? "")} onChange={(e) => update({ releaseYear: numberValue(e.target.value) })} /></Field>
+        <Field label="Genero"><input value={String(item.genre ?? "")} onChange={(e) => update({ genre: e.target.value })} /></Field>
+      </MobileFieldGroup>
+      <MobileFieldGroup title="Progresso">
+        <Field label="Inicio"><input type="date" value={String(item.startDate ?? "")} onChange={(e) => update({ startDate: e.target.value })} /></Field>
+        <Field label="Conclusao ou abandono"><input type="date" value={String(item.endDate ?? "")} onChange={(e) => update({ endDate: e.target.value })} /></Field>
+        <Field label="Tempo jogado"><input value={String(item.timePlayed ?? "")} onChange={(e) => update({ timePlayed: e.target.value })} /></Field>
+        <Field label="Conclusao"><select value={String(item.completionType ?? "")} onChange={(e) => update({ completionType: e.target.value })}><option value="">Selecione</option><option>Zerou</option><option>Platinou</option><option>Terminou a historia</option><option>Nao terminou</option></select></Field>
+      </MobileFieldGroup>
+      <MobileFieldGroup title="Avaliacao e notas">
+        <Field label="Dificuldade percebida"><input value={String(item.perceivedDifficulty ?? "")} onChange={(e) => update({ perceivedDifficulty: e.target.value })} /></Field>
+        <TextareaField label="Motivo de abandono" value={item.abandonmentReason} onChange={(value) => update({ abandonmentReason: value })} />
+        <TextareaField label="Comentarios/anotacoes" value={item.notes} onChange={(value) => update({ notes: value })} />
+      </MobileFieldGroup>
     </>
   );
 }
@@ -276,20 +312,26 @@ function GameFields({ item, update }: { item: MutableItem; update: (patch: Recor
 function BookFields({ item, update }: { item: MutableItem; update: (patch: Record<string, unknown>) => void }) {
   return (
     <>
-      <Field label="Titulo"><input value={String(item.title ?? "")} onChange={(e) => update({ title: e.target.value })} /></Field>
-      <Field label="Autor"><input value={String(item.author ?? "")} onChange={(e) => update({ author: e.target.value })} /></Field>
-      <Field label="Inicio"><input type="date" value={String(item.startDate ?? "")} onChange={(e) => update({ startDate: e.target.value })} /></Field>
-      <Field label="Conclusao ou abandono"><input type="date" value={String(item.endDate ?? "")} onChange={(e) => update({ endDate: e.target.value })} /></Field>
-      <Field label="Numero de paginas"><input type="number" value={String(item.pages ?? "")} onChange={(e) => update({ pages: numberValue(e.target.value) })} /></Field>
-      <Field label="Pagina atual"><input type="number" value={String(item.currentPage ?? "")} onChange={(e) => update({ currentPage: numberValue(e.target.value) })} /></Field>
-      <Field label="Formato"><select value={String(item.format ?? "")} onChange={(e) => update({ format: e.target.value })}><option value="">Selecione</option><option>Fisico</option><option>Kindle</option><option>Audiobook</option><option>PDF</option><option>Outro</option></select></Field>
-      <Field label="Genero"><input value={String(item.genre ?? "")} onChange={(e) => update({ genre: e.target.value })} /></Field>
-      <Field label="Editora"><input value={String(item.publisher ?? "")} onChange={(e) => update({ publisher: e.target.value })} /></Field>
-      <Field label="Ano de publicacao"><input type="number" value={String(item.publicationYear ?? "")} onChange={(e) => update({ publicationYear: numberValue(e.target.value) })} /></Field>
-      <TextareaField label="Frases favoritas" value={item.favoriteQuotes} onChange={(value) => update({ favoriteQuotes: value })} />
-      <TextareaField label="Resumo pessoal" value={item.personalSummary} onChange={(value) => update({ personalSummary: value })} />
-      <TextareaField label="Opiniao final" value={item.finalOpinion} onChange={(value) => update({ finalOpinion: value })} />
-      <TextareaField label="Motivo de abandono" value={item.abandonmentReason} onChange={(value) => update({ abandonmentReason: value })} />
+      <MobileFieldGroup title="Dados basicos">
+        <Field label="Titulo"><input value={String(item.title ?? "")} onChange={(e) => update({ title: e.target.value })} /></Field>
+        <Field label="Autor"><input value={String(item.author ?? "")} onChange={(e) => update({ author: e.target.value })} /></Field>
+        <Field label="Formato"><select value={String(item.format ?? "")} onChange={(e) => update({ format: e.target.value })}><option value="">Selecione</option><option>Fisico</option><option>Kindle</option><option>Audiobook</option><option>PDF</option><option>Outro</option></select></Field>
+        <Field label="Genero"><input value={String(item.genre ?? "")} onChange={(e) => update({ genre: e.target.value })} /></Field>
+        <Field label="Editora"><input value={String(item.publisher ?? "")} onChange={(e) => update({ publisher: e.target.value })} /></Field>
+        <Field label="Ano de publicacao"><input type="number" value={String(item.publicationYear ?? "")} onChange={(e) => update({ publicationYear: numberValue(e.target.value) })} /></Field>
+      </MobileFieldGroup>
+      <MobileFieldGroup title="Progresso">
+        <Field label="Inicio"><input type="date" value={String(item.startDate ?? "")} onChange={(e) => update({ startDate: e.target.value })} /></Field>
+        <Field label="Conclusao ou abandono"><input type="date" value={String(item.endDate ?? "")} onChange={(e) => update({ endDate: e.target.value })} /></Field>
+        <Field label="Numero de paginas"><input type="number" value={String(item.pages ?? "")} onChange={(e) => update({ pages: numberValue(e.target.value) })} /></Field>
+        <Field label="Pagina atual"><input type="number" value={String(item.currentPage ?? "")} onChange={(e) => update({ currentPage: numberValue(e.target.value) })} /></Field>
+      </MobileFieldGroup>
+      <MobileFieldGroup title="Notas">
+        <TextareaField label="Frases favoritas" value={item.favoriteQuotes} onChange={(value) => update({ favoriteQuotes: value })} />
+        <TextareaField label="Resumo pessoal" value={item.personalSummary} onChange={(value) => update({ personalSummary: value })} />
+        <TextareaField label="Opiniao final" value={item.finalOpinion} onChange={(value) => update({ finalOpinion: value })} />
+        <TextareaField label="Motivo de abandono" value={item.abandonmentReason} onChange={(value) => update({ abandonmentReason: value })} />
+      </MobileFieldGroup>
     </>
   );
 }
@@ -297,16 +339,22 @@ function BookFields({ item, update }: { item: MutableItem; update: (patch: Recor
 function AlbumFields({ item, update }: { item: MutableItem; update: (patch: Record<string, unknown>) => void }) {
   return (
     <>
-      <Field label="Nome do album"><input value={String(item.name ?? "")} onChange={(e) => update({ name: e.target.value })} /></Field>
-      <Field label="Artista"><input value={String(item.artist ?? "")} onChange={(e) => update({ artist: e.target.value })} /></Field>
-      <Field label="Ano de lancamento"><input type="number" value={String(item.releaseYear ?? "")} onChange={(e) => update({ releaseYear: numberValue(e.target.value) })} /></Field>
-      <Field label="Genero"><input value={String(item.genre ?? "")} onChange={(e) => update({ genre: e.target.value })} /></Field>
-      <Field label="Data em que ouvi"><input type="date" value={String(item.listenedDate ?? "")} onChange={(e) => update({ listenedDate: e.target.value })} /></Field>
-      <Field label="Vezes ouvido"><input type="number" value={String(item.listenCount ?? "")} onChange={(e) => update({ listenCount: numberValue(e.target.value) })} /></Field>
-      <Field label="Escuta"><select value={String(item.listenMode ?? "")} onChange={(e) => update({ listenMode: e.target.value })}><option value="">Selecione</option><option>Inteiro</option><option>Parcialmente</option></select></Field>
-      <TextareaField label="Musicas favoritas" value={item.favoriteTracks} onChange={(value) => update({ favoriteTracks: value })} />
-      <TextareaField label="Musicas puladas" value={item.skippedTracks} onChange={(value) => update({ skippedTracks: value })} />
-      <TextareaField label="Comentarios" value={item.comments} onChange={(value) => update({ comments: value })} />
+      <MobileFieldGroup title="Dados basicos">
+        <Field label="Nome do album"><input value={String(item.name ?? "")} onChange={(e) => update({ name: e.target.value })} /></Field>
+        <Field label="Artista"><input value={String(item.artist ?? "")} onChange={(e) => update({ artist: e.target.value })} /></Field>
+        <Field label="Ano de lancamento"><input type="number" value={String(item.releaseYear ?? "")} onChange={(e) => update({ releaseYear: numberValue(e.target.value) })} /></Field>
+        <Field label="Genero"><input value={String(item.genre ?? "")} onChange={(e) => update({ genre: e.target.value })} /></Field>
+      </MobileFieldGroup>
+      <MobileFieldGroup title="Progresso">
+        <Field label="Data em que ouvi"><input type="date" value={String(item.listenedDate ?? "")} onChange={(e) => update({ listenedDate: e.target.value })} /></Field>
+        <Field label="Vezes ouvido"><input type="number" value={String(item.listenCount ?? "")} onChange={(e) => update({ listenCount: numberValue(e.target.value) })} /></Field>
+        <Field label="Escuta"><select value={String(item.listenMode ?? "")} onChange={(e) => update({ listenMode: e.target.value })}><option value="">Selecione</option><option>Inteiro</option><option>Parcialmente</option></select></Field>
+      </MobileFieldGroup>
+      <MobileFieldGroup title="Notas">
+        <TextareaField label="Musicas favoritas" value={item.favoriteTracks} onChange={(value) => update({ favoriteTracks: value })} />
+        <TextareaField label="Musicas puladas" value={item.skippedTracks} onChange={(value) => update({ skippedTracks: value })} />
+        <TextareaField label="Comentarios" value={item.comments} onChange={(value) => update({ comments: value })} />
+      </MobileFieldGroup>
     </>
   );
 }
@@ -314,14 +362,20 @@ function AlbumFields({ item, update }: { item: MutableItem; update: (patch: Reco
 function MovieFields({ item, update }: { item: MutableItem; update: (patch: Record<string, unknown>) => void }) {
   return (
     <>
-      <Field label="Titulo"><input value={String(item.title ?? "")} onChange={(e) => update({ title: e.target.value })} /></Field>
-      <Field label="Ano"><input type="number" value={String(item.year ?? "")} onChange={(e) => update({ year: numberValue(e.target.value) })} /></Field>
-      <Field label="Genero"><input value={String(item.genre ?? "")} onChange={(e) => update({ genre: e.target.value })} /></Field>
-      <Field label="Inicio"><input type="date" value={String(item.startDate ?? "")} onChange={(e) => update({ startDate: e.target.value })} /></Field>
-      <Field label="Conclusao"><input type="date" value={String(item.endDate ?? "")} onChange={(e) => update({ endDate: e.target.value })} /></Field>
-      <Field label="Direcao"><input value={String(item.director ?? "")} onChange={(e) => update({ director: e.target.value })} /></Field>
-      <Field label="Duracao em minutos"><input type="number" value={String(item.runtimeMinutes ?? "")} onChange={(e) => update({ runtimeMinutes: numberValue(e.target.value) })} /></Field>
-      <TextareaField label="Comentarios" value={item.comments} onChange={(value) => update({ comments: value })} />
+      <MobileFieldGroup title="Dados basicos">
+        <Field label="Titulo"><input value={String(item.title ?? "")} onChange={(e) => update({ title: e.target.value })} /></Field>
+        <Field label="Ano"><input type="number" value={String(item.year ?? "")} onChange={(e) => update({ year: numberValue(e.target.value) })} /></Field>
+        <Field label="Genero"><input value={String(item.genre ?? "")} onChange={(e) => update({ genre: e.target.value })} /></Field>
+        <Field label="Direcao"><input value={String(item.director ?? "")} onChange={(e) => update({ director: e.target.value })} /></Field>
+        <Field label="Duracao em minutos"><input type="number" value={String(item.runtimeMinutes ?? "")} onChange={(e) => update({ runtimeMinutes: numberValue(e.target.value) })} /></Field>
+      </MobileFieldGroup>
+      <MobileFieldGroup title="Progresso">
+        <Field label="Inicio"><input type="date" value={String(item.startDate ?? "")} onChange={(e) => update({ startDate: e.target.value })} /></Field>
+        <Field label="Conclusao"><input type="date" value={String(item.endDate ?? "")} onChange={(e) => update({ endDate: e.target.value })} /></Field>
+      </MobileFieldGroup>
+      <MobileFieldGroup title="Notas">
+        <TextareaField label="Comentarios" value={item.comments} onChange={(value) => update({ comments: value })} />
+      </MobileFieldGroup>
     </>
   );
 }
@@ -329,15 +383,21 @@ function MovieFields({ item, update }: { item: MutableItem; update: (patch: Reco
 function SeriesFields({ item, update }: { item: MutableItem; update: (patch: Record<string, unknown>) => void }) {
   return (
     <>
-      <Field label="Titulo"><input value={String(item.title ?? "")} onChange={(e) => update({ title: e.target.value })} /></Field>
-      <Field label="Ano"><input type="number" value={String(item.year ?? "")} onChange={(e) => update({ year: numberValue(e.target.value) })} /></Field>
-      <Field label="Genero"><input value={String(item.genre ?? "")} onChange={(e) => update({ genre: e.target.value })} /></Field>
-      <Field label="Inicio"><input type="date" value={String(item.startDate ?? "")} onChange={(e) => update({ startDate: e.target.value })} /></Field>
-      <Field label="Conclusao"><input type="date" value={String(item.endDate ?? "")} onChange={(e) => update({ endDate: e.target.value })} /></Field>
-      <Field label="Temporada atual"><input type="number" value={String(item.currentSeason ?? "")} onChange={(e) => update({ currentSeason: numberValue(e.target.value) })} /></Field>
-      <Field label="Episodio atual"><input type="number" value={String(item.currentEpisode ?? "")} onChange={(e) => update({ currentEpisode: numberValue(e.target.value) })} /></Field>
-      <Field label="Acompanhamento"><select value={String(item.trackingStatus ?? "")} onChange={(e) => update({ trackingStatus: e.target.value })}><option value="">Selecione</option><option>Em dia</option><option>Atrasado</option><option>Pausado</option><option>Finalizada</option></select></Field>
-      <TextareaField label="Comentarios" value={item.comments} onChange={(value) => update({ comments: value })} />
+      <MobileFieldGroup title="Dados basicos">
+        <Field label="Titulo"><input value={String(item.title ?? "")} onChange={(e) => update({ title: e.target.value })} /></Field>
+        <Field label="Ano"><input type="number" value={String(item.year ?? "")} onChange={(e) => update({ year: numberValue(e.target.value) })} /></Field>
+        <Field label="Genero"><input value={String(item.genre ?? "")} onChange={(e) => update({ genre: e.target.value })} /></Field>
+      </MobileFieldGroup>
+      <MobileFieldGroup title="Progresso">
+        <Field label="Inicio"><input type="date" value={String(item.startDate ?? "")} onChange={(e) => update({ startDate: e.target.value })} /></Field>
+        <Field label="Conclusao"><input type="date" value={String(item.endDate ?? "")} onChange={(e) => update({ endDate: e.target.value })} /></Field>
+        <Field label="Temporada atual"><input type="number" value={String(item.currentSeason ?? "")} onChange={(e) => update({ currentSeason: numberValue(e.target.value) })} /></Field>
+        <Field label="Episodio atual"><input type="number" value={String(item.currentEpisode ?? "")} onChange={(e) => update({ currentEpisode: numberValue(e.target.value) })} /></Field>
+        <Field label="Acompanhamento"><select value={String(item.trackingStatus ?? "")} onChange={(e) => update({ trackingStatus: e.target.value })}><option value="">Selecione</option><option>Em dia</option><option>Atrasado</option><option>Pausado</option><option>Finalizada</option></select></Field>
+      </MobileFieldGroup>
+      <MobileFieldGroup title="Notas">
+        <TextareaField label="Comentarios" value={item.comments} onChange={(value) => update({ comments: value })} />
+      </MobileFieldGroup>
     </>
   );
 }
