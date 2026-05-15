@@ -2,6 +2,14 @@ import { AppSettings, CloudSession, CulturalItem, FamilyItem, SocialProfile } fr
 
 const SESSION_KEY = "gaveteira-cloud-session:v1";
 const TOKEN_REFRESH_MARGIN_MS = 60_000;
+const LEGACY_DEMO_ITEM_IDS = new Set([
+  "game-outer-wilds",
+  "book-clarice",
+  "album-igor",
+  "movie-arrival",
+  "series-severance",
+  "game-hades",
+]);
 
 interface SupabaseAuthResponse {
   access_token?: string;
@@ -113,7 +121,7 @@ export async function refreshCloudSession(settings: AppSettings, session: CloudS
 export async function syncMyItems(settings: AppSettings, session: CloudSession, items: CulturalItem[]) {
   const familyCode = requireFamilyCode(settings);
   await upsertProfile(settings, session, session.profile?.displayName || session.user.email?.split("@")[0] || "Pessoa da familia", familyCode);
-  const rows = items.map((item) => ({
+  const rows = items.filter((item) => !isLegacyDemoItem(item.id)).map((item) => ({
     id: item.id,
     owner_id: session.user.id,
     family_code: familyCode,
@@ -154,17 +162,18 @@ export async function fetchMyItems(settings: AppSettings, session: CloudSession)
     method: "GET",
   });
 
-  return rows.map((row) => row.item);
+  return rows.map((row) => row.item).filter((item) => !isLegacyDemoItem(item.id));
 }
 
 export async function fetchFamilyItems(settings: AppSettings, session: CloudSession): Promise<FamilyItem[]> {
   const familyCode = requireFamilyCode(settings);
   const path = `/rest/v1/cultural_items?select=id,owner_id,family_code,item,updated_at&family_code=eq.${encodeURIComponent(familyCode)}&order=updated_at.desc`;
   const rows = await restRequest<ItemRow[]>(settings, session, path, { method: "GET" });
-  const ownerIds = [...new Set(rows.map((row) => row.owner_id))];
+  const visibleRows = rows.filter((row) => !isLegacyDemoItem(row.id) && !isLegacyDemoItem(row.item.id));
+  const ownerIds = [...new Set(visibleRows.map((row) => row.owner_id))];
   const profiles = ownerIds.length ? await fetchProfiles(settings, session, ownerIds) : {};
 
-  return rows.map((row) => ({
+  return visibleRows.map((row) => ({
     id: row.id,
     ownerId: row.owner_id,
     ownerName: profiles[row.owner_id]?.display_name || (row.owner_id === session.user.id ? "Voce" : "Pessoa da familia"),
@@ -172,6 +181,10 @@ export async function fetchFamilyItems(settings: AppSettings, session: CloudSess
     item: row.item,
     updatedAt: row.updated_at,
   }));
+}
+
+function isLegacyDemoItem(id: string) {
+  return LEGACY_DEMO_ITEM_IDS.has(id);
 }
 
 async function fetchProfiles(settings: AppSettings, session: CloudSession, ownerIds: string[]): Promise<Record<string, ProfileRow>> {
