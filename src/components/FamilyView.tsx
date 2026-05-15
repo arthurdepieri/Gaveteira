@@ -8,6 +8,7 @@ import { Cover } from "./Cover";
 import { Stars } from "./Rating";
 import { ItemDetails } from "./ItemDetails";
 import { Category } from "../types";
+import { AuthGate } from "./AuthGate";
 
 interface OwnerGroup {
   ownerId: string;
@@ -23,12 +24,16 @@ export function FamilyView({
   localItems,
   onMergeItems,
   onLogout,
+  onAuthenticated,
+  onUpdateSettings,
 }: {
   settings: AppSettings;
-  session: CloudSession;
+  session: CloudSession | null;
   localItems: CulturalItem[];
   onMergeItems: (items: CulturalItem[]) => void;
   onLogout: () => void;
+  onAuthenticated: (session: CloudSession) => void;
+  onUpdateSettings: (settings: AppSettings) => void;
 }) {
   const [familyItems, setFamilyItems] = useState<FamilyItem[]>([]);
   const [message, setMessage] = useState("");
@@ -70,12 +75,19 @@ export function FamilyView({
   }, [groups, selectedOwnerId]);
 
   useEffect(() => {
+    if (!session) return;
+
     refreshFamily(true);
     const intervalId = window.setInterval(() => refreshFamily(true), FAMILY_REFRESH_INTERVAL_MS);
     return () => window.clearInterval(intervalId);
-  }, [settings.cloud?.familyCode, session.user.id]);
+  }, [settings.cloud?.familyCode, session?.user.id]);
 
   async function uploadLocal() {
+    if (!session) {
+      setMessage("Entre para enviar seus itens para a familia.");
+      return;
+    }
+
     setLoading(true);
     setMessage("");
 
@@ -91,6 +103,11 @@ export function FamilyView({
   }
 
   async function downloadMine() {
+    if (!session) {
+      setMessage("Entre para baixar os itens da sua conta.");
+      return;
+    }
+
     setLoading(true);
     setMessage("");
 
@@ -106,6 +123,8 @@ export function FamilyView({
   }
 
   async function refreshFamily(silent = false) {
+    if (!session) return;
+
     if (!silent) {
       setLoading(true);
       setMessage("");
@@ -122,6 +141,30 @@ export function FamilyView({
         setLoading(false);
       }
     }
+  }
+
+  if (!session) {
+    return (
+      <main className="page">
+        <section className="list-header">
+          <div>
+            <p className="eyebrow">Opcional</p>
+            <h1>Familia</h1>
+            <p>Voce pode usar a Gaveteira inteira no modo local. Conecte uma conta apenas quando quiser sincronizar e comparar gavetas com outras pessoas.</p>
+          </div>
+          <Cloud size={38} />
+        </section>
+
+        <section className="setting-panel cloud-toolbar">
+          <div>
+            <h2>Modo local ativo</h2>
+            <p>{localItems.length} itens salvos neste navegador. Nada sera enviado para o Supabase ate voce entrar.</p>
+          </div>
+        </section>
+
+        <AuthGate settings={settings} onUpdateSettings={onUpdateSettings} onAuthenticated={onAuthenticated} layout="panel" />
+      </main>
+    );
   }
 
   return (

@@ -7,10 +7,12 @@ export function AuthGate({
   settings,
   onUpdateSettings,
   onAuthenticated,
+  layout = "shell",
 }: {
   settings: AppSettings;
   onUpdateSettings: (settings: AppSettings) => void;
   onAuthenticated: (session: CloudSession) => void;
+  layout?: "shell" | "panel";
 }) {
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
@@ -40,14 +42,13 @@ export function AuthGate({
     }
   }
 
-  return (
-    <main className="login-shell">
-      <section className="login-card compact-login">
+  const content = (
+    <>
         <div className="brand login-brand">
           <span className="brand-mark">G</span>
           <div>
             <strong>Gaveteira</strong>
-            <small>entre para abrir suas gavetas</small>
+            <small>conecte para sincronizar a familia</small>
           </div>
         </div>
 
@@ -89,12 +90,23 @@ export function AuthGate({
             </div>
             <button className="primary" onClick={submitAuth} disabled={loading || !configured}>
               {mode === "signup" ? <UserPlus size={16} /> : <LogIn size={16} />}
-              {loading ? "Conectando..." : mode === "signup" ? "Criar e entrar" : "Entrar"}
+              {loading ? "Conectando..." : mode === "signup" ? "Criar e sincronizar" : "Entrar e sincronizar"}
             </button>
             {!configured ? <p className="form-error">Informe o codigo da familia. Se a conexao tecnica ainda nao foi embutida, preencha `sharedCloudSettings` no arquivo `sharedCloud.ts`.</p> : null}
             {message ? <p className="form-error">{message}</p> : null}
           </section>
         </div>
+    </>
+  );
+
+  if (layout === "panel") {
+    return <div className="auth-inline">{content}</div>;
+  }
+
+  return (
+    <main className="login-shell">
+      <section className="login-card compact-login">
+        {content}
       </section>
     </main>
   );

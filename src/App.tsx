@@ -11,7 +11,6 @@ import { ItemDetails } from "./components/ItemDetails";
 import { StatsView } from "./components/StatsView";
 import { SettingsView } from "./components/SettingsView";
 import { FamilyView } from "./components/FamilyView";
-import { AuthGate } from "./components/AuthGate";
 import { changeFamilyCode, deleteMyItem, fetchMyItems, loadCloudSession, saveCloudSession, syncMyItems } from "./services/supabaseCloud";
 import { withSharedCloudSettings } from "./config/sharedCloud";
 
@@ -48,6 +47,10 @@ function App() {
   const [syncMessage, setSyncMessage] = useState("");
   const [syncRetryTick, setSyncRetryTick] = useState(0);
   const [pendingDeletes, setPendingDeletes] = useState<string[]>(() => loadPendingDeletes());
+  const [familySwitcherOpen, setFamilySwitcherOpen] = useState(false);
+  const [familyDraft, setFamilyDraft] = useState("");
+  const [familySwitching, setFamilySwitching] = useState(false);
+  const [familySwitchError, setFamilySwitchError] = useState("");
   const syncInFlightRef = useRef(false);
   const syncQueuedRef = useRef(false);
   const lastSyncedKeyRef = useRef("");
@@ -191,7 +194,19 @@ function App() {
     }
 
     if (view === "stats") return <StatsView items={data.items} />;
-    if (view === "family") return <FamilyView settings={effectiveSettings} session={cloudSession!} localItems={data.items} onMergeItems={mergeItems} onLogout={logout} />;
+    if (view === "family") {
+      return (
+        <FamilyView
+          settings={effectiveSettings}
+          session={cloudSession}
+          localItems={data.items}
+          onMergeItems={mergeItems}
+          onLogout={logout}
+          onAuthenticated={authenticated}
+          onUpdateSettings={updateSettings}
+        />
+      );
+    }
     if (view === "settings") return <SettingsView data={data} onReplaceData={setData} onUpdateData={updateData} />;
 
     return (
@@ -264,13 +279,36 @@ function App() {
     }
   }
 
+  function openFamilySwitcher() {
+    if (!cloudSession) return;
+
+    const currentFamilyCode = effectiveSettings.cloud?.familyCode ?? "";
+    setFamilyDraft(currentFamilyCode);
+    setFamilySwitchError("");
+    setFamilySwitcherOpen(true);
+  }
+
+  function closeFamilySwitcher() {
+    if (familySwitching) return;
+    setFamilySwitcherOpen(false);
+    setFamilySwitchError("");
+  }
+
   async function switchFamily() {
     if (!cloudSession) return;
 
     const currentFamilyCode = effectiveSettings.cloud?.familyCode ?? "";
-    const nextFamilyCode = window.prompt("Digite o novo codigo da familia:", currentFamilyCode)?.trim();
+    const nextFamilyCode = familyDraft.trim();
 
-    if (!nextFamilyCode || nextFamilyCode === currentFamilyCode) return;
+    if (!nextFamilyCode) {
+      setFamilySwitchError("Digite o codigo da familia antes de continuar.");
+      return;
+    }
+
+    if (nextFamilyCode === currentFamilyCode) {
+      closeFamilySwitcher();
+      return;
+    }
 
     const nextSettings: AppSettings = {
       ...data.settings,
@@ -282,6 +320,8 @@ function App() {
     const nextEffectiveSettings = withSharedCloudSettings(nextSettings);
 
     try {
+      setFamilySwitching(true);
+      setFamilySwitchError("");
       const profile = await changeFamilyCode(nextEffectiveSettings, cloudSession, nextFamilyCode);
       setData((current) => ({
         ...current,
@@ -296,13 +336,12 @@ function App() {
       setCloudSession((current) => current ? { ...current, profile } : current);
       setView("family");
       setSessionMessage(`Familia alterada para ${nextFamilyCode}.`);
+      setFamilySwitcherOpen(false);
     } catch (error) {
-      setSessionMessage(error instanceof Error ? error.message : "Nao foi possivel trocar de familia.");
+      setFamilySwitchError(error instanceof Error ? error.message : "Nao foi possivel trocar de familia.");
+    } finally {
+      setFamilySwitching(false);
     }
-  }
-
-  if (!cloudSession) {
-    return <AuthGate settings={effectiveSettings} onUpdateSettings={updateSettings} onAuthenticated={authenticated} />;
   }
 
   return (
@@ -312,9 +351,10 @@ function App() {
           <span className="brand-mark">G</span>
           <div>
             <strong>Gaveteira</strong>
-            <small>{cloudSession.profile?.displayName || cloudSession.user.email || "minha conta"}</small>
+            <small>{cloudSession ? cloudSession.profile?.displayName || cloudSession.user.email || "minha conta" : "modo local"}</small>
           </div>
         </div>
+        {!cloudSession ? <p className="sidebar-note">Modo local ativo. Seus dados ficam neste navegador.</p> : null}
         {sessionMessage ? <p className="sidebar-note">{sessionMessage}</p> : null}
         {syncMessage ? <p className="sidebar-note sync-note">{syncMessage}</p> : null}
         <nav>
@@ -350,14 +390,23 @@ function App() {
             );
           })}
         </nav>
-        <button className="sidebar-action" onClick={switchFamily}>
-          <Repeat2 size={18} />
-          <span>Trocar familia</span>
-        </button>
-        <button className="sidebar-logout" onClick={logout}>
-          <LogOut size={18} />
-          <span>Sair</span>
-        </button>
+        {cloudSession ? (
+          <>
+            <button className="sidebar-action" onClick={openFamilySwitcher}>
+              <Repeat2 size={18} />
+              <span>Trocar familia</span>
+            </button>
+            <button className="sidebar-logout" onClick={logout}>
+              <LogOut size={18} />
+              <span>Sair</span>
+            </button>
+          </>
+        ) : (
+          <button className="sidebar-action" onClick={() => setView("family")}>
+            <Repeat2 size={18} />
+            <span>Conectar/sincronizar</span>
+          </button>
+        )}
       </aside>
       {mainView()}
       {activeItem && activeItemMode === "details" ? (
@@ -372,11 +421,51 @@ function App() {
           item={activeItem}
           statuses={data.statuses[activeItem.category]}
           settings={effectiveSettings}
-          cloudSession={cloudSession}
+          cloudSession={cloudSession ?? undefined}
           onSave={upsertItem}
           onDelete={deleteItem}
           onClose={() => setActiveItemId(null)}
         />
+      ) : null}
+      {familySwitcherOpen && cloudSession ? (
+        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="family-switch-title">
+          <form className="modal family-switch-modal" onSubmit={(event) => { event.preventDefault(); switchFamily(); }}>
+            <header className="modal-header">
+              <div>
+                <p className="eyebrow">Conexao familiar</p>
+                <h2 id="family-switch-title">Trocar familia</h2>
+              </div>
+              <button className="ghost" type="button" onClick={closeFamilySwitcher} disabled={familySwitching}>Fechar</button>
+            </header>
+
+            <div className="family-switch-body">
+              <div className="family-switch-current">
+                <span>Familia atual</span>
+                <strong>{effectiveSettings.cloud?.familyCode || "nenhuma familia configurada"}</strong>
+              </div>
+              <label>
+                Novo codigo da familia
+                <input
+                  value={familyDraft}
+                  onChange={(event) => setFamilyDraft(event.target.value)}
+                  placeholder="primos-2026"
+                  autoFocus
+                />
+              </label>
+              <p className="family-switch-help">
+                Ao trocar, seus itens locais continuam neste navegador. A aba Familia passa a mostrar os membros e itens do novo codigo.
+              </p>
+              {familySwitchError ? <p className="form-error">{familySwitchError}</p> : null}
+            </div>
+
+            <footer className="modal-footer">
+              <button className="ghost" type="button" onClick={closeFamilySwitcher} disabled={familySwitching}>Cancelar</button>
+              <button className="primary" type="submit" disabled={familySwitching || !familyDraft.trim()}>
+                {familySwitching ? "Trocando..." : "Trocar familia"}
+              </button>
+            </footer>
+          </form>
+        </div>
       ) : null}
     </div>
   );

@@ -1,4 +1,4 @@
-import { Search, Sparkles, Trash2, X } from "lucide-react";
+import { ImageIcon, Search, Sparkles, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { AppSettings, Category, CloudSession, CulturalItem, DiaryEntry, ExternalLink, Rating, TimelineEvent } from "../types";
@@ -63,7 +63,13 @@ export function ItemForm({
           </button>
         </header>
 
-        <MetadataLookup item={item} settings={settings} cloudSession={cloudSession} onApply={(result) => updateMetadataResult(item, result, update)} />
+        <MetadataLookup
+          item={item}
+          settings={settings}
+          cloudSession={cloudSession}
+          onApply={(result) => updateMetadataResult(item, result, update)}
+          onApplyCover={(result) => updateCoverResult(item, result, update)}
+        />
 
         <div className="form-grid">
           {item.category === "games" ? <GameFields item={draft} update={update} /> : null}
@@ -120,28 +126,35 @@ function MetadataLookup({
   settings,
   cloudSession,
   onApply,
+  onApplyCover,
 }: {
   item: CulturalItem;
   settings: AppSettings;
   cloudSession?: CloudSession;
   onApply: (result: MetadataResult) => void;
+  onApplyCover: (result: MetadataResult) => void;
 }) {
   const [query, setQuery] = useState(getTitle(item));
   const [results, setResults] = useState<MetadataResult[]>([]);
   const [loading, setLoading] = useState(false);
+  const [mode, setMode] = useState<"data" | "cover">("data");
   const [error, setError] = useState("");
   const configuredKeys = Object.values(settings.apiKeys).filter(Boolean).length;
 
-  async function runSearch() {
+  async function runSearch(nextMode: "data" | "cover") {
     setLoading(true);
+    setMode(nextMode);
     setError("");
     setResults([]);
 
     try {
       const found = await searchMetadata(item, settings, query, cloudSession);
-      setResults(found);
-      if (!found.length) {
-        setError("Nenhum resultado encontrado. Tente um nome mais especifico ou cadastre manualmente.");
+      const visibleResults = nextMode === "cover" ? found.filter((result) => result.coverUrl) : found;
+      setResults(visibleResults);
+      if (!visibleResults.length) {
+        setError(nextMode === "cover"
+          ? "Nenhuma capa encontrada. Tente um titulo mais especifico ou cole uma URL manualmente."
+          : "Nenhum resultado encontrado. Tente um nome mais especifico ou cadastre manualmente.");
       }
     } catch (searchError) {
       setError(searchError instanceof Error ? searchError.message : "Nao foi possivel buscar metadados agora.");
@@ -163,22 +176,31 @@ function MetadataLookup({
           <Search size={16} />
           <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Digite o nome e busque metadados" />
         </label>
-        <button type="button" className="primary" onClick={runSearch} disabled={loading}>
+        <button type="button" className="primary" onClick={() => runSearch("data")} disabled={loading}>
           <Sparkles size={16} />
-          {loading ? "Buscando..." : "Buscar dados"}
+          {loading && mode === "data" ? "Buscando..." : "Buscar dados"}
+        </button>
+        <button type="button" className="secondary" onClick={() => runSearch("cover")} disabled={loading}>
+          <ImageIcon size={16} />
+          {loading && mode === "cover" ? "Buscando..." : "Buscar capas"}
         </button>
       </div>
       {error ? <p className="metadata-error">{error}</p> : null}
       {results.length ? (
         <div className="metadata-results">
           {results.map((result) => (
-            <button type="button" key={result.id} className="metadata-result" onClick={() => onApply(result)}>
+            <button
+              type="button"
+              key={`${mode}-${result.id}`}
+              className="metadata-result"
+              onClick={() => mode === "cover" ? onApplyCover(result) : onApply(result)}
+            >
               <span className="metadata-cover">
                 {result.coverUrl ? <img src={result.coverUrl} alt="" /> : <Sparkles size={18} />}
               </span>
               <span>
                 <strong>{result.title}</strong>
-                <small>{[result.provider, result.subtitle].filter(Boolean).join(" · ")}</small>
+                <small>{[result.provider, result.subtitle, mode === "cover" ? "usar apenas capa" : undefined].filter(Boolean).join(" / ")}</small>
               </span>
             </button>
           ))}
@@ -186,6 +208,15 @@ function MetadataLookup({
       ) : null}
     </section>
   );
+}
+
+function updateCoverResult(item: CulturalItem, result: MetadataResult, update: (patch: Record<string, unknown>) => void) {
+  if (!result.coverUrl) return;
+
+  update({
+    coverUrl: result.coverUrl,
+    links: mergeLinks(item.links, result.links ?? []),
+  });
 }
 
 function updateMetadataResult(item: CulturalItem, result: MetadataResult, update: (patch: Record<string, unknown>) => void) {

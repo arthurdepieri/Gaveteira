@@ -53,17 +53,16 @@ export async function searchMetadata(item: CulturalItem, settings: AppSettings, 
   if (!normalizedQuery) return [];
 
   const cloudResults = await searchCloudMetadata(item.category, normalizedQuery, settings, session);
-  if (cloudResults.length) return cloudResults;
-
   const searches: Record<Category, () => Promise<MetadataResult[]>> = {
     games: () => searchGames(normalizedQuery, settings),
     books: () => searchBooks(normalizedQuery),
-    albums: () => searchAlbums(normalizedQuery),
+    albums: () => searchAlbums(normalizedQuery, settings),
     movies: () => searchMovies(normalizedQuery, settings),
     series: () => searchSeries(normalizedQuery, settings),
   };
 
-  return searches[item.category]();
+  const localResults = await searches[item.category]();
+  return rankedResults(normalizedQuery, [...cloudResults, ...localResults], 12);
 }
 
 async function searchCloudMetadata(category: Category, query: string, settings: AppSettings, session?: CloudSession): Promise<MetadataResult[]> {
@@ -116,7 +115,7 @@ async function searchGames(query: string, settings: AppSettings): Promise<Metada
         id: `rawg-${id || name}`,
         provider: "RAWG",
         title: name,
-        subtitle: [released?.slice(0, 4), genres].filter(Boolean).join(" · "),
+        subtitle: [released?.slice(0, 4), genres].filter(Boolean).join(" / "),
         year: yearFromDate(released),
         coverUrl: image,
         patch: cleanPatch({
@@ -135,24 +134,36 @@ async function searchGames(query: string, settings: AppSettings): Promise<Metada
 
   const steamUrl = new URL(`https://steamcommunity.com/actions/SearchApps/${encodeURIComponent(query)}`);
   const steamResults = await fetchJson(steamUrl)
-    .then((json) => arrayOfRecords(json).slice(0, 5).map((game) => {
+    .then((json) => Promise.all(arrayOfRecords(json).slice(0, 6).map(async (game) => {
       const appId = stringValue(game.appid);
       const name = stringValue(game.name);
       const logo = stringValue(game.logo);
+      const details = recordValue(await fetchSteamGameDetails(appId).catch(() => ({})));
+      const releaseDate = stringValue(recordValue(details.release_date).date);
+      const developers = arrayOfStrings(details.developers).join(", ");
+      const publishers = arrayOfStrings(details.publishers).join(", ");
+      const genres = arrayOfRecords(details.genres).map((genre) => stringValue(genre.description)).filter(Boolean).join(", ");
+      const coverUrl = stringValue(details.header_image) || steamHeaderImage(appId) || logo;
+
       return {
         id: `steam-${appId}`,
         provider: "Steam",
         title: name,
-        subtitle: appId ? `App ${appId}` : undefined,
-        coverUrl: logo,
+        subtitle: [yearFromLooseDate(releaseDate), appId ? `App ${appId}` : undefined].filter(Boolean).join(" / "),
+        year: yearFromLooseDate(releaseDate),
+        coverUrl,
         patch: cleanPatch({
           category: "games",
           name,
-          coverUrl: logo,
+          releaseYear: yearFromLooseDate(releaseDate),
+          genre: genres,
+          developer: developers,
+          publisher: publishers,
+          coverUrl,
         }),
         links: appId ? [link("Steam", `https://store.steampowered.com/app/${appId}`)] : [],
       } satisfies MetadataResult;
-    }))
+    })))
     .catch(() => []);
 
   const wikidataResults = await searchWikidataMedia(query, "games");
@@ -160,13 +171,40 @@ async function searchGames(query: string, settings: AppSettings): Promise<Metada
   return rankedResults(query, [...results, ...steamResults, ...wikidataResults]);
 }
 
-async function searchBooks(query: string): Promise<MetadataResult[]> {
-  const url = new URL("https://www.googleapis.com/books/v1/volumes");
-  url.searchParams.set("q", query);
-  url.searchParams.set("maxResults", "10");
-  url.searchParams.set("langRestrict", "pt");
+async function fetchSteamGameDetails(appId: string): Promise<JsonRecord> {
+  if (!appId) return {};
 
-  const googleResults = await fetchJson(url)
+  const detailsUrl = new URL("https://store.steampowered.com/api/appdetails");
+  detailsUrl.searchParams.set("appids", appId);
+  detailsUrl.searchParams.set("filters", "basic");
+
+  const json = await fetchJson(detailsUrl);
+  return recordValue(recordValue(json[appId]).data);
+}
+
+function steamHeaderImage(appId: string) {
+  return appId ? `https://cdn.akamai.steamstatic.com/steam/apps/${appId}/header.jpg` : "";
+}
+
+async function searchBooks(query: string): Promise<MetadataResult[]> {
+  const [googleResults, googleTitleResults, openLibraryResults, openLibraryTitleResults] = await Promise.all([
+    searchGoogleBooks(query),
+    searchGoogleBooks(`intitle:"${query}"`),
+    searchOpenLibraryBooks(query, "q"),
+    searchOpenLibraryBooks(query, "title"),
+  ]);
+
+  return rankedResults(query, [...googleResults, ...googleTitleResults, ...openLibraryResults, ...openLibraryTitleResults], 12);
+}
+
+async function searchGoogleBooks(googleQuery: string): Promise<MetadataResult[]> {
+  const url = new URL("https://www.googleapis.com/books/v1/volumes");
+  url.searchParams.set("q", googleQuery);
+  url.searchParams.set("maxResults", "10");
+  url.searchParams.set("printType", "books");
+  url.searchParams.set("projection", "full");
+
+  return fetchJson(url)
     .then((json) => arrayOfRecords(json.items).map((entry) => {
       const info = recordValue(entry.volumeInfo);
       const title = stringValue(info.title);
@@ -176,12 +214,14 @@ async function searchBooks(query: string): Promise<MetadataResult[]> {
       const imageLinks = recordValue(info.imageLinks);
       const isbn = bestIsbn(info.industryIdentifiers);
       const coverUrl = bestGoogleBookCover(imageLinks) || openLibraryCoverByIsbn(isbn);
+      const previewLink = stringValue(info.previewLink);
+      const infoLink = stringValue(info.infoLink);
 
       return {
-        id: `google-${stringValue(entry.id) || title}`,
+        id: `google-${stringValue(entry.id) || title}-${googleQuery}`,
         provider: "Google Books",
         title,
-        subtitle: [authors, publishedDate?.slice(0, 4)].filter(Boolean).join(" · "),
+        subtitle: [authors, publishedDate?.slice(0, 4)].filter(Boolean).join(" / "),
         year: yearFromDate(publishedDate),
         coverUrl,
         patch: cleanPatch({
@@ -194,29 +234,32 @@ async function searchBooks(query: string): Promise<MetadataResult[]> {
           pages: numberValue(info.pageCount),
           coverUrl,
         }),
-        links: stringValue(info.infoLink) ? [link("Google Books", stringValue(info.infoLink))] : [],
+        links: (previewLink || infoLink) ? [link("Google Books", previewLink || infoLink)] : [],
       } satisfies MetadataResult;
     }))
     .catch(() => []);
+}
 
+async function searchOpenLibraryBooks(query: string, mode: "q" | "title"): Promise<MetadataResult[]> {
   const openLibraryUrl = new URL("https://openlibrary.org/search.json");
-  openLibraryUrl.searchParams.set("title", query);
+  openLibraryUrl.searchParams.set(mode, query);
   openLibraryUrl.searchParams.set("limit", "10");
 
-  const openLibraryResults = await fetchJson(openLibraryUrl)
+  return fetchJson(openLibraryUrl)
     .then((json) => arrayOfRecords(json.docs).map((book) => {
       const title = stringValue(book.title);
       const author = arrayOfStrings(book.author_name).join(", ");
       const coverId = stringValue(book.cover_i);
+      const coverEdition = stringValue(book.cover_edition_key);
       const isbn = arrayOfStrings(book.isbn)[0];
-      const coverUrl = openLibraryCoverById(coverId) || openLibraryCoverByIsbn(isbn);
+      const coverUrl = openLibraryCoverById(coverId) || openLibraryCoverByOlid(coverEdition) || openLibraryCoverByIsbn(isbn);
       const key = stringValue(book.key);
 
       return {
-        id: `openlibrary-${key || title}`,
+        id: `openlibrary-${key || title}-${mode}`,
         provider: "Open Library",
         title,
-        subtitle: [author, stringValue(book.first_publish_year)].filter(Boolean).join(" · "),
+        subtitle: [author, stringValue(book.first_publish_year)].filter(Boolean).join(" / "),
         year: numberValue(book.first_publish_year),
         coverUrl,
         patch: cleanPatch({
@@ -230,15 +273,23 @@ async function searchBooks(query: string): Promise<MetadataResult[]> {
       } satisfies MetadataResult;
     }))
     .catch(() => []);
-
-  return rankedResults(query, [...googleResults, ...openLibraryResults]);
 }
 
-async function searchAlbums(query: string): Promise<MetadataResult[]> {
+async function searchAlbums(query: string, settings: AppSettings): Promise<MetadataResult[]> {
+  const [musicBrainzResults, lastFmResults, appleMusicResults] = await Promise.all([
+    searchMusicBrainzAlbums(query),
+    settings.apiKeys.lastfm ? searchLastFmAlbums(query, settings.apiKeys.lastfm) : Promise.resolve([]),
+    searchAppleMusicAlbums(query),
+  ]);
+
+  return rankedResults(query, [...lastFmResults, ...appleMusicResults, ...musicBrainzResults], 12);
+}
+
+async function searchMusicBrainzAlbums(query: string): Promise<MetadataResult[]> {
   const url = new URL("https://musicbrainz.org/ws/2/release-group/");
   url.searchParams.set("query", query);
   url.searchParams.set("fmt", "json");
-  url.searchParams.set("limit", "6");
+  url.searchParams.set("limit", "8");
 
   return fetchJson(url)
     .then((json) => arrayOfRecords(json["release-groups"]).map((album) => {
@@ -248,7 +299,7 @@ async function searchAlbums(query: string): Promise<MetadataResult[]> {
         .map((artistCredit) => stringValue(recordValue(artistCredit.artist).name))
         .filter(Boolean)
         .join(", ");
-      const tags = arrayOfRecords(album.tags).map((tag) => stringValue(tag.name)).filter(Boolean).slice(0, 3).join(", ");
+      const tags = arrayOfRecords(album.tags).map((tag) => stringValue(tag.name)).filter(Boolean).slice(0, 5).join(", ");
       const firstRelease = stringValue(album["first-release-date"]);
       const coverUrl = id ? `https://coverartarchive.org/release-group/${id}/front-500` : "";
 
@@ -256,7 +307,7 @@ async function searchAlbums(query: string): Promise<MetadataResult[]> {
         id: `musicbrainz-${id || title}`,
         provider: "MusicBrainz",
         title,
-        subtitle: [artists, firstRelease?.slice(0, 4), tags].filter(Boolean).join(" · "),
+        subtitle: [artists, firstRelease?.slice(0, 4), tags].filter(Boolean).join(" / "),
         year: yearFromDate(firstRelease),
         coverUrl,
         patch: cleanPatch({
@@ -270,7 +321,80 @@ async function searchAlbums(query: string): Promise<MetadataResult[]> {
         links: id ? [link("MusicBrainz", `https://musicbrainz.org/release-group/${id}`)] : [],
       } satisfies MetadataResult;
     }))
-    .then((results) => rankedResults(query, results))
+    .catch(() => []);
+}
+
+async function searchLastFmAlbums(query: string, apiKey: string): Promise<MetadataResult[]> {
+  const url = new URL("https://ws.audioscrobbler.com/2.0/");
+  url.searchParams.set("method", "album.search");
+  url.searchParams.set("album", query);
+  url.searchParams.set("api_key", apiKey);
+  url.searchParams.set("format", "json");
+  url.searchParams.set("limit", "8");
+
+  return fetchJson(url)
+    .then((json) => {
+      const matches = recordValue(recordValue(json.results).albummatches);
+      return arrayOfRecords(matches.album).map((album) => {
+        const title = stringValue(album.name);
+        const artist = stringValue(album.artist);
+        const images = arrayOfRecords(album.image);
+        const coverUrl = normalizeCoverUrl(stringValue([...images].reverse().find((image) => stringValue(image["#text"]))?.["#text"]));
+        const url = stringValue(album.url);
+
+        return {
+          id: `lastfm-album-${artist}-${title}`,
+          provider: "Last.fm",
+          title,
+          subtitle: artist,
+          coverUrl,
+          patch: cleanPatch({
+            category: "albums",
+            name: title,
+            artist,
+            coverUrl,
+          }),
+          links: url ? [link("Last.fm", url)] : [],
+        } satisfies MetadataResult;
+      });
+    })
+    .catch(() => []);
+}
+
+async function searchAppleMusicAlbums(query: string): Promise<MetadataResult[]> {
+  const url = new URL("https://itunes.apple.com/search");
+  url.searchParams.set("term", query);
+  url.searchParams.set("media", "music");
+  url.searchParams.set("entity", "album");
+  url.searchParams.set("limit", "8");
+  url.searchParams.set("country", "BR");
+
+  return fetchJson(url)
+    .then((json) => arrayOfRecords(json.results).map((album) => {
+      const title = stringValue(album.collectionName);
+      const artist = stringValue(album.artistName);
+      const releaseDate = stringValue(album.releaseDate);
+      const coverUrl = upscaleAppleArtwork(stringValue(album.artworkUrl100));
+      const url = stringValue(album.collectionViewUrl);
+
+      return {
+        id: `apple-music-album-${stringValue(album.collectionId) || artist + title}`,
+        provider: "Apple Music",
+        title,
+        subtitle: [artist, releaseDate?.slice(0, 4), stringValue(album.primaryGenreName)].filter(Boolean).join(" / "),
+        year: yearFromDate(releaseDate),
+        coverUrl,
+        patch: cleanPatch({
+          category: "albums",
+          name: title,
+          artist,
+          releaseYear: yearFromDate(releaseDate),
+          genre: stringValue(album.primaryGenreName),
+          coverUrl,
+        }),
+        links: url ? [link("Apple Music", url)] : [],
+      } satisfies MetadataResult;
+    }))
     .catch(() => []);
 }
 
@@ -296,7 +420,7 @@ async function searchMovies(query: string, settings: AppSettings): Promise<Metad
           id: `tmdb-movie-${id || title}`,
           provider: "TMDB",
           title,
-          subtitle: [releaseDate?.slice(0, 4), stringValue(movie.original_title)].filter(Boolean).join(" · "),
+          subtitle: [releaseDate?.slice(0, 4), stringValue(movie.original_title)].filter(Boolean).join(" / "),
           year: yearFromDate(releaseDate),
           coverUrl,
           patch: cleanPatch({
@@ -315,37 +439,12 @@ async function searchMovies(query: string, settings: AppSettings): Promise<Metad
   }
 
   if (settings.apiKeys.omdb) {
-    const omdbUrl = new URL("https://www.omdbapi.com/");
-    omdbUrl.searchParams.set("apikey", settings.apiKeys.omdb);
-    omdbUrl.searchParams.set("s", query);
-    omdbUrl.searchParams.set("type", "movie");
+    const [exactOmdbResult, omdbResults] = await Promise.all([
+      searchOmdbMovieByTitle(query, settings.apiKeys.omdb),
+      searchOmdbMovies(query, settings.apiKeys.omdb),
+    ]);
 
-    const omdbResults = await fetchJson(omdbUrl)
-      .then((json) => arrayOfRecords(json.Search).slice(0, 8).map((movie) => {
-        const title = stringValue(movie.Title);
-        const year = numberValue(stringValue(movie.Year).slice(0, 4));
-        const poster = normalizePosterUrl(stringValue(movie.Poster));
-        const imdbId = stringValue(movie.imdbID);
-
-        return {
-          id: `omdb-movie-${imdbId || title}`,
-          provider: "OMDb",
-          title,
-          subtitle: [year, imdbId].filter(Boolean).join(" · "),
-          year,
-          coverUrl: poster,
-          patch: cleanPatch({
-            category: "movies",
-            title,
-            year,
-            coverUrl: poster,
-          }),
-          links: imdbId ? [link("IMDb", `https://www.imdb.com/title/${imdbId}`)] : [],
-        } satisfies MetadataResult;
-      }))
-      .catch(() => []);
-
-    allResults.push(...omdbResults);
+    allResults.push(...[exactOmdbResult, ...omdbResults].filter((result): result is MetadataResult => Boolean(result)));
   }
 
   const itunesUrl = new URL("https://itunes.apple.com/search");
@@ -359,14 +458,14 @@ async function searchMovies(query: string, settings: AppSettings): Promise<Metad
     .then((json) => arrayOfRecords(json.results).map((movie) => {
       const title = stringValue(movie.trackName);
       const releaseDate = stringValue(movie.releaseDate);
-      const poster = stringValue(movie.artworkUrl100).replace("100x100bb", "600x600bb");
+      const poster = upscaleAppleArtwork(stringValue(movie.artworkUrl100));
       const url = stringValue(movie.trackViewUrl);
 
       return {
         id: `itunes-movie-${stringValue(movie.trackId) || title}`,
         provider: "iTunes",
         title,
-        subtitle: [releaseDate?.slice(0, 4), stringValue(movie.primaryGenreName)].filter(Boolean).join(" · "),
+        subtitle: [releaseDate?.slice(0, 4), stringValue(movie.primaryGenreName)].filter(Boolean).join(" / "),
         year: yearFromDate(releaseDate),
         coverUrl: poster,
         patch: cleanPatch({
@@ -390,7 +489,73 @@ async function searchMovies(query: string, settings: AppSettings): Promise<Metad
   return rankedResults(query, allResults);
 }
 
+async function searchOmdbMovies(query: string, apiKey: string): Promise<MetadataResult[]> {
+  const omdbUrl = new URL("https://www.omdbapi.com/");
+  omdbUrl.searchParams.set("apikey", apiKey);
+  omdbUrl.searchParams.set("s", query);
+  omdbUrl.searchParams.set("type", "movie");
+
+  return fetchJson(omdbUrl)
+    .then(async (json) => Promise.all(arrayOfRecords(json.Search).slice(0, 8).map(async (movie) => {
+      const imdbId = stringValue(movie.imdbID);
+      const details = imdbId ? await fetchOmdbById(imdbId, apiKey).catch(() => movie) : movie;
+      return omdbMovieToResult(details);
+    })))
+    .catch(() => []);
+}
+
+async function searchOmdbMovieByTitle(query: string, apiKey: string): Promise<MetadataResult | undefined> {
+  const omdbUrl = new URL("https://www.omdbapi.com/");
+  omdbUrl.searchParams.set("apikey", apiKey);
+  omdbUrl.searchParams.set("t", query);
+  omdbUrl.searchParams.set("type", "movie");
+  omdbUrl.searchParams.set("plot", "short");
+
+  const movie = recordValue(await fetchJson(omdbUrl).catch(() => ({})));
+  return stringValue(movie.Response) === "False" ? undefined : omdbMovieToResult(movie, "exact");
+}
+
+async function fetchOmdbById(imdbId: string, apiKey: string): Promise<JsonRecord> {
+  const omdbUrl = new URL("https://www.omdbapi.com/");
+  omdbUrl.searchParams.set("apikey", apiKey);
+  omdbUrl.searchParams.set("i", imdbId);
+  omdbUrl.searchParams.set("plot", "short");
+  return fetchJson(omdbUrl);
+}
+
+function omdbMovieToResult(movie: JsonRecord, suffix = ""): MetadataResult {
+  const title = stringValue(movie.Title);
+  const year = numberValue(stringValue(movie.Year).slice(0, 4));
+  const poster = normalizePosterUrl(stringValue(movie.Poster));
+  const imdbId = stringValue(movie.imdbID);
+  const genre = stringValue(movie.Genre);
+  const runtimeMinutes = numberValue(stringValue(movie.Runtime).replace(/\D+/g, ""));
+  const director = stringValue(movie.Director);
+
+  return {
+    id: `omdb-movie-${imdbId || title}${suffix ? `-${suffix}` : ""}`,
+    provider: "OMDb",
+    title,
+    subtitle: [year, genre, imdbId].filter(Boolean).join(" / "),
+    year,
+    coverUrl: poster,
+    patch: cleanPatch({
+      category: "movies",
+      title,
+      year,
+      genre,
+      director,
+      runtimeMinutes,
+      comments: stringValue(movie.Plot),
+      coverUrl: poster,
+    }),
+    links: imdbId ? [link("IMDb", `https://www.imdb.com/title/${imdbId}`)] : [],
+  };
+}
+
 async function searchSeries(query: string, settings: AppSettings): Promise<MetadataResult[]> {
+  const allResults: MetadataResult[] = [];
+
   if (settings.apiKeys.tmdb) {
     const tmdbUrl = new URL("https://api.themoviedb.org/3/search/tv");
     tmdbUrl.searchParams.set("api_key", settings.apiKeys.tmdb);
@@ -409,7 +574,7 @@ async function searchSeries(query: string, settings: AppSettings): Promise<Metad
           id: `tmdb-series-${id || title}`,
           provider: "TMDB",
           title,
-          subtitle: [firstAirDate?.slice(0, 4), stringValue(show.original_name)].filter(Boolean).join(" · "),
+          subtitle: [firstAirDate?.slice(0, 4), stringValue(show.original_name)].filter(Boolean).join(" / "),
           year: yearFromDate(firstAirDate),
           coverUrl,
           patch: cleanPatch({
@@ -424,19 +589,19 @@ async function searchSeries(query: string, settings: AppSettings): Promise<Metad
       }))
       .catch(() => []);
 
-    if (tmdbResults.length) return rankedResults(query, tmdbResults);
+    allResults.push(...tmdbResults);
   }
 
   const tvMazeUrl = new URL("https://api.tvmaze.com/search/shows");
   tvMazeUrl.searchParams.set("q", query);
 
-  return fetchJson(tvMazeUrl)
+  const tvMazeResults = await fetchJson(tvMazeUrl)
     .then((json) => arrayOfRecords(json).slice(0, 6).map((entry) => {
       const show = recordValue(entry.show);
       const title = stringValue(show.name);
       const premiered = stringValue(show.premiered);
       const image = recordValue(show.image);
-      const coverUrl = stringValue(image.original) || stringValue(image.medium);
+      const coverUrl = normalizeCoverUrl(stringValue(image.original) || stringValue(image.medium));
       const genres = arrayOfStrings(show.genres).join(", ");
       const url = stringValue(show.url);
 
@@ -444,7 +609,7 @@ async function searchSeries(query: string, settings: AppSettings): Promise<Metad
         id: `tvmaze-${stringValue(show.id) || title}`,
         provider: "TVMaze",
         title,
-        subtitle: [premiered?.slice(0, 4), genres].filter(Boolean).join(" · "),
+        subtitle: [premiered?.slice(0, 4), genres].filter(Boolean).join(" / "),
         year: yearFromDate(premiered),
         coverUrl,
         patch: cleanPatch({
@@ -458,10 +623,11 @@ async function searchSeries(query: string, settings: AppSettings): Promise<Metad
         links: url ? [link("TVMaze", url)] : [],
       } satisfies MetadataResult;
     }))
-    .then((results) => rankedResults(query, results))
     .catch(() => []);
-}
 
+  allResults.push(...tvMazeResults);
+  return rankedResults(query, allResults, 12);
+}
 async function fetchJson(url: URL): Promise<JsonRecord> {
   const response = await fetch(url, { headers: requestHeaders });
   if (!response.ok) throw new Error(`Falha ao buscar em ${url.hostname}`);
@@ -495,6 +661,11 @@ function yearFromDate(value: string) {
   return Number.isFinite(year) && year > 0 ? year : undefined;
 }
 
+function yearFromLooseDate(value: string) {
+  const match = value.match(/\b(19|20)\d{2}\b/);
+  return match ? Number(match[0]) : yearFromDate(value);
+}
+
 function minutesFromMillis(value?: number) {
   return value ? Math.round(value / 60000) : undefined;
 }
@@ -526,6 +697,10 @@ function openLibraryCoverById(id: string) {
   return id ? `https://covers.openlibrary.org/b/id/${encodeURIComponent(id)}-L.jpg?default=false` : "";
 }
 
+function openLibraryCoverByOlid(id: string) {
+  return id ? `https://covers.openlibrary.org/b/olid/${encodeURIComponent(id)}-L.jpg?default=false` : "";
+}
+
 function normalizeCoverUrl(url: string) {
   if (!url) return "";
   return url.replace("http://", "https://").replace("&edge=curl", "");
@@ -534,6 +709,10 @@ function normalizeCoverUrl(url: string) {
 function normalizePosterUrl(url: string) {
   if (!url || url === "N/A") return "";
   return normalizeCoverUrl(url);
+}
+
+function upscaleAppleArtwork(url: string) {
+  return normalizeCoverUrl(url).replace(/\/\d+x\d+bb\./, "/1000x1000bb.");
 }
 
 function stripHtml(value: string) {
@@ -603,7 +782,7 @@ async function searchWikidataMedia(query: string, category: "games" | "movies"):
         id: `wikidata-movie-${id}`,
         provider: "Wikidata",
         title,
-        subtitle: [year, director].filter(Boolean).join(" · "),
+        subtitle: [year, director].filter(Boolean).join(" / "),
         year,
         coverUrl,
         patch: cleanPatch({
@@ -626,7 +805,7 @@ async function searchWikidataMedia(query: string, category: "games" | "movies"):
       id: `wikidata-game-${id}`,
       provider: "Wikidata",
       title,
-      subtitle: [year, developer || publisher].filter(Boolean).join(" · "),
+      subtitle: [year, developer || publisher].filter(Boolean).join(" / "),
       year,
       coverUrl,
       patch: cleanPatch({
@@ -721,10 +900,16 @@ function rankedResults(query: string, results: MetadataResult[], limit = 8) {
 }
 
 function roundRobinProviders(results: MetadataResult[]) {
-  const providerOrder = [...new Set(results.map((result) => result.provider))].sort((a, b) => providerPriority(a) - providerPriority(b));
+  const providerOrder = [...new Set(results.map((result) => result.provider))].sort((a, b) => {
+    const providerCoverScore = bestProviderCoverScore(results, b) - bestProviderCoverScore(results, a);
+    if (providerCoverScore) return providerCoverScore;
+    return providerPriority(a) - providerPriority(b);
+  });
   const pool = [...results].sort((a, b) => {
     const coverScore = Number(Boolean(b.coverUrl)) - Number(Boolean(a.coverUrl));
     if (coverScore) return coverScore;
+    const fieldScore = Object.keys(b.patch).length - Object.keys(a.patch).length;
+    if (fieldScore) return fieldScore;
     return (b.year ?? 0) - (a.year ?? 0);
   });
   const output: MetadataResult[] = [];
@@ -744,6 +929,10 @@ function roundRobinProviders(results: MetadataResult[]) {
   }
 
   return output;
+}
+
+function bestProviderCoverScore(results: MetadataResult[], provider: string) {
+  return results.some((result) => result.provider === provider && result.coverUrl) ? 1 : 0;
 }
 
 function titleRank(query: string, title: string) {
@@ -790,6 +979,8 @@ function providerPriority(provider: string) {
     OMDb: 2,
     iTunes: 3,
     TVMaze: 2,
+    "Last.fm": 1,
+    "Apple Music": 2,
     MusicBrainz: 1,
     Wikidata: 9,
   };
