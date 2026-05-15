@@ -28,6 +28,32 @@ export function getGenres(item: CulturalItem) {
   return splitGenres(getGenre(item));
 }
 
+export function getPlayedHours(item: CulturalItem) {
+  if (item.category !== "games" || !item.timePlayed) return 0;
+  return parsePlayedHours(item.timePlayed);
+}
+
+export function parsePlayedHours(value: string) {
+  const normalized = value
+    .toLowerCase()
+    .replace(",", ".")
+    .trim();
+  const hourMatch = normalized.match(/(\d+(?:\.\d+)?)\s*(h|hora|horas|hr|hrs)/);
+  const minuteMatch = normalized.match(/(\d+(?:\.\d+)?)\s*(m|min|minuto|minutos)/);
+  const colonMatch = normalized.match(/^(\d+):(\d{1,2})$/);
+
+  if (colonMatch) {
+    return Number(colonMatch[1]) + Number(colonMatch[2]) / 60;
+  }
+
+  const hours = hourMatch ? Number(hourMatch[1]) : 0;
+  const minutes = minuteMatch ? Number(minuteMatch[1]) : 0;
+  if (hours || minutes) return hours + minutes / 60;
+
+  const plainNumber = Number(normalized.replace(/[^\d.]/g, ""));
+  return Number.isFinite(plainNumber) ? plainNumber : 0;
+}
+
 export function splitGenres(value: string) {
   return value
     .split(",")

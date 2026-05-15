@@ -1,8 +1,10 @@
 import { Plus, Search } from "lucide-react";
 import { Category, CulturalItem } from "../types";
 import { categoryLabels } from "../data/catalog";
-import { getGenres, getRating, getTitle, getYear, isInProgress, isWishlist } from "../utils/itemHelpers";
+import { getGenres, getPlayedHours, getRating, getTitle, getYear, isInProgress, isWishlist } from "../utils/itemHelpers";
 import { ItemCard } from "./ItemCard";
+
+type SortMode = "recent" | "titleAsc" | "yearDesc" | "ratingDesc" | "playedHoursDesc" | "playedHoursAsc";
 
 export interface Filters {
   search: string;
@@ -10,9 +12,10 @@ export interface Filters {
   status: string;
   genre: string;
   minRating: string;
+  sort: SortMode;
 }
 
-const emptyFilters: Filters = { search: "", year: "", status: "", genre: "", minRating: "", };
+const emptyFilters: Filters = { search: "", year: "", status: "", genre: "", minRating: "", sort: "recent" };
 
 export function CategoryView({
   view,
@@ -46,6 +49,22 @@ export function CategoryView({
     ? statuses[category]
     : [...new Set(baseItems.map((item) => item.status))].sort();
 
+  const sortOptions = category === "games"
+    ? [
+      ["recent", "Mais recentes"],
+      ["playedHoursDesc", "Mais horas jogadas"],
+      ["playedHoursAsc", "Menos horas jogadas"],
+      ["ratingDesc", "Maior nota"],
+      ["yearDesc", "Ano mais recente"],
+      ["titleAsc", "Titulo A-Z"],
+    ] as Array<[SortMode, string]>
+    : [
+      ["recent", "Mais recentes"],
+      ["ratingDesc", "Maior nota"],
+      ["yearDesc", "Ano mais recente"],
+      ["titleAsc", "Titulo A-Z"],
+    ] as Array<[SortMode, string]>;
+
   const filtered = baseItems.filter((item) => {
     const search = filters.search.toLowerCase();
     const matchesSearch = !search || getTitle(item).toLowerCase().includes(search) || item.tags.some((tag) => tag.toLowerCase().includes(search));
@@ -54,7 +73,7 @@ export function CategoryView({
     const matchesGenre = !filters.genre || getGenres(item).includes(filters.genre);
     const matchesRating = !filters.minRating || getRating(item) >= Number(filters.minRating);
     return matchesSearch && matchesYear && matchesStatus && matchesGenre && matchesRating;
-  });
+  }).sort((a, b) => sortItems(a, b, filters.sort));
 
   return (
     <main className="page">
@@ -93,6 +112,10 @@ export function CategoryView({
           <option value="">Nota minima</option>
           {[0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map((rating) => <option key={rating} value={rating}>{rating}+</option>)}
         </select>
+        <select value={filters.sort} onChange={(event) => onFiltersChange({ ...filters, sort: event.target.value as SortMode })}>
+          <option value="">Ordenar</option>
+          {sortOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+        </select>
         <button className="ghost" onClick={() => onFiltersChange(emptyFilters)}>Limpar</button>
       </section>
 
@@ -101,6 +124,15 @@ export function CategoryView({
       </section>
     </main>
   );
+}
+
+function sortItems(a: CulturalItem, b: CulturalItem, sort: SortMode) {
+  if (sort === "playedHoursDesc") return getPlayedHours(b) - getPlayedHours(a) || getTitle(a).localeCompare(getTitle(b));
+  if (sort === "playedHoursAsc") return getPlayedHours(a) - getPlayedHours(b) || getTitle(a).localeCompare(getTitle(b));
+  if (sort === "ratingDesc") return getRating(b) - getRating(a) || getTitle(a).localeCompare(getTitle(b));
+  if (sort === "yearDesc") return Number(getYear(b) ?? 0) - Number(getYear(a) ?? 0) || getTitle(a).localeCompare(getTitle(b));
+  if (sort === "titleAsc") return getTitle(a).localeCompare(getTitle(b));
+  return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
 }
 
 export { emptyFilters };
