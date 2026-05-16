@@ -1,5 +1,6 @@
 import { AppData } from "../types";
 import { defaultStatuses } from "../data/catalog";
+import { withoutLegacyDemoItems } from "../utils/legacyDemoItems";
 
 const STORAGE_KEY = "gaveteira-da-vida:v1";
 const DEFAULT_SETTINGS = { apiKeys: {}, cloud: {} };
@@ -25,7 +26,7 @@ export function loadData(): AppData {
     const parsed = JSON.parse(raw) as AppData;
     return {
       version: parsed.version ?? 1,
-      items: parsed.items ?? [],
+      items: withoutLegacyDemoItems(parsed.items ?? []),
       statuses: { ...defaultStatuses, ...(parsed.statuses ?? {}) },
       settings: { ...DEFAULT_SETTINGS, ...(parsed.settings ?? {}), apiKeys: parsed.settings?.apiKeys ?? {}, cloud: parsed.settings?.cloud ?? {} },
     };
@@ -37,7 +38,7 @@ export function loadData(): AppData {
 }
 
 export function saveData(data: AppData) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...data, items: withoutLegacyDemoItems(data.items) }));
 }
 
 export function exportData(data: AppData) {
@@ -58,7 +59,7 @@ export function parseImportedData(text: string): AppData {
 
   return {
     version: parsed.version ?? 1,
-    items: parsed.items,
+    items: withoutLegacyDemoItems(parsed.items),
     statuses: { ...defaultStatuses, ...parsed.statuses },
     settings: { ...DEFAULT_SETTINGS, ...(parsed.settings ?? {}), apiKeys: parsed.settings?.apiKeys ?? {}, cloud: parsed.settings?.cloud ?? {} },
   };

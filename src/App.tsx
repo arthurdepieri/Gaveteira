@@ -13,6 +13,7 @@ import { SettingsView } from "./components/SettingsView";
 import { FamilyView } from "./components/FamilyView";
 import { changeFamilyCode, deleteMyItem, fetchMyItems, loadCloudSession, saveCloudSession, syncMyItems } from "./services/supabaseCloud";
 import { withSharedCloudSettings } from "./config/sharedCloud";
+import { withoutLegacyDemoItems } from "./utils/legacyDemoItems";
 
 const PENDING_DELETES_KEY = "gaveteira-pending-deletes:v1";
 const AUTO_SYNC_DELAY_MS = 900;
@@ -97,7 +98,7 @@ function App() {
       .then((cloudItems) => {
         if (cancelled) return;
         const pendingDeleteIds = new Set(pendingDeletesRef.current);
-        const safeCloudItems = cloudItems.filter((item) => !pendingDeleteIds.has(item.id));
+        const safeCloudItems = withoutLegacyDemoItems(cloudItems).filter((item) => !pendingDeleteIds.has(item.id));
         if (safeCloudItems.length) {
           mergeItems(safeCloudItems);
         }
@@ -176,8 +177,8 @@ function App() {
   function mergeItems(items: CulturalItem[]) {
     setData((current) => {
       const pendingDeleteIds = new Set(pendingDeletesRef.current);
-      const byId = new Map(current.items.map((item) => [item.id, item]));
-      items.forEach((item) => {
+      const byId = new Map(withoutLegacyDemoItems(current.items).map((item) => [item.id, item]));
+      withoutLegacyDemoItems(items).forEach((item) => {
         if (pendingDeleteIds.has(item.id)) return;
         const existing = byId.get(item.id);
         if (!existing || new Date(item.updatedAt).getTime() >= new Date(existing.updatedAt).getTime()) {
@@ -191,7 +192,17 @@ function App() {
 
   const mainView = () => {
     if (view === "home") {
-      return <HomeDashboard items={data.items} onOpenCategory={(next) => selectView(next)} onOpenItem={openItemDetails} />;
+      return (
+        <HomeDashboard
+          items={data.items}
+          onOpenCategory={(next) => selectView(next)}
+          onOpenItem={openItemDetails}
+          onAddItem={addItem}
+          onOpenFamily={() => selectView("family")}
+          connectedToFamily={Boolean(cloudSession)}
+          familyCode={effectiveSettings.cloud?.familyCode}
+        />
+      );
     }
 
     if (view === "stats") return <StatsView items={data.items} />;

@@ -1,15 +1,8 @@
 import { AppSettings, CloudSession, CulturalItem, FamilyItem, SocialProfile } from "../types";
+import { isLegacyDemoItem } from "../utils/legacyDemoItems";
 
 const SESSION_KEY = "gaveteira-cloud-session:v1";
 const TOKEN_REFRESH_MARGIN_MS = 60_000;
-const LEGACY_DEMO_ITEM_IDS = new Set([
-  "game-outer-wilds",
-  "book-clarice",
-  "album-igor",
-  "movie-arrival",
-  "series-severance",
-  "game-hades",
-]);
 
 interface SupabaseAuthResponse {
   access_token?: string;
@@ -181,10 +174,6 @@ export async function fetchFamilyItems(settings: AppSettings, session: CloudSess
     item: row.item,
     updatedAt: row.updated_at,
   }));
-}
-
-function isLegacyDemoItem(id: string) {
-  return LEGACY_DEMO_ITEM_IDS.has(id);
 }
 
 async function fetchProfiles(settings: AppSettings, session: CloudSession, ownerIds: string[]): Promise<Record<string, ProfileRow>> {

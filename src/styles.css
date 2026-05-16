@@ -311,6 +311,93 @@ button:disabled {
   color: var(--muted);
 }
 
+.onboarding-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(260px, 0.8fr);
+  gap: 14px;
+  margin: 18px 0;
+}
+
+.onboarding-card {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  background: rgba(255, 250, 241, 0.92);
+  border-radius: 8px;
+}
+
+.onboarding-start {
+  grid-row: span 2;
+  background:
+    linear-gradient(135deg, rgba(255, 250, 241, 0.96), rgba(240, 222, 194, 0.88));
+}
+
+.onboarding-card h2 {
+  margin-bottom: 6px;
+}
+
+.onboarding-card p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.quick-add-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.quick-add-grid button {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  min-height: 74px;
+  padding: 10px 8px;
+  color: var(--wood-dark);
+  border: 1px solid #dec79b;
+  background: #fffdf8;
+  border-radius: 8px;
+  font-weight: 900;
+}
+
+.quick-add-grid button:hover {
+  border-color: var(--brass);
+  background: #fff4da;
+}
+
+.onboarding-checklist {
+  display: grid;
+  gap: 8px;
+}
+
+.onboarding-checklist button {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 40px;
+  padding: 9px 10px;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  background: #fffdf8;
+  border-radius: 8px;
+  text-align: left;
+  font-weight: 800;
+}
+
+.onboarding-checklist button.done {
+  color: var(--green);
+  background: #edf7f2;
+}
+
+.family-onboarding {
+  grid-template-columns: 28px 1fr auto;
+  align-items: center;
+}
+
 .drawer-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
@@ -411,6 +498,87 @@ h2, h3 {
 .shelf-item small {
   display: block;
   color: var(--muted);
+}
+
+.home-live-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.home-live-grid .section {
+  margin-top: 0;
+}
+
+.home-shelf-list,
+.suggestion-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.home-shelf-item,
+.suggestion-card {
+  display: grid;
+  grid-template-columns: 46px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  background: #fffdf8;
+  border-radius: 8px;
+  text-align: left;
+}
+
+.home-shelf-item:hover,
+.suggestion-card:hover {
+  border-color: #b88737;
+  box-shadow: 0 8px 18px rgba(83, 57, 30, 0.12);
+}
+
+.home-shelf-item span,
+.suggestion-card span {
+  min-width: 0;
+}
+
+.home-shelf-item strong,
+.suggestion-card strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-shelf-item small,
+.suggestion-card small,
+.suggestion-card em {
+  display: block;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-style: normal;
+}
+
+.home-suggestions {
+  background:
+    linear-gradient(135deg, rgba(255, 244, 218, 0.94), rgba(255, 250, 241, 0.92));
+}
+
+.suggestion-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.suggestion-card {
+  grid-template-columns: 54px 1fr 24px;
+  min-height: 86px;
+}
+
+.suggestion-card small {
+  color: var(--brass);
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .filters {
@@ -1806,6 +1974,29 @@ button.danger {
   .card-grid {
     grid-template-columns: 1fr;
     gap: 10px;
+  }
+
+  .home-live-grid,
+  .suggestion-grid,
+  .onboarding-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .quick-add-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .family-onboarding {
+    grid-template-columns: 28px 1fr;
+  }
+
+  .family-onboarding button {
+    grid-column: 1 / -1;
+  }
+
+  .home-shelf-item,
+  .suggestion-card {
+    grid-template-columns: 46px minmax(0, 1fr) auto;
   }
 
   .item-card {
