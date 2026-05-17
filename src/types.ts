@@ -1,5 +1,6 @@
 export type Category = "games" | "books" | "albums" | "movies" | "series";
-export type ViewKey = Category | "home" | "wishlist" | "progress" | "stats" | "family" | "settings";
+export type ViewKey = Category | "home" | "wishlist" | "progress" | "feed" | "stats" | "family" | "settings";
+export type SocialVisibility = "private" | "friends" | "group" | "public";
 
 export type Rating = 0.5 | 1 | 1.5 | 2 | 2.5 | 3 | 3.5 | 4 | 4.5 | 5;
 
@@ -25,6 +26,7 @@ export interface ExternalLink {
 export interface SharedFields {
   id: string;
   category: Category;
+  visibility?: SocialVisibility;
   tags: string[];
   coverUrl?: string;
   links: ExternalLink[];

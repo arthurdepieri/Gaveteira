@@ -1,7 +1,7 @@
 import { ImageIcon, Search, Sparkles, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { AppSettings, Category, CloudSession, CulturalItem, DiaryEntry, ExternalLink, Rating, TimelineEvent } from "../types";
+import { AppSettings, Category, CloudSession, CulturalItem, DiaryEntry, ExternalLink, Rating, SocialVisibility, TimelineEvent } from "../types";
 import { categoryLabels } from "../data/catalog";
 import { getProviderHint, MetadataResult, searchMetadata } from "../services/metadata";
 import { getTitle, uid } from "../utils/itemHelpers";
@@ -15,6 +15,7 @@ export function createBlankItem(category: Category, status: string): CulturalIte
     id: uid(category),
     category,
     status,
+    visibility: "friends" as SocialVisibility,
     tags: [],
     links: [],
     timeline: [],
@@ -90,6 +91,14 @@ export function ItemForm({
               </Field>
             </MobileFieldGroup>
             <MobileFieldGroup title="Capa e tags">
+              <Field label="Visibilidade">
+                <select value={item.visibility ?? "friends"} onChange={(event) => update({ visibility: event.target.value as SocialVisibility })}>
+                  <option value="private">Privado</option>
+                  <option value="friends">Amigos</option>
+                  <option value="group">Familia/grupo</option>
+                  <option value="public">Publico por link (futuro)</option>
+                </select>
+              </Field>
               <Field label="Capa ou poster">
                 <input value={item.coverUrl ?? ""} onChange={(event) => update({ coverUrl: event.target.value })} placeholder="URL da imagem" />
               </Field>

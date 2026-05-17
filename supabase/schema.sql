@@ -97,14 +97,17 @@ on public.cultural_items for select
 to authenticated
 using (
   owner_id = auth.uid()
-  or exists (
-    select 1
-    from public.friend_requests fr
-    where fr.status = 'accepted'
-      and (
-        (fr.requester_id = auth.uid() and fr.addressee_id = owner_id)
-        or (fr.addressee_id = auth.uid() and fr.requester_id = owner_id)
-      )
+  or (
+    coalesce(item->>'visibility', 'friends') <> 'private'
+    and exists (
+      select 1
+      from public.friend_requests fr
+      where fr.status = 'accepted'
+        and (
+          (fr.requester_id = auth.uid() and fr.addressee_id = owner_id)
+          or (fr.addressee_id = auth.uid() and fr.requester_id = owner_id)
+        )
+    )
   )
 );
 

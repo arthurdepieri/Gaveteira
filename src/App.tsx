@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ElementType } from "react";
-import { AlertTriangle, Archive, BarChart3, BookOpen, CheckCircle2, ChevronDown, CloudOff, Disc3, Film, Gamepad2, Home, Library, ListChecks, Loader2, LogIn, LogOut, Settings, Tv, UserCheck, UserPlus, Users, WifiOff } from "lucide-react";
+import { AlertTriangle, Archive, BarChart3, BookOpen, CheckCircle2, ChevronDown, CloudOff, Disc3, Film, Gamepad2, Home, Library, ListChecks, Loader2, LogIn, LogOut, MessageSquare, Settings, Tv, UserCheck, UserPlus, Users, WifiOff } from "lucide-react";
 import { AppData, AppSettings, Category, CloudSession, CulturalItem, ViewKey } from "./types";
 import { loadData, saveData } from "./storage/localStore";
 import { categoryLabels } from "./data/catalog";
@@ -11,6 +11,7 @@ import { ItemDetails } from "./components/ItemDetails";
 import { StatsView } from "./components/StatsView";
 import { SettingsView } from "./components/SettingsView";
 import { FamilyView } from "./components/FamilyView";
+import { SocialFeedView } from "./components/SocialFeedView";
 import { deleteMyItem, fetchMyItems, isSessionExpiredError, loadCloudSession, saveCloudSession, syncMyItems } from "./services/supabaseCloud";
 import { withSharedCloudSettings } from "./config/sharedCloud";
 import { withoutLegacyDemoItems } from "./utils/legacyDemoItems";
@@ -29,6 +30,7 @@ interface SyncStatus {
 
 const navItems: Array<{ key: ViewKey; label: string; icon: ElementType }> = [
   { key: "home", label: "Inicio", icon: Home },
+  { key: "feed", label: "Feed", icon: MessageSquare },
   { key: "wishlist", label: "Wishlist", icon: Library },
   { key: "progress", label: "Em andamento", icon: ListChecks },
   { key: "stats", label: "Estatisticas", icon: BarChart3 },
@@ -257,6 +259,16 @@ function App() {
     }
 
     if (view === "stats") return <StatsView items={data.items} />;
+    if (view === "feed") {
+      return (
+        <SocialFeedView
+          settings={effectiveSettings}
+          session={cloudSession}
+          onAuthenticated={authenticated}
+          onUpdateSettings={updateSettings}
+        />
+      );
+    }
     if (view === "family") {
       return (
         <FamilyView
@@ -492,13 +504,13 @@ function App() {
           <Archive size={20} />
           <span>Gavetas</span>
         </button>
+        <button type="button" className={view === "feed" ? "active" : ""} onClick={() => selectView("feed")}>
+          <MessageSquare size={20} />
+          <span>Feed</span>
+        </button>
         <button type="button" className={view === "family" ? "active" : ""} onClick={() => selectSocial(socialSection)}>
           <Users size={20} />
           <span>Social</span>
-        </button>
-        <button type="button" className={view === "stats" ? "active" : ""} onClick={() => selectView("stats")}>
-          <BarChart3 size={20} />
-          <span>Stats</span>
         </button>
         <button type="button" className={view === "settings" ? "active" : ""} onClick={() => selectView("settings")}>
           <Settings size={20} />

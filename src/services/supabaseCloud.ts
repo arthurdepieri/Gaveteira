@@ -111,7 +111,7 @@ export async function signIn(settings: AppSettings, email: string, password: str
 
 export async function changeFamilyCode(settings: AppSettings, session: CloudSession, familyCode: string): Promise<SocialProfile> {
   const displayName = session.profile?.displayName || session.user.email?.split("@")[0] || "Pessoa da Gaveteira";
-  return upsertProfile(settings, session, { displayName, familyCode, email: session.user.email });
+  return upsertProfile(settings, session, { ...session.profile, displayName, familyCode, email: session.user.email });
 }
 
 export async function refreshCloudSession(settings: AppSettings, session: CloudSession): Promise<CloudSession> {
@@ -142,6 +142,7 @@ export async function refreshCloudSession(settings: AppSettings, session: CloudS
 export async function syncMyItems(settings: AppSettings, session: CloudSession, items: CulturalItem[]) {
   const familyCode = session.profile?.familyCode || settings.cloud?.familyCode?.trim() || "social";
   await upsertProfile(settings, session, {
+    ...session.profile,
     displayName: session.profile?.displayName || session.user.email?.split("@")[0] || "Pessoa da Gaveteira",
     email: session.user.email,
     familyCode,
@@ -194,7 +195,7 @@ export async function fetchFamilyItems(settings: AppSettings, session: CloudSess
   const familyCode = requireFamilyCode(settings);
   const path = `/rest/v1/cultural_items?select=id,owner_id,family_code,item,updated_at&family_code=eq.${encodeURIComponent(familyCode)}&order=updated_at.desc`;
   const rows = await restRequest<ItemRow[]>(settings, session, path, { method: "GET" });
-  const visibleRows = rows.filter((row) => !isLegacyDemoItem(row.id) && !isLegacyDemoItem(row.item.id));
+  const visibleRows = rows.filter((row) => !isLegacyDemoItem(row.id) && !isLegacyDemoItem(row.item.id) && isVisibleSocialRow(row, session.user.id));
   const ownerIds = [...new Set(visibleRows.map((row) => row.owner_id))];
   const profiles = ownerIds.length ? await fetchProfiles(settings, session, ownerIds) : {};
 
@@ -217,7 +218,7 @@ export async function fetchSocialItems(settings: AppSettings, session: CloudSess
   const rows = await restRequest<ItemRow[]>(settings, session, `/rest/v1/cultural_items?select=id,owner_id,family_code,item,updated_at&owner_id=in.(${ownerIds.join(",")})&order=updated_at.desc`, {
     method: "GET",
   });
-  const visibleRows = rows.filter((row) => !isLegacyDemoItem(row.id) && !isLegacyDemoItem(row.item.id));
+  const visibleRows = rows.filter((row) => !isLegacyDemoItem(row.id) && !isLegacyDemoItem(row.item.id) && isVisibleSocialRow(row, session.user.id));
   const profiles = await fetchProfiles(settings, session, [...new Set(visibleRows.map((row) => row.owner_id))]);
 
   return visibleRows.map((row) => ({
@@ -362,16 +363,17 @@ export async function updateMyProfile(settings: AppSettings, session: CloudSessi
 }
 
 async function upsertProfile(settings: AppSettings, session: CloudSession, profile: Partial<SocialProfile> & { displayName: string }): Promise<SocialProfile> {
-  const row = {
+  const row: Record<string, unknown> = {
     id: session.user.id,
     display_name: profile.displayName,
     email: profile.email || session.user.email || null,
-    username: cleanUsername(profile.username),
-    bio: profile.bio || null,
-    avatar_url: profile.avatarUrl || null,
-    favorite_categories: profile.favoriteCategories || [],
     family_code: profile.familyCode || settings.cloud?.familyCode?.trim() || "social",
   };
+
+  if ("username" in profile) row.username = cleanUsername(profile.username);
+  if ("bio" in profile) row.bio = profile.bio || null;
+  if ("avatarUrl" in profile) row.avatar_url = profile.avatarUrl || null;
+  if ("favoriteCategories" in profile) row.favorite_categories = profile.favoriteCategories || [];
 
   let rows: ProfileRow[];
 
@@ -544,6 +546,11 @@ function profileFromRow(row: ProfileRow, email?: string): SocialProfile {
     inviteCode: row.invite_code || undefined,
     familyCode: row.family_code || undefined,
   };
+}
+
+function isVisibleSocialRow(row: ItemRow, viewerId: string) {
+  if (row.owner_id === viewerId) return true;
+  return (row.item.visibility ?? "friends") !== "private";
 }
 
 function cleanUsername(value?: string) {
