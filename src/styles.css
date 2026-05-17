@@ -1661,6 +1661,48 @@ button.danger {
   margin-top: 18px;
 }
 
+.feed-scope-tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 5px;
+  margin: 2px 0 12px;
+  border: 1px solid rgba(215, 205, 188, 0.8);
+  background: rgba(239, 226, 205, 0.58);
+  border-radius: 10px;
+}
+
+.feed-scope-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 6px 12px;
+  color: var(--muted);
+  border: 0;
+  background: transparent;
+  border-radius: 8px;
+  font-weight: 900;
+}
+
+.feed-scope-tabs button.active {
+  color: var(--ink);
+  background: #fffaf1;
+  box-shadow: 0 1px 0 rgba(77, 48, 30, 0.08);
+}
+
+.feed-scope-tabs span {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  min-height: 22px;
+  padding: 0 6px;
+  color: var(--wood-dark);
+  background: rgba(182, 126, 51, 0.16);
+  border-radius: 999px;
+  font-size: 0.72rem;
+}
+
 .social-feed-list,
 .social-recommendation-list {
   display: grid;
@@ -1684,6 +1726,29 @@ button.danger {
 
 .social-feed-event small {
   color: var(--muted);
+}
+
+.feed-open-button {
+  display: block;
+  width: 100%;
+  padding: 0;
+  color: inherit;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.feed-open-button span {
+  display: inline-block;
+  margin-top: 5px;
+  color: var(--green);
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
+.feed-open-button:hover p,
+.feed-open-button:focus-visible p {
+  color: var(--green);
 }
 
 .feed-event-icon {

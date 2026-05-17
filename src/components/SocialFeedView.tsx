@@ -31,6 +31,7 @@ export function SocialFeedView({
   const [socialItems, setSocialItems] = useState<FamilyItem[]>([]);
   const [friendships, setFriendships] = useState<Friendship[]>([]);
   const [feedReactions, setFeedReactions] = useState<Record<string, string>>({});
+  const [feedScope, setFeedScope] = useState<"friends" | "mine">("friends");
   const [activeEntry, setActiveEntry] = useState<FamilyItem | null>(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -70,6 +71,9 @@ export function SocialFeedView({
   }, [acceptedFriends, session, socialItems]);
 
   const socialFeed = useMemo(() => buildSocialFeed(socialItems, session?.user.id ?? ""), [session?.user.id, socialItems]);
+  const friendFeed = socialFeed.filter((event) => event.entry.ownerId !== session?.user.id);
+  const myFeed = socialFeed.filter((event) => event.entry.ownerId === session?.user.id);
+  const visibleFeed = (feedScope === "friends" ? friendFeed : myFeed).slice(0, 12);
   const socialComparisons = useMemo(() => buildSocialComparisons(groups, session?.user.id ?? ""), [groups, session?.user.id]);
 
   useEffect(() => {
@@ -151,15 +155,34 @@ export function SocialFeedView({
           </div>
           <span className="soft-label">sem comentarios por enquanto</span>
         </div>
+        <div className="feed-scope-tabs" aria-label="Filtrar feed">
+          <button
+            type="button"
+            className={feedScope === "friends" ? "active" : ""}
+            onClick={() => setFeedScope("friends")}
+          >
+            Amigos <span>{friendFeed.length}</span>
+          </button>
+          <button
+            type="button"
+            className={feedScope === "mine" ? "active" : ""}
+            onClick={() => setFeedScope("mine")}
+          >
+            Meu movimento <span>{myFeed.length}</span>
+          </button>
+        </div>
         <div className="social-feed-list">
-          {socialFeed.length ? socialFeed.map((event) => (
+          {visibleFeed.length ? visibleFeed.map((event) => (
             <article key={event.id} className="social-feed-event">
               <div className={`feed-event-icon feed-event-${event.kind}`}>
                 {event.kind === "finished" ? <ShieldCheck size={16} /> : event.kind === "favorite" ? <Heart size={16} /> : event.kind === "opinion" ? <MessageSquare size={16} /> : event.kind === "abandoned" ? <X size={16} /> : <Sparkles size={16} />}
               </div>
               <div>
-                <p>{event.text}</p>
-                <small>{event.detail}</small>
+                <button type="button" className="feed-open-button" onClick={() => setActiveEntry(event.entry)}>
+                  <p>{event.text}</p>
+                  <small>{event.detail}</small>
+                  <span>Abrir ficha</span>
+                </button>
                 <div className="reaction-row" aria-label="Reacoes">
                   {["curti", "tambem quero", "ja vi"].map((reaction) => (
                     <button
@@ -175,7 +198,7 @@ export function SocialFeedView({
                 </div>
               </div>
             </article>
-          )) : <p className="empty">Quando seus amigos atualizarem fichas, o movimento aparece aqui.</p>}
+          )) : <p className="empty">{feedScope === "friends" ? "Quando seus amigos atualizarem fichas, o movimento aparece aqui." : "Suas proximas alteracoes aparecem aqui como um historico leve."}</p>}
         </div>
       </section>
 
@@ -215,6 +238,7 @@ type FeedKind = "added" | "finished" | "abandoned" | "favorite" | "opinion" | "w
 interface FeedEvent {
   id: string;
   kind: FeedKind;
+  entry: FamilyItem;
   text: string;
   detail: string;
   updatedAt: string;
@@ -233,28 +257,27 @@ function buildSocialFeed(entries: FamilyItem[], viewerId: string): FeedEvent[] {
       const detailParts = [category, entry.item.status, rating ? `${rating} estrelas` : "", formatDate(entry.updatedAt)].filter(Boolean);
 
       if (abandoned) {
-        return { id: `feed-${entry.ownerId}-${entry.id}-abandoned`, kind: "abandoned" as FeedKind, text: `${actor} abandonou ${title}.`, detail: detailParts.join(" / "), updatedAt: entry.updatedAt };
+        return { id: `feed-${entry.ownerId}-${entry.id}-abandoned`, kind: "abandoned" as FeedKind, entry, text: `${actor} abandonou ${title}.`, detail: detailParts.join(" / "), updatedAt: entry.updatedAt };
       }
 
       if (isCompleted(entry.item)) {
-        return { id: `feed-${entry.ownerId}-${entry.id}-finished`, kind: "finished" as FeedKind, text: `${actor} terminou ${title}${rating ? ` e deu ${rating} estrelas` : ""}.`, detail: detailParts.join(" / "), updatedAt: entry.updatedAt };
+        return { id: `feed-${entry.ownerId}-${entry.id}-finished`, kind: "finished" as FeedKind, entry, text: `${actor} terminou ${title}${rating ? ` e deu ${rating} estrelas` : ""}.`, detail: detailParts.join(" / "), updatedAt: entry.updatedAt };
       }
 
       if (rating >= 4.5) {
-        return { id: `feed-${entry.ownerId}-${entry.id}-favorite`, kind: "favorite" as FeedKind, text: `${actor} colocou ${title} entre os favoritos.`, detail: detailParts.join(" / "), updatedAt: entry.updatedAt };
+        return { id: `feed-${entry.ownerId}-${entry.id}-favorite`, kind: "favorite" as FeedKind, entry, text: `${actor} colocou ${title} entre os favoritos.`, detail: detailParts.join(" / "), updatedAt: entry.updatedAt };
       }
 
       if (isWishlist(entry.item)) {
-        return { id: `feed-${entry.ownerId}-${entry.id}-wishlist`, kind: "wishlist" as FeedKind, text: `${actor} quer consumir ${title}.`, detail: detailParts.join(" / "), updatedAt: entry.updatedAt };
+        return { id: `feed-${entry.ownerId}-${entry.id}-wishlist`, kind: "wishlist" as FeedKind, entry, text: `${actor} quer consumir ${title}.`, detail: detailParts.join(" / "), updatedAt: entry.updatedAt };
       }
 
       if (opinion) {
-        return { id: `feed-${entry.ownerId}-${entry.id}-opinion`, kind: "opinion" as FeedKind, text: `${actor} escreveu uma opiniao sobre ${title}.`, detail: opinion.length > 90 ? `${opinion.slice(0, 90)}...` : opinion, updatedAt: entry.updatedAt };
+        return { id: `feed-${entry.ownerId}-${entry.id}-opinion`, kind: "opinion" as FeedKind, entry, text: `${actor} escreveu uma opiniao sobre ${title}.`, detail: opinion.length > 90 ? `${opinion.slice(0, 90)}...` : opinion, updatedAt: entry.updatedAt };
       }
 
-      return { id: `feed-${entry.ownerId}-${entry.id}-added`, kind: "added" as FeedKind, text: `${actor} adicionou ${title}.`, detail: detailParts.join(" / "), updatedAt: entry.updatedAt };
-    })
-    .slice(0, 12);
+      return { id: `feed-${entry.ownerId}-${entry.id}-added`, kind: "added" as FeedKind, entry, text: `${actor} adicionou ${title}.`, detail: detailParts.join(" / "), updatedAt: entry.updatedAt };
+    });
 }
 
 function buildSocialComparisons(groups: OwnerGroup[], viewerId: string) {
