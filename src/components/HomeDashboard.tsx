@@ -22,7 +22,6 @@ export function HomeDashboard({
   onAddItem,
   onOpenFamily,
   connectedToFamily,
-  familyCode,
 }: {
   items: CulturalItem[];
   onOpenCategory: (category: Category | "wishlist" | "progress") => void;
@@ -30,7 +29,6 @@ export function HomeDashboard({
   onAddItem: (category: Category) => void;
   onOpenFamily: () => void;
   connectedToFamily: boolean;
-  familyCode?: string;
 }) {
   const stats = buildStats(items);
   const latestItems = [...items].sort((a, b) => dateTime(b.createdAt || b.updatedAt) - dateTime(a.createdAt || a.updatedAt)).slice(0, 5);
@@ -104,14 +102,14 @@ export function HomeDashboard({
           <article className="onboarding-card family-onboarding">
             <Users size={22} />
             <div>
-              <h2>{connectedToFamily ? "Familia conectada" : "Gaveteira em familia"}</h2>
+              <h2>{connectedToFamily ? "Social conectado" : "Gaveteira com amigos"}</h2>
               <p>
                 {connectedToFamily
-                  ? `Voce esta na familia ${familyCode || "configurada"}. Cada pessoa mantem a propria lista e a aba Familia mostra tudo separado.`
-                  : "Ao entrar em uma familia, cada login guarda seus proprios itens e voces conseguem visitar as gavetas uns dos outros."}
+                  ? "Voce pode procurar pessoas, aceitar convites e visitar a gaveteira dos seus amigos."
+                  : "Ao entrar, cada login guarda seus proprios itens e voces conseguem visitar as gavetas uns dos outros."}
               </p>
             </div>
-            <button type="button" className="ghost" onClick={onOpenFamily}>{connectedToFamily ? "Ver familia" : "Conectar"}</button>
+            <button type="button" className="ghost" onClick={onOpenFamily}>{connectedToFamily ? "Ver social" : "Conectar"}</button>
           </article>
         </section>
       ) : null}
@@ -247,7 +245,7 @@ function buildOnboardingChecklist(items: CulturalItem[], connectedToFamily: bool
       action: (_addItem: (category: Category) => void, _openFamily: () => void, openCategory: (category: Category | "wishlist" | "progress") => void) => openCategory("wishlist"),
     },
     {
-      label: "Entrar na familia",
+      label: "Conectar social",
       done: connectedToFamily,
       action: (_addItem: (category: Category) => void, openFamily: () => void) => openFamily(),
     },

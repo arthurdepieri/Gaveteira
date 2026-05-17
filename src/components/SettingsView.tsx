@@ -76,21 +76,6 @@ export function SettingsView({
           </div>
         </div>
 
-        <div className="setting-panel">
-          <h2>Rede familiar</h2>
-          <p>O app usa a conexao Supabase embutida no codigo. Aqui voce pode trocar apenas o grupo familiar deste navegador.</p>
-          <div className="api-key-grid">
-            <label className="field">
-              <span>Codigo da familia</span>
-              <input
-                value={data.settings.cloud?.familyCode ?? ""}
-                onChange={(event) => onUpdateData({ settings: { ...data.settings, cloud: { ...data.settings.cloud, familyCode: event.target.value.trim() } } })}
-                placeholder="primos-2026"
-              />
-            </label>
-          </div>
-        </div>
-
         <StatusManager data={data} onUpdateData={onUpdateData} />
       </section>
     </main>

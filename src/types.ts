@@ -144,7 +144,12 @@ export interface SocialProfile {
   id: string;
   displayName: string;
   email?: string;
-  familyCode: string;
+  username?: string;
+  bio?: string;
+  avatarUrl?: string;
+  favoriteCategories?: Category[];
+  inviteCode?: string;
+  familyCode?: string;
 }
 
 export interface CloudSession {
@@ -165,6 +170,19 @@ export interface FamilyItem {
   familyCode: string;
   item: CulturalItem;
   updatedAt: string;
+}
+
+export type FriendshipStatus = "pending" | "accepted" | "rejected";
+
+export interface Friendship {
+  id: string;
+  requesterId: string;
+  addresseeId: string;
+  status: FriendshipStatus;
+  createdAt: string;
+  updatedAt: string;
+  profile: SocialProfile;
+  direction: "sent" | "received" | "friend";
 }
 
 export interface AppData {

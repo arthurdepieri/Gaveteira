@@ -22,10 +22,6 @@ export function AuthGate({
   const [loading, setLoading] = useState(false);
   const configured = isCloudConfigured(settings);
 
-  function updateCloud(patch: NonNullable<AppSettings["cloud"]>) {
-    onUpdateSettings({ ...settings, cloud: { ...settings.cloud, ...patch } });
-  }
-
   async function submitAuth() {
     setLoading(true);
     setMessage("");
@@ -48,7 +44,7 @@ export function AuthGate({
           <span className="brand-mark">G</span>
           <div>
             <strong>Gaveteira</strong>
-            <small>conecte para sincronizar a familia</small>
+            <small>conecte para sincronizar e adicionar amigos</small>
           </div>
         </div>
 
@@ -56,15 +52,10 @@ export function AuthGate({
           <section className="setting-panel">
             <div className="section-heading">
               <Users size={20} />
-              <h2>Familia</h2>
+              <h2>Social</h2>
             </div>
-            <p>Use o mesmo codigo para entrar no mesmo grupo. Outro codigo cria uma gaveteira familiar separada.</p>
-            <div className="auth-setup">
-              <label className="field">
-                <span>Codigo da familia</span>
-                <input value={settings.cloud?.familyCode ?? ""} onChange={(event) => updateCloud({ familyCode: event.target.value.trim() })} placeholder="primos-2026" />
-              </label>
-            </div>
+            <p>Entre para salvar sua gaveteira na nuvem, criar seu perfil e adicionar amigos por busca, email ou codigo de convite.</p>
+            <p className="empty">Sem login, tudo continua funcionando no modo local deste navegador.</p>
           </section>
 
           <section className="setting-panel auth-panel">
@@ -92,7 +83,7 @@ export function AuthGate({
               {mode === "signup" ? <UserPlus size={16} /> : <LogIn size={16} />}
               {loading ? "Conectando..." : mode === "signup" ? "Criar e sincronizar" : "Entrar e sincronizar"}
             </button>
-            {!configured ? <p className="form-error">Informe o codigo da familia. Se a conexao tecnica ainda nao foi embutida, preencha `sharedCloudSettings` no arquivo `sharedCloud.ts`.</p> : null}
+            {!configured ? <p className="form-error">A conexao tecnica com o Supabase ainda nao foi configurada no app.</p> : null}
             {message ? <p className="form-error">{message}</p> : null}
           </section>
         </div>

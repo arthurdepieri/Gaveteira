@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ElementType } from "react";
-import { Archive, BarChart3, BookOpen, ChevronDown, Disc3, Film, Gamepad2, Home, Library, ListChecks, LogOut, Repeat2, Settings, Tv, Users } from "lucide-react";
+import { AlertTriangle, Archive, BarChart3, BookOpen, CheckCircle2, ChevronDown, CloudOff, Disc3, Film, Gamepad2, Home, Library, ListChecks, Loader2, LogIn, LogOut, Settings, Tv, UserCheck, UserPlus, Users, WifiOff } from "lucide-react";
 import { AppData, AppSettings, Category, CloudSession, CulturalItem, ViewKey } from "./types";
 import { loadData, saveData } from "./storage/localStore";
 import { categoryLabels } from "./data/catalog";
@@ -11,7 +11,7 @@ import { ItemDetails } from "./components/ItemDetails";
 import { StatsView } from "./components/StatsView";
 import { SettingsView } from "./components/SettingsView";
 import { FamilyView } from "./components/FamilyView";
-import { changeFamilyCode, deleteMyItem, fetchMyItems, loadCloudSession, saveCloudSession, syncMyItems } from "./services/supabaseCloud";
+import { deleteMyItem, fetchMyItems, isSessionExpiredError, loadCloudSession, saveCloudSession, syncMyItems } from "./services/supabaseCloud";
 import { withSharedCloudSettings } from "./config/sharedCloud";
 import { withoutLegacyDemoItems } from "./utils/legacyDemoItems";
 
@@ -19,12 +19,19 @@ const PENDING_DELETES_KEY = "gaveteira-pending-deletes:v1";
 const AUTO_SYNC_DELAY_MS = 900;
 const AUTO_SYNC_RETRY_MS = 30_000;
 
+type SyncKind = "local" | "loading" | "pending" | "syncing" | "synced" | "offline" | "expired" | "error";
+
+interface SyncStatus {
+  kind: SyncKind;
+  message: string;
+  detail?: string;
+}
+
 const navItems: Array<{ key: ViewKey; label: string; icon: ElementType }> = [
   { key: "home", label: "Inicio", icon: Home },
   { key: "wishlist", label: "Wishlist", icon: Library },
   { key: "progress", label: "Em andamento", icon: ListChecks },
   { key: "stats", label: "Estatisticas", icon: BarChart3 },
-  { key: "family", label: "Familia", icon: Users },
   { key: "settings", label: "Configuracoes", icon: Settings },
 ];
 
@@ -44,14 +51,15 @@ function App() {
   const [activeItemMode, setActiveItemMode] = useState<"details" | "edit">("details");
   const [cloudSession, setCloudSession] = useState<CloudSession | null>(() => loadCloudSession());
   const [bootstrappedCloudScope, setBootstrappedCloudScope] = useState("");
-  const [sessionMessage, setSessionMessage] = useState("");
-  const [syncMessage, setSyncMessage] = useState("");
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>(() => ({
+    kind: loadCloudSession() ? "loading" : "local",
+    message: loadCloudSession() ? "Preparando sincronizacao..." : "Modo local ativo.",
+    detail: loadCloudSession() ? "Conferindo sua sessao salva." : "Seus dados ficam neste navegador ate voce conectar uma conta.",
+  }));
   const [syncRetryTick, setSyncRetryTick] = useState(0);
+  const [isOnline, setIsOnline] = useState(() => typeof navigator === "undefined" ? true : navigator.onLine);
   const [pendingDeletes, setPendingDeletes] = useState<string[]>(() => loadPendingDeletes());
-  const [familySwitcherOpen, setFamilySwitcherOpen] = useState(false);
-  const [familyDraft, setFamilyDraft] = useState("");
-  const [familySwitching, setFamilySwitching] = useState(false);
-  const [familySwitchError, setFamilySwitchError] = useState("");
+  const [socialSection, setSocialSection] = useState<"profile" | "friends">("profile");
   const [mobileDrawersOpen, setMobileDrawersOpen] = useState(false);
   const syncInFlightRef = useRef(false);
   const syncQueuedRef = useRef(false);
@@ -60,15 +68,13 @@ function App() {
   const effectiveSettings = useMemo(() => withSharedCloudSettings(data.settings), [data.settings]);
   const cloudScopeKey = useMemo(() => JSON.stringify({
     userId: cloudSession?.user.id ?? "",
-    familyCode: effectiveSettings.cloud?.familyCode ?? "",
-  }), [cloudSession?.user.id, effectiveSettings.cloud?.familyCode]);
+  }), [cloudSession?.user.id]);
   const cloudBootstrapped = Boolean(cloudSession && bootstrappedCloudScope === cloudScopeKey);
   const syncPayloadKey = useMemo(() => JSON.stringify({
     userId: cloudSession?.user.id ?? "",
-    familyCode: effectiveSettings.cloud?.familyCode ?? "",
     items: data.items.map((item) => [item.id, item.updatedAt]),
     deletes: pendingDeletes,
-  }), [cloudSession?.user.id, data.items, effectiveSettings.cloud?.familyCode, pendingDeletes]);
+  }), [cloudSession?.user.id, data.items, pendingDeletes]);
 
   useEffect(() => {
     saveData(data);
@@ -86,13 +92,24 @@ function App() {
   useEffect(() => {
     if (!cloudSession) {
       setBootstrappedCloudScope("");
+      if (syncStatus.kind !== "expired") {
+        setSyncStatus({
+          kind: "local",
+          message: "Modo local ativo.",
+          detail: "Seus dados ficam neste navegador ate voce conectar uma conta.",
+        });
+      }
       return;
     }
     if (cloudBootstrapped) return;
 
     let cancelled = false;
     setBootstrappedCloudScope("");
-    setSessionMessage("Carregando itens da sua conta...");
+    setSyncStatus({
+      kind: "loading",
+      message: "Carregando sua conta...",
+      detail: "Buscando os itens salvos na nuvem antes de sincronizar novas alteracoes.",
+    });
 
     fetchMyItems(effectiveSettings, cloudSession)
       .then((cloudItems) => {
@@ -102,12 +119,25 @@ function App() {
         if (safeCloudItems.length) {
           mergeItems(safeCloudItems);
         }
-        setSessionMessage(safeCloudItems.length ? "Itens da sua conta foram mesclados neste navegador." : "Conta pronta para sincronizar.");
+        setSyncStatus({
+          kind: "synced",
+          message: safeCloudItems.length ? "Conta carregada." : "Conta pronta.",
+          detail: safeCloudItems.length ? "Itens da nuvem foram mesclados neste navegador." : "As proximas alteracoes serao sincronizadas automaticamente.",
+        });
         setBootstrappedCloudScope(cloudScopeKey);
       })
       .catch((error) => {
         if (cancelled) return;
-        setSessionMessage(error instanceof Error ? error.message : "Nao foi possivel carregar seus itens da nuvem.");
+        if (isSessionExpiredError(error)) {
+          expireSession(error);
+          return;
+        }
+
+        setSyncStatus({
+          kind: typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "error",
+          message: "Nao foi possivel carregar a nuvem.",
+          detail: error instanceof Error ? error.message : "Tente novamente em instantes.",
+        });
         setBootstrappedCloudScope("");
       });
 
@@ -119,26 +149,48 @@ function App() {
   useEffect(() => {
     if (!cloudSession || !cloudBootstrapped) return;
 
+    if (lastSyncedKeyRef.current !== syncPayloadKey && syncStatus.kind !== "syncing") {
+      setSyncStatus({
+        kind: isOnline ? "pending" : "offline",
+        message: isOnline ? "Alteracoes aguardando sincronizacao." : "Sem conexao.",
+        detail: isOnline ? "Vou enviar automaticamente em alguns instantes." : "Elas ficam salvas aqui e serao reenviadas quando a internet voltar.",
+      });
+    }
+
     const timeoutId = window.setTimeout(() => {
       autoSync();
     }, AUTO_SYNC_DELAY_MS);
 
     return () => window.clearTimeout(timeoutId);
-  }, [cloudSession, cloudBootstrapped, syncPayloadKey, syncRetryTick, effectiveSettings.cloud?.familyCode]);
+  }, [cloudSession, cloudBootstrapped, syncPayloadKey, syncRetryTick]);
 
   useEffect(() => {
     function retrySync() {
+      setIsOnline(typeof navigator === "undefined" ? true : navigator.onLine);
       setSyncRetryTick((current) => current + 1);
     }
 
+    function markOffline() {
+      setIsOnline(false);
+      if (cloudSession) {
+        setSyncStatus({
+          kind: "offline",
+          message: "Sem conexao.",
+          detail: "Suas alteracoes continuam salvas neste navegador e serao reenviadas quando a conexao voltar.",
+        });
+      }
+    }
+
     window.addEventListener("online", retrySync);
+    window.addEventListener("offline", markOffline);
     const intervalId = window.setInterval(retrySync, AUTO_SYNC_RETRY_MS);
 
     return () => {
       window.removeEventListener("online", retrySync);
+      window.removeEventListener("offline", markOffline);
       window.clearInterval(intervalId);
     };
-  }, []);
+  }, [cloudSession]);
 
   const activeItem = useMemo(() => data.items.find((item) => item.id === activeItemId) ?? null, [activeItemId, data.items]);
 
@@ -200,7 +252,6 @@ function App() {
           onAddItem={addItem}
           onOpenFamily={() => selectView("family")}
           connectedToFamily={Boolean(cloudSession)}
-          familyCode={effectiveSettings.cloud?.familyCode}
         />
       );
     }
@@ -216,6 +267,7 @@ function App() {
           onLogout={logout}
           onAuthenticated={authenticated}
           onUpdateSettings={updateSettings}
+          socialTab={socialSection}
         />
       );
     }
@@ -244,13 +296,29 @@ function App() {
     setMobileDrawersOpen(false);
   }
 
+  function selectSocial(nextSection: "profile" | "friends") {
+    setSocialSection(nextSection);
+    selectView("family");
+  }
+
   function categoryCount(category: Category) {
     return data.items.filter((entry) => entry.category === category).length;
   }
 
   async function authenticated(session: CloudSession) {
+    const sameUserAlreadyLoaded = cloudSession?.user.id === session.user.id && cloudBootstrapped;
     setCloudSession(session);
-    setSyncMessage("");
+    setSyncStatus(sameUserAlreadyLoaded
+      ? {
+        kind: "synced",
+        message: "Perfil atualizado.",
+        detail: "Suas informacoes sociais foram salvas.",
+      }
+      : {
+        kind: "loading",
+        message: "Conta conectada.",
+        detail: "Carregando seus itens antes de ativar o auto-sync.",
+      });
   }
 
   function logout() {
@@ -259,13 +327,25 @@ function App() {
     selectView("home");
     setActiveItemId(null);
     setActiveItemMode("details");
-    setSessionMessage("Sessao encerrada.");
-    setSyncMessage("");
+    setSyncStatus({
+      kind: "local",
+      message: "Sessao encerrada.",
+      detail: "A Gaveteira continua funcionando localmente neste navegador.",
+    });
   }
 
   async function autoSync() {
     if (!cloudSession || !cloudBootstrapped) return;
     if (lastSyncedKeyRef.current === syncPayloadKey) return;
+
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      setSyncStatus({
+        kind: "offline",
+        message: "Sem conexao.",
+        detail: "Suas alteracoes ficaram salvas aqui e serao reenviadas quando a internet voltar.",
+      });
+      return;
+    }
 
     if (syncInFlightRef.current) {
       syncQueuedRef.current = true;
@@ -273,7 +353,11 @@ function App() {
     }
 
     syncInFlightRef.current = true;
-    setSyncMessage("Sincronizando alteracoes...");
+    setSyncStatus({
+      kind: "syncing",
+      message: "Sincronizando...",
+      detail: pendingDeletes.length ? "Enviando alteracoes e removendo itens apagados da nuvem." : "Enviando as ultimas alteracoes para a nuvem.",
+    });
 
     try {
       for (const itemId of pendingDeletes) {
@@ -288,9 +372,21 @@ function App() {
       if (pendingDeletes.length) {
         setPendingDeletes([]);
       }
-      setSyncMessage("Tudo sincronizado.");
+      setSyncStatus({
+        kind: "synced",
+        message: "Tudo sincronizado.",
+        detail: "Suas alteracoes ja estao na nuvem.",
+      });
     } catch (error) {
-      setSyncMessage(error instanceof Error ? `Pendente de sincronizacao: ${error.message}` : "Pendente de sincronizacao.");
+      if (isSessionExpiredError(error)) {
+        expireSession(error);
+      } else {
+        setSyncStatus({
+          kind: typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "pending",
+          message: "Sincronizacao pendente.",
+          detail: error instanceof Error ? error.message : "Vou tentar de novo automaticamente.",
+        });
+      }
     } finally {
       syncInFlightRef.current = false;
       if (syncQueuedRef.current) {
@@ -300,69 +396,14 @@ function App() {
     }
   }
 
-  function openFamilySwitcher() {
-    if (!cloudSession) return;
-
-    const currentFamilyCode = effectiveSettings.cloud?.familyCode ?? "";
-    setFamilyDraft(currentFamilyCode);
-    setFamilySwitchError("");
-    setFamilySwitcherOpen(true);
-  }
-
-  function closeFamilySwitcher() {
-    if (familySwitching) return;
-    setFamilySwitcherOpen(false);
-    setFamilySwitchError("");
-  }
-
-  async function switchFamily() {
-    if (!cloudSession) return;
-
-    const currentFamilyCode = effectiveSettings.cloud?.familyCode ?? "";
-    const nextFamilyCode = familyDraft.trim();
-
-    if (!nextFamilyCode) {
-      setFamilySwitchError("Digite o codigo da familia antes de continuar.");
-      return;
-    }
-
-    if (nextFamilyCode === currentFamilyCode) {
-      closeFamilySwitcher();
-      return;
-    }
-
-    const nextSettings: AppSettings = {
-      ...data.settings,
-      cloud: {
-        ...data.settings.cloud,
-        familyCode: nextFamilyCode,
-      },
-    };
-    const nextEffectiveSettings = withSharedCloudSettings(nextSettings);
-
-    try {
-      setFamilySwitching(true);
-      setFamilySwitchError("");
-      const profile = await changeFamilyCode(nextEffectiveSettings, cloudSession, nextFamilyCode);
-      setData((current) => ({
-        ...current,
-        settings: {
-          ...current.settings,
-          cloud: {
-            ...current.settings.cloud,
-            familyCode: nextFamilyCode,
-          },
-        },
-      }));
-      setCloudSession((current) => current ? { ...current, profile } : current);
-      selectView("family");
-      setSessionMessage(`Familia alterada para ${nextFamilyCode}.`);
-      setFamilySwitcherOpen(false);
-    } catch (error) {
-      setFamilySwitchError(error instanceof Error ? error.message : "Nao foi possivel trocar de familia.");
-    } finally {
-      setFamilySwitching(false);
-    }
+  function expireSession(error: unknown) {
+    setCloudSession(null);
+    setBootstrappedCloudScope("");
+    setSyncStatus({
+      kind: "expired",
+      message: "Sessao expirada.",
+      detail: error instanceof Error ? error.message : "Entre novamente para continuar sincronizando. Seus itens locais foram preservados.",
+    });
   }
 
   return (
@@ -375,9 +416,7 @@ function App() {
             <small>{cloudSession ? cloudSession.profile?.displayName || cloudSession.user.email || "minha conta" : "modo local"}</small>
           </div>
         </div>
-        {!cloudSession ? <p className="sidebar-note">Modo local ativo. Seus dados ficam neste navegador.</p> : null}
-        {sessionMessage ? <p className="sidebar-note">{sessionMessage}</p> : null}
-        {syncMessage ? <p className="sidebar-note sync-note">{syncMessage}</p> : null}
+        <SyncStatusCard status={syncStatus} onReconnect={() => selectView("family")} />
         <nav>
           <div className={`drawer-nav ${view in categoryLabels ? "active" : ""}`}>
             <button className="drawer-nav-trigger" type="button">
@@ -400,6 +439,23 @@ function App() {
               })}
             </div>
           </div>
+          <div className={`drawer-nav ${view === "family" ? "active" : ""}`}>
+            <button className="drawer-nav-trigger" type="button" onClick={() => selectSocial(socialSection)}>
+              <Users size={18} />
+              <span>Social</span>
+              <ChevronDown size={16} />
+            </button>
+            <div className="drawer-nav-menu">
+              <button className={view === "family" && socialSection === "profile" ? "active" : ""} onClick={() => selectSocial("profile")}>
+                <UserCheck size={18} />
+                <span>Meu perfil</span>
+              </button>
+              <button className={view === "family" && socialSection === "friends" ? "active" : ""} onClick={() => selectSocial("friends")}>
+                <UserPlus size={18} />
+                <span>Amigos</span>
+              </button>
+            </div>
+          </div>
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = view === item.key;
@@ -413,10 +469,6 @@ function App() {
         </nav>
         {cloudSession ? (
           <>
-            <button className="sidebar-action" onClick={openFamilySwitcher}>
-              <Repeat2 size={18} />
-              <span>Trocar familia</span>
-            </button>
             <button className="sidebar-logout" onClick={logout}>
               <LogOut size={18} />
               <span>Sair</span>
@@ -424,12 +476,13 @@ function App() {
           </>
         ) : (
           <button className="sidebar-action" onClick={() => selectView("family")}>
-            <Repeat2 size={18} />
+            <LogIn size={18} />
             <span>Conectar/sincronizar</span>
           </button>
         )}
       </aside>
       {mainView()}
+      <SyncStatusCard status={syncStatus} onReconnect={() => selectView("family")} compact />
       <nav className="mobile-bottom-nav" aria-label="Navegacao principal mobile">
         <button type="button" className={view === "home" ? "active" : ""} onClick={() => selectView("home")}>
           <Home size={20} />
@@ -439,9 +492,9 @@ function App() {
           <Archive size={20} />
           <span>Gavetas</span>
         </button>
-        <button type="button" className={view === "family" ? "active" : ""} onClick={() => selectView("family")}>
+        <button type="button" className={view === "family" ? "active" : ""} onClick={() => selectSocial(socialSection)}>
           <Users size={20} />
-          <span>Familia</span>
+          <span>Social</span>
         </button>
         <button type="button" className={view === "stats" ? "active" : ""} onClick={() => selectView("stats")}>
           <BarChart3 size={20} />
@@ -496,47 +549,42 @@ function App() {
           onClose={() => setActiveItemId(null)}
         />
       ) : null}
-      {familySwitcherOpen && cloudSession ? (
-        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="family-switch-title">
-          <form className="modal family-switch-modal" onSubmit={(event) => { event.preventDefault(); switchFamily(); }}>
-            <header className="modal-header">
-              <div>
-                <p className="eyebrow">Conexao familiar</p>
-                <h2 id="family-switch-title">Trocar familia</h2>
-              </div>
-              <button className="ghost" type="button" onClick={closeFamilySwitcher} disabled={familySwitching}>Fechar</button>
-            </header>
-
-            <div className="family-switch-body">
-              <div className="family-switch-current">
-                <span>Familia atual</span>
-                <strong>{effectiveSettings.cloud?.familyCode || "nenhuma familia configurada"}</strong>
-              </div>
-              <label>
-                Novo codigo da familia
-                <input
-                  value={familyDraft}
-                  onChange={(event) => setFamilyDraft(event.target.value)}
-                  placeholder="primos-2026"
-                  autoFocus
-                />
-              </label>
-              <p className="family-switch-help">
-                Ao trocar, seus itens locais continuam neste navegador. A aba Familia passa a mostrar os membros e itens do novo codigo.
-              </p>
-              {familySwitchError ? <p className="form-error">{familySwitchError}</p> : null}
-            </div>
-
-            <footer className="modal-footer">
-              <button className="ghost" type="button" onClick={closeFamilySwitcher} disabled={familySwitching}>Cancelar</button>
-              <button className="primary" type="submit" disabled={familySwitching || !familyDraft.trim()}>
-                {familySwitching ? "Trocando..." : "Trocar familia"}
-              </button>
-            </footer>
-          </form>
-        </div>
-      ) : null}
     </div>
+  );
+}
+
+function SyncStatusCard({
+  status,
+  onReconnect,
+  compact = false,
+}: {
+  status: SyncStatus;
+  onReconnect: () => void;
+  compact?: boolean;
+}) {
+  const Icon = status.kind === "synced" ? CheckCircle2
+    : status.kind === "syncing" || status.kind === "loading" ? Loader2
+      : status.kind === "offline" ? WifiOff
+        : status.kind === "expired" ? LogIn
+          : status.kind === "local" ? CloudOff
+            : AlertTriangle;
+  const actionable = status.kind === "expired" || status.kind === "local";
+
+  return (
+    <section className={`sync-card sync-card-${status.kind}${compact ? " sync-card-compact" : ""}`} aria-live="polite">
+      <div className="sync-card-icon">
+        <Icon size={compact ? 16 : 18} />
+      </div>
+      <div>
+        <strong>{status.message}</strong>
+        {status.detail && !compact ? <span>{status.detail}</span> : null}
+      </div>
+      {actionable && !compact ? (
+        <button type="button" onClick={onReconnect}>
+          {status.kind === "expired" ? "Entrar" : "Conectar"}
+        </button>
+      ) : null}
+    </section>
   );
 }
 
