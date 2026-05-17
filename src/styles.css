@@ -1622,8 +1622,8 @@ button.danger {
 
 .member-profile-title {
   display: grid;
-  grid-template-columns: 54px 1fr;
-  gap: 12px;
+  grid-template-columns: 92px 1fr;
+  gap: 16px;
   align-items: center;
 }
 
@@ -1909,6 +1909,10 @@ button.danger {
   min-height: 36px;
 }
 
+.compact-sort {
+  justify-self: end;
+}
+
 .member-profile-card {
   display: grid;
   gap: 16px;
@@ -1936,6 +1940,52 @@ button.danger {
 .member-profile-header p {
   margin: 0;
   color: var(--muted);
+}
+
+.member-profile-bio {
+  max-width: 760px;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.member-profile-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px;
+  border: 1px solid rgba(215, 205, 188, 0.78);
+  background: rgba(255, 250, 241, 0.72);
+  border-radius: 8px;
+}
+
+.member-profile-tabs button {
+  min-height: 34px;
+  padding: 6px 12px;
+  color: var(--muted);
+  border: 0;
+  background: transparent;
+  border-radius: 7px;
+  font-weight: 900;
+}
+
+.member-profile-tabs button.active {
+  color: #fffaf1;
+  background: var(--green);
+}
+
+.member-profile-summary {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  background: rgba(255, 250, 241, 0.68);
+  border-radius: 8px;
+}
+
+.member-profile-summary > p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
 }
 
 .member-profile-stamp {

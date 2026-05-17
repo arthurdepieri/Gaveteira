@@ -43,6 +43,7 @@ export function FamilyView({
   const [loading, setLoading] = useState(false);
   const [selectedOwnerId, setSelectedOwnerId] = useState("");
   const [sortMode, setSortMode] = useState<"ratingDesc" | "ratingAsc" | "recent">("ratingDesc");
+  const [memberProfileSection, setMemberProfileSection] = useState<"summary" | "stats" | "activity" | "drawers">("summary");
   const [activeEntry, setActiveEntry] = useState<FamilyItem | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SocialProfile[]>([]);
@@ -113,6 +114,10 @@ export function FamilyView({
       setSelectedOwnerId(friendGroups[0].ownerId);
     }
   }, [friendGroups, selectedOwnerId, socialTab]);
+
+  useEffect(() => {
+    setMemberProfileSection("summary");
+  }, [selectedGroup?.ownerId, socialTab]);
 
   useEffect(() => {
     if (!session) return;
@@ -475,30 +480,15 @@ export function FamilyView({
 
             {selectedGroup ? (
               <div className="family-group">
-                <div className="section-heading split">
-                  <div>
-                    <h3>{selectedGroup.ownerId === session.user.id ? "Minha gaveteira" : `Gaveteira de ${selectedGroup.ownerName}`}</h3>
-                    <p className="empty">{selectedGroup.profile?.bio || "Perfil sem bio por enquanto."}</p>
-                  </div>
-                  <div className="family-sort">
-                    <span>Ordenar</span>
-                    <select value={sortMode} onChange={(event) => setSortMode(event.target.value as typeof sortMode)}>
-                      <option value="ratingDesc">Maior nota</option>
-                      <option value="ratingAsc">Menor nota</option>
-                      <option value="recent">Mais recentes</option>
-                    </select>
-                  </div>
-                </div>
-
                 {selectedProfile ? (
                   <section className="member-profile-card">
                     <div className="member-profile-header">
                       <div className="member-profile-title">
-                        <Avatar name={selectedGroup.ownerName} avatarUrl={selectedGroup.profile?.avatarUrl} />
+                        <Avatar name={selectedGroup.ownerName} avatarUrl={selectedGroup.profile?.avatarUrl} large />
                         <div>
                           <p className="eyebrow">@{selectedGroup.profile?.username || selectedGroup.profile?.inviteCode || "gaveteira"}</p>
-                          <h2>{selectedGroup.ownerId === session.user.id ? "Seu arquivo cultural" : `Arquivo de ${selectedGroup.ownerName}`}</h2>
-                          <p>{selectedProfile.summary}</p>
+                          <h2>{selectedGroup.ownerId === session.user.id ? "Seu perfil" : selectedGroup.ownerName}</h2>
+                          <p className="member-profile-bio">{selectedGroup.profile?.bio || "Perfil sem bio por enquanto."}</p>
                         </div>
                       </div>
                       <div className="member-profile-stamp">
@@ -507,99 +497,140 @@ export function FamilyView({
                       </div>
                     </div>
 
-                    <div className="member-profile-metrics">
-                      <ProfileMetric label="Media geral" value={selectedProfile.average ? selectedProfile.average.toFixed(1) : "--"} />
-                      <ProfileMetric label="Concluidos" value={selectedProfile.completed} />
-                      <ProfileMetric label="Em andamento" value={selectedProfile.inProgress} />
-                      <ProfileMetric label="Wishlist" value={selectedProfile.wishlist} />
-                      <ProfileMetric label="Categoria favorita" value={selectedProfile.topCategory} />
-                      <ProfileMetric label="Genero recorrente" value={selectedProfile.topGenre || "--"} />
+                    <div className="member-profile-tabs" aria-label="Conteudo do perfil">
+                      <button type="button" className={memberProfileSection === "summary" ? "active" : ""} onClick={() => setMemberProfileSection("summary")}>Resumo</button>
+                      <button type="button" className={memberProfileSection === "stats" ? "active" : ""} onClick={() => setMemberProfileSection("stats")}>Estatisticas</button>
+                      <button type="button" className={memberProfileSection === "activity" ? "active" : ""} onClick={() => setMemberProfileSection("activity")}>Atividade</button>
+                      <button type="button" className={memberProfileSection === "drawers" ? "active" : ""} onClick={() => setMemberProfileSection("drawers")}>Gavetas</button>
                     </div>
 
-                    <div className="member-category-row">
-                      {selectedProfile.categoryCards.map((card) => (
-                        <span key={card.category}>
-                          <strong>{card.count}</strong>
-                          {categoryLabels[card.category]}
-                          <small>{card.average ? `media ${card.average.toFixed(1)}` : "sem nota"}</small>
-                        </span>
-                      ))}
-                    </div>
-
-                    <div className="social-tag-columns">
-                      <TagCloud title="Tags mais usadas" tags={selectedProfile.topTags} />
-                      <TagCloud title="Generos mais recorrentes" tags={selectedProfile.topGenres} />
-                    </div>
-
-                    <div className="member-profile-sections">
-                      <section>
-                        <h3><Heart size={18} /> Favoritos fixados</h3>
-                        <div className="member-highlight-list">
-                          {selectedProfile.favorites.length ? selectedProfile.favorites.map((entry) => (
-                            <button key={`fav-${entry.ownerId}-${entry.id}`} className="member-highlight-item" onClick={() => setActiveEntry(entry)}>
-                              <Cover item={entry.item} compact />
-                              <span>
-                                <strong>{getTitle(entry.item)}</strong>
-                                <small>{categoryLabels[entry.item.category]} / {entry.item.status}</small>
-                                <Stars value={entry.item.rating} />
-                              </span>
-                            </button>
-                          )) : <p className="empty">Sem favoritos fixados ainda.</p>}
+                    {memberProfileSection === "summary" ? (
+                      <div className="member-profile-summary">
+                        <p>{selectedProfile.summary}</p>
+                        <div className="member-category-row">
+                          {selectedProfile.categoryCards.filter((card) => card.count > 0).map((card) => (
+                            <span key={card.category}>
+                              <strong>{card.count}</strong>
+                              {categoryLabels[card.category]}
+                            </span>
+                          ))}
+                          {!selectedProfile.categoryCards.some((card) => card.count > 0) ? <p className="empty">Este perfil ainda nao tem fichas sincronizadas.</p> : null}
                         </div>
-                      </section>
+                      </div>
+                    ) : null}
 
-                      <section>
-                        <h3><Sparkles size={18} /> Atualmente consumindo</h3>
-                        <div className="member-recent-list">
-                          {selectedProfile.currently.length ? selectedProfile.currently.map((entry) => (
-                            <button key={`current-${entry.ownerId}-${entry.id}`} className="member-recent-item" onClick={() => setActiveEntry(entry)}>
-                              <Sparkles size={16} />
-                              <span>
-                                <strong>{getTitle(entry.item)}</strong>
-                                <small>{categoryLabels[entry.item.category]} / {entry.item.status}</small>
-                              </span>
-                            </button>
-                          )) : <p className="empty">Nada em andamento agora.</p>}
+                    {memberProfileSection === "stats" ? (
+                      <>
+                        <div className="member-profile-metrics">
+                          <ProfileMetric label="Media geral" value={selectedProfile.average ? selectedProfile.average.toFixed(1) : "--"} />
+                          <ProfileMetric label="Concluidos" value={selectedProfile.completed} />
+                          <ProfileMetric label="Em andamento" value={selectedProfile.inProgress} />
+                          <ProfileMetric label="Wishlist" value={selectedProfile.wishlist} />
+                          <ProfileMetric label="Categoria favorita" value={selectedProfile.topCategory} />
+                          <ProfileMetric label="Genero recorrente" value={selectedProfile.topGenre || "--"} />
                         </div>
-                      </section>
 
-                      <section>
-                        <h3><CalendarDays size={18} /> Ultimas adicoes</h3>
-                        <div className="member-recent-list">
-                          {selectedProfile.recent.length ? selectedProfile.recent.map((entry) => (
-                            <button key={`recent-${entry.ownerId}-${entry.id}`} className="member-recent-item" onClick={() => setActiveEntry(entry)}>
-                              <CalendarDays size={16} />
-                              <span>
-                                <strong>{getTitle(entry.item)}</strong>
-                                <small>{categoryLabels[entry.item.category]} / {formatDate(entry.updatedAt)}</small>
-                              </span>
-                            </button>
-                          )) : <p className="empty">Nada sincronizado ainda.</p>}
+                        <div className="member-category-row">
+                          {selectedProfile.categoryCards.map((card) => (
+                            <span key={card.category}>
+                              <strong>{card.count}</strong>
+                              {categoryLabels[card.category]}
+                              <small>{card.average ? `media ${card.average.toFixed(1)}` : "sem nota"}</small>
+                            </span>
+                          ))}
                         </div>
-                      </section>
-                    </div>
+
+                        <div className="social-tag-columns">
+                          <TagCloud title="Tags mais usadas" tags={selectedProfile.topTags} />
+                          <TagCloud title="Generos mais recorrentes" tags={selectedProfile.topGenres} />
+                        </div>
+                      </>
+                    ) : null}
+
+                    {memberProfileSection === "activity" ? (
+                      <div className="member-profile-sections">
+                        <section>
+                          <h3><Heart size={18} /> Favoritos fixados</h3>
+                          <div className="member-highlight-list">
+                            {selectedProfile.favorites.length ? selectedProfile.favorites.map((entry) => (
+                              <button key={`fav-${entry.ownerId}-${entry.id}`} className="member-highlight-item" onClick={() => setActiveEntry(entry)}>
+                                <Cover item={entry.item} compact />
+                                <span>
+                                  <strong>{getTitle(entry.item)}</strong>
+                                  <small>{categoryLabels[entry.item.category]} / {entry.item.status}</small>
+                                  <Stars value={entry.item.rating} />
+                                </span>
+                              </button>
+                            )) : <p className="empty">Sem favoritos fixados ainda.</p>}
+                          </div>
+                        </section>
+
+                        <section>
+                          <h3><Sparkles size={18} /> Atualmente consumindo</h3>
+                          <div className="member-recent-list">
+                            {selectedProfile.currently.length ? selectedProfile.currently.map((entry) => (
+                              <button key={`current-${entry.ownerId}-${entry.id}`} className="member-recent-item" onClick={() => setActiveEntry(entry)}>
+                                <Sparkles size={16} />
+                                <span>
+                                  <strong>{getTitle(entry.item)}</strong>
+                                  <small>{categoryLabels[entry.item.category]} / {entry.item.status}</small>
+                                </span>
+                              </button>
+                            )) : <p className="empty">Nada em andamento agora.</p>}
+                          </div>
+                        </section>
+
+                        <section>
+                          <h3><CalendarDays size={18} /> Ultimas adicoes</h3>
+                          <div className="member-recent-list">
+                            {selectedProfile.recent.length ? selectedProfile.recent.map((entry) => (
+                              <button key={`recent-${entry.ownerId}-${entry.id}`} className="member-recent-item" onClick={() => setActiveEntry(entry)}>
+                                <CalendarDays size={16} />
+                                <span>
+                                  <strong>{getTitle(entry.item)}</strong>
+                                  <small>{categoryLabels[entry.item.category]} / {formatDate(entry.updatedAt)}</small>
+                                </span>
+                              </button>
+                            )) : <p className="empty">Nada sincronizado ainda.</p>}
+                          </div>
+                        </section>
+                      </div>
+                    ) : null}
+
+                    {memberProfileSection === "drawers" ? (
+                      <>
+                        <div className="family-sort compact-sort">
+                          <span>Ordenar gavetas</span>
+                          <select value={sortMode} onChange={(event) => setSortMode(event.target.value as typeof sortMode)}>
+                            <option value="ratingDesc">Maior nota</option>
+                            <option value="ratingAsc">Menor nota</option>
+                            <option value="recent">Mais recentes</option>
+                          </select>
+                        </div>
+                        <div className="family-category-stack">
+                          {groupedByCategory.map(([category, entries]) => (
+                            <section key={category} className={`family-category family-category-${category}`}>
+                              <h4>{categoryLabels[category]}</h4>
+                              <div className="family-grid">
+                                {entries.map((entry) => (
+                                  <button key={`${entry.ownerId}-${entry.id}`} className="family-card" onClick={() => setActiveEntry(entry)}>
+                                    <Cover item={entry.item} compact />
+                                    <div>
+                                      <strong>{getTitle(entry.item)}</strong>
+                                      <small>{entry.item.status}{getYear(entry.item) ? ` / ${getYear(entry.item)}` : ""}</small>
+                                      <Stars value={entry.item.rating} />
+                                    </div>
+                                  </button>
+                                ))}
+                              </div>
+                            </section>
+                          ))}
+                          {!groupedByCategory.length ? <p className="empty">Nenhuma gaveta sincronizada ainda.</p> : null}
+                        </div>
+                      </>
+                    ) : null}
                   </section>
                 ) : null}
-
-                <div className="family-category-stack">
-                  {groupedByCategory.map(([category, entries]) => (
-                    <section key={category} className={`family-category family-category-${category}`}>
-                      <h4>{categoryLabels[category]}</h4>
-                      <div className="family-grid">
-                        {entries.map((entry) => (
-                          <button key={`${entry.ownerId}-${entry.id}`} className="family-card" onClick={() => setActiveEntry(entry)}>
-                            <Cover item={entry.item} compact />
-                            <div>
-                              <strong>{getTitle(entry.item)}</strong>
-                              <small>{entry.item.status}{getYear(entry.item) ? ` / ${getYear(entry.item)}` : ""}</small>
-                              <Stars value={entry.item.rating} />
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    </section>
-                  ))}
-                </div>
               </div>
             ) : null}
           </>
