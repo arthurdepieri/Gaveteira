@@ -17,6 +17,7 @@ App web local para organizar consumo cultural como uma gaveteira pessoal: jogos,
 - Exportacao e importacao de backup JSON.
 - Area de configuracao para chaves de API, preparada para IGDB, Steam, RAWG, Google Books, Open Library, Spotify, MusicBrainz, Last.fm e TMDB.
 - Modo familiar com Supabase: login, sincronizacao e gaveteiras separadas por perfil.
+- PWA instalavel no celular, com manifest, icones e cache basico do app.
 
 ## Como rodar
 
@@ -44,6 +45,15 @@ Build de producao:
 npm run build
 npm run preview
 ```
+
+## Instalar no celular
+
+Depois de publicar ou rodar o preview em HTTPS/localhost:
+
+- Android/Chrome: abra a Gaveteira e toque no aviso `Instalar Gaveteira`, ou use o menu do navegador > `Instalar app`.
+- iPhone/Safari: toque em compartilhar e depois em `Adicionar à Tela de Início`.
+
+O PWA usa `public/manifest.webmanifest`, `public/sw.js` e os ícones em `public/icons`.
 
 ## Dados locais
 

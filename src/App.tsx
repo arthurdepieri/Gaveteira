@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ElementType } from "react";
-import { AlertTriangle, Archive, BarChart3, BookOpen, CheckCircle2, ChevronDown, CloudOff, Disc3, Film, Gamepad2, Home, Library, ListChecks, Loader2, LogIn, LogOut, MessageSquare, Settings, Tv, UserCheck, UserPlus, Users, WifiOff } from "lucide-react";
+import { AlertTriangle, Archive, BarChart3, BookOpen, CheckCircle2, ChevronDown, CloudOff, Disc3, Download, Film, Gamepad2, Home, Library, ListChecks, Loader2, LogIn, LogOut, MessageSquare, Settings, Share, Tv, UserCheck, UserPlus, Users, WifiOff, X } from "lucide-react";
 import { AppData, AppSettings, Category, CloudSession, CulturalItem, ViewKey } from "./types";
 import { loadData, saveData } from "./storage/localStore";
 import { categoryLabels } from "./data/catalog";
@@ -17,6 +17,7 @@ import { withSharedCloudSettings } from "./config/sharedCloud";
 import { withoutLegacyDemoItems } from "./utils/legacyDemoItems";
 
 const PENDING_DELETES_KEY = "gaveteira-pending-deletes:v1";
+const INSTALL_DISMISSED_KEY = "gaveteira-install-dismissed:v1";
 const AUTO_SYNC_DELAY_MS = 900;
 const AUTO_SYNC_RETRY_MS = 30_000;
 
@@ -26,6 +27,11 @@ interface SyncStatus {
   kind: SyncKind;
   message: string;
   detail?: string;
+}
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
 }
 
 const navItems: Array<{ key: ViewKey; label: string; icon: ElementType }> = [
@@ -66,6 +72,8 @@ function App() {
   const [pendingDeletes, setPendingDeletes] = useState<string[]>(() => loadPendingDeletes());
   const [socialSection, setSocialSection] = useState<"profile" | "friends">("profile");
   const [mobileDrawersOpen, setMobileDrawersOpen] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const syncInFlightRef = useRef(false);
   const syncQueuedRef = useRef(false);
   const lastSyncedKeyRef = useRef("");
@@ -84,6 +92,37 @@ function App() {
   useEffect(() => {
     saveData(data);
   }, [data]);
+
+  useEffect(() => {
+    if (isStandaloneApp() || localStorage.getItem(INSTALL_DISMISSED_KEY) === "true") return;
+
+    let iosTimer: number | undefined;
+
+    function handleBeforeInstallPrompt(event: Event) {
+      event.preventDefault();
+      setInstallPrompt(event as BeforeInstallPromptEvent);
+      setShowInstallPrompt(true);
+    }
+
+    function handleAppInstalled() {
+      setInstallPrompt(null);
+      setShowInstallPrompt(false);
+      localStorage.setItem(INSTALL_DISMISSED_KEY, "true");
+    }
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    window.addEventListener("appinstalled", handleAppInstalled);
+
+    if (isIosSafari()) {
+      iosTimer = window.setTimeout(() => setShowInstallPrompt(true), 1600);
+    }
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      window.removeEventListener("appinstalled", handleAppInstalled);
+      if (iosTimer) window.clearTimeout(iosTimer);
+    };
+  }, []);
 
   useEffect(() => {
     saveCloudSession(cloudSession);
@@ -314,6 +353,22 @@ function App() {
   function selectSocial(nextSection: "profile" | "friends") {
     setSocialSection(nextSection);
     selectView("family");
+  }
+
+  async function installApp() {
+    if (!installPrompt) return;
+    await installPrompt.prompt();
+    const choice = await installPrompt.userChoice;
+    if (choice.outcome === "accepted" || choice.outcome === "dismissed") {
+      setInstallPrompt(null);
+      setShowInstallPrompt(false);
+      localStorage.setItem(INSTALL_DISMISSED_KEY, "true");
+    }
+  }
+
+  function dismissInstallPrompt() {
+    setShowInstallPrompt(false);
+    localStorage.setItem(INSTALL_DISMISSED_KEY, "true");
   }
 
   function categoryCount(category: Category) {
@@ -556,6 +611,14 @@ function App() {
           </section>
         </div>
       ) : null}
+      {showInstallPrompt ? (
+        <InstallAppPrompt
+          canInstall={Boolean(installPrompt)}
+          isIos={isIosSafari()}
+          onInstall={installApp}
+          onDismiss={dismissInstallPrompt}
+        />
+      ) : null}
       {activeItem && activeItemMode === "details" ? (
         <ItemDetails
           item={activeItem}
@@ -575,6 +638,38 @@ function App() {
         />
       ) : null}
     </div>
+  );
+}
+
+function InstallAppPrompt({
+  canInstall,
+  isIos,
+  onInstall,
+  onDismiss,
+}: {
+  canInstall: boolean;
+  isIos: boolean;
+  onInstall: () => void;
+  onDismiss: () => void;
+}) {
+  return (
+    <section className="install-card" aria-live="polite">
+      <div className="install-card-icon">
+        {isIos && !canInstall ? <Share size={18} /> : <Download size={18} />}
+      </div>
+      <div>
+        <strong>Instalar Gaveteira</strong>
+        <span>
+          {canInstall
+            ? "Abra como app no celular, com ícone na tela inicial."
+            : "No iPhone, toque em compartilhar e depois em Adicionar à Tela de Início."}
+        </span>
+      </div>
+      {canInstall ? <button type="button" onClick={onInstall}>Instalar</button> : null}
+      <button className="install-card-close" type="button" onClick={onDismiss} aria-label="Fechar aviso de instalação">
+        <X size={16} />
+      </button>
+    </section>
   );
 }
 
@@ -633,6 +728,16 @@ function savePendingDeletes(ids: string[]) {
   }
 
   localStorage.setItem(PENDING_DELETES_KEY, JSON.stringify(ids));
+}
+
+function isStandaloneApp() {
+  return window.matchMedia("(display-mode: standalone)").matches || Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
+}
+
+function isIosSafari() {
+  const userAgent = navigator.userAgent.toLowerCase();
+  const isIos = /iphone|ipad|ipod/.test(userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  return isIos && !isStandaloneApp();
 }
 
 export default App;

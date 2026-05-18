@@ -305,6 +305,65 @@ button:disabled {
   display: none;
 }
 
+.install-card {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 11;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto 30px;
+  align-items: center;
+  gap: 10px;
+  width: min(430px, calc(100vw - 28px));
+  padding: 12px;
+  color: #fff8ec;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: #3d281b;
+  border-radius: 8px;
+  box-shadow: 0 18px 36px rgba(47, 35, 24, 0.28);
+}
+
+.install-card-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  color: #3d281b;
+  background: #ffd98e;
+  border-radius: 8px;
+}
+
+.install-card strong,
+.install-card span {
+  display: block;
+}
+
+.install-card span {
+  margin-top: 2px;
+  color: rgba(255, 248, 236, 0.75);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.install-card button {
+  min-height: 34px;
+  padding: 7px 11px;
+  color: #3d281b;
+  border-color: #ffd98e;
+  background: #ffd98e;
+}
+
+.install-card .install-card-close {
+  display: grid;
+  place-items: center;
+  min-height: 30px;
+  width: 30px;
+  padding: 0;
+  color: #fff8ec;
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+}
+
 .page {
   width: min(1180px, calc(100vw - 300px));
   margin: 0 auto;
@@ -2627,6 +2686,20 @@ button.danger {
   .mobile-bottom-nav button.active {
     color: #fffaf1;
     background: var(--green);
+  }
+
+  .install-card {
+    right: 12px;
+    bottom: calc(82px + env(safe-area-inset-bottom));
+    left: 12px;
+    grid-template-columns: 30px minmax(0, 1fr) 30px;
+    width: auto;
+    padding: 10px;
+  }
+
+  .install-card button:not(.install-card-close) {
+    grid-column: 1 / -1;
+    justify-self: stretch;
   }
 
   .mobile-drawer-backdrop {
