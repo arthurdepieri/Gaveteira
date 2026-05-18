@@ -306,6 +306,13 @@ export async function respondFriendRequest(settings: AppSettings, session: Cloud
   });
 }
 
+export async function deleteFriendship(settings: AppSettings, session: CloudSession, friendshipId: string) {
+  await restRequest(settings, session, `/rest/v1/friend_requests?id=eq.${encodeURIComponent(friendshipId)}`, {
+    method: "DELETE",
+    headers: { Prefer: "return=minimal" },
+  });
+}
+
 async function fetchProfiles(settings: AppSettings, session: CloudSession, ownerIds: string[]): Promise<Record<string, ProfileRow>> {
   const quotedIds = ownerIds.map((id) => `"${id}"`).join(",");
   let rows: ProfileRow[];

@@ -2066,6 +2066,12 @@ button.danger {
   transform: rotate(1.5deg);
 }
 
+.member-profile-actions {
+  display: grid;
+  justify-items: end;
+  gap: 10px;
+}
+
 .member-profile-stamp strong {
   font-size: 2rem;
   line-height: 1;

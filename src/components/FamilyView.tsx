@@ -1,8 +1,8 @@
-import { CalendarDays, Cloud, Edit3, Heart, LogOut, RefreshCw, Search, Sparkles, UploadCloud, UserCheck, UserPlus, Users, X } from "lucide-react";
+import { CalendarDays, Cloud, Edit3, Heart, LogOut, RefreshCw, Search, Sparkles, Trash2, UploadCloud, UserCheck, UserPlus, Users, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { AppSettings, Category, CloudSession, CulturalItem, FamilyItem, Friendship, SocialProfile } from "../types";
 import { categoryLabels } from "../data/catalog";
-import { fetchFriendships, fetchMyItems, fetchSocialItems, respondFriendRequest, searchProfiles, sendFriendRequest, syncMyItems, updateMyProfile } from "../services/supabaseCloud";
+import { deleteFriendship, fetchFriendships, fetchMyItems, fetchSocialItems, respondFriendRequest, searchProfiles, sendFriendRequest, syncMyItems, updateMyProfile } from "../services/supabaseCloud";
 import { getGenres, getRating, getTitle, getYear, isCompleted, isInProgress, isWishlist } from "../utils/itemHelpers";
 import { Cover } from "./Cover";
 import { Stars } from "./Rating";
@@ -96,6 +96,9 @@ export function FamilyView({
   const selectedGroup = socialTab === "profile"
     ? myGroup
     : friendGroups.find((group) => group.ownerId === selectedOwnerId) ?? friendGroups[0];
+  const selectedFriendship = selectedGroup && socialTab === "friends"
+    ? acceptedFriends.find((friendship) => friendship.profile.id === selectedGroup.ownerId)
+    : undefined;
   const selectedProfile = selectedGroup ? buildMemberProfile(selectedGroup) : null;
   const groupedByCategory = selectedGroup ? groupEntriesByCategory(selectedGroup.entries, sortMode) : [];
 
@@ -262,6 +265,26 @@ export function FamilyView({
       await refreshSocial(true);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Não foi possível responder ao convite.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function removeFriend(friendship: Friendship) {
+    if (!session) return;
+    const confirmed = window.confirm(`Remover ${friendship.profile.displayName} dos seus amigos?`);
+    if (!confirmed) return;
+
+    setLoading(true);
+    setMessage("");
+
+    try {
+      await deleteFriendship(settings, session, friendship.id);
+      setMessage(`${friendship.profile.displayName} foi removido dos seus amigos.`);
+      setSelectedOwnerId("");
+      await refreshSocial(true);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Não foi possível remover o amigo.");
     } finally {
       setLoading(false);
     }
@@ -491,9 +514,17 @@ export function FamilyView({
                           <p className="member-profile-bio">{selectedGroup.profile?.bio || "Perfil sem bio por enquanto."}</p>
                         </div>
                       </div>
-                      <div className="member-profile-stamp">
-                        <strong>{selectedProfile.total}</strong>
-                        <span>itens</span>
+                      <div className="member-profile-actions">
+                        <div className="member-profile-stamp">
+                          <strong>{selectedProfile.total}</strong>
+                          <span>itens</span>
+                        </div>
+                        {selectedFriendship ? (
+                          <button className="danger compact" type="button" onClick={() => removeFriend(selectedFriendship)} disabled={loading}>
+                            <Trash2 size={15} />
+                            Remover amigo
+                          </button>
+                        ) : null}
                       </div>
                     </div>
 
