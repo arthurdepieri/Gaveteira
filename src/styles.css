@@ -1412,10 +1412,10 @@ button.danger {
 }
 
 .profile-showcase-paper::after {
-  content: "GAVETEIRA\A ARQUIVO";
+  content: "ARQUIVO\A GAVETEIRA";
   position: absolute;
   right: 28px;
-  bottom: 24px;
+  bottom: 10px;
   display: grid;
   place-items: center;
   width: 148px;
@@ -2810,7 +2810,7 @@ button.danger {
 
   .profile-showcase-paper::after {
     right: 18px;
-    bottom: 18px;
+    bottom: 10px;
     width: 118px;
     height: 62px;
     font-size: 0.76rem;
