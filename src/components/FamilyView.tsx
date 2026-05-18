@@ -344,6 +344,13 @@ export function FamilyView({
       </section>
 
       {socialTab === "profile" ? (
+      <>
+      <div className="profile-action-strip">
+        <button className="primary" type="button" onClick={() => setProfileEditing(true)}>
+          <Edit3 size={16} />
+          Editar
+        </button>
+      </div>
       <section className="social-top-grid social-profile-tab">
         <section className="profile-showcase">
           <div className="profile-showcase-paper">
@@ -354,10 +361,6 @@ export function FamilyView({
             <div className="profile-showcase-body">
               <div className="profile-showcase-heading">
                 <p className="eyebrow">Ficha pessoal</p>
-                <button className="primary" type="button" onClick={() => setProfileEditing(true)}>
-                  <Edit3 size={16} />
-                  Editar
-                </button>
               </div>
               <h2>{session.profile?.displayName || session.user.email || "Meu perfil"}</h2>
               <p className="profile-handle">@{session.profile?.username || session.profile?.inviteCode || "gaveteira"}</p>
@@ -406,25 +409,31 @@ export function FamilyView({
                     <span>Avatar por URL</span>
                     <input value={profileDraft.avatarUrl} onChange={(event) => setProfileDraft({ ...profileDraft, avatarUrl: event.target.value })} placeholder="Opcional" />
                   </label>
+                  <div className="field wide favorite-drawers-field">
+                    <span>Gavetas favoritas</span>
+                    <div className="category-chip-editor">
+                      {(Object.keys(categoryLabels) as Category[]).map((category) => (
+                        <button
+                          type="button"
+                          key={category}
+                          className={profileDraft.favoriteCategories.includes(category) ? "active" : ""}
+                          onClick={() => setProfileDraft({ ...profileDraft, favoriteCategories: toggleCategory(profileDraft.favoriteCategories, category) })}
+                        >
+                          {categoryLabels[category]}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className="category-chip-editor">
-                {(Object.keys(categoryLabels) as Category[]).map((category) => (
-                  <button
-                    type="button"
-                    key={category}
-                    className={profileDraft.favoriteCategories.includes(category) ? "active" : ""}
-                    onClick={() => setProfileDraft({ ...profileDraft, favoriteCategories: toggleCategory(profileDraft.favoriteCategories, category) })}
-                  >
-                    {categoryLabels[category]}
-                  </button>
-                ))}
+              <div className="profile-save-row">
+                <button className="primary" onClick={saveProfile} disabled={loading || !profileDraft.displayName.trim()}>Salvar perfil</button>
               </div>
-              <button className="primary" onClick={saveProfile} disabled={loading || !profileDraft.displayName.trim()}>Salvar perfil</button>
             </div>
           ) : null}
         </section>
       </section>
+      </>
       ) : null}
 
       {socialTab === "friends" ? (

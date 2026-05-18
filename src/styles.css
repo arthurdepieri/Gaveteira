@@ -1387,6 +1387,19 @@ button.danger {
   grid-template-columns: 1fr;
 }
 
+.profile-action-strip {
+  display: flex;
+  justify-content: flex-end;
+  margin: 10px 0 12px;
+  padding-right: 2px;
+}
+
+.profile-action-strip .primary {
+  width: auto;
+  min-height: 36px;
+  padding: 8px 12px;
+}
+
 .profile-showcase {
   display: grid;
   gap: 14px;
@@ -1472,12 +1485,6 @@ button.danger {
 
 .profile-showcase-heading .eyebrow {
   margin: 0;
-}
-
-.profile-showcase-heading .primary {
-  width: auto;
-  min-height: 36px;
-  padding: 8px 12px;
 }
 
 .profile-showcase-body h2 {
@@ -1568,6 +1575,17 @@ button.danger {
   grid-column: 1 / -1;
 }
 
+.favorite-drawers-field {
+  display: grid;
+  gap: 8px;
+}
+
+.favorite-drawers-field > span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
 .category-chip-editor {
   display: flex;
   flex-wrap: wrap;
@@ -1588,6 +1606,11 @@ button.danger {
   color: #fffaf1;
   border-color: var(--green);
   background: var(--green);
+}
+
+.profile-save-row {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .social-search-row {
@@ -2823,6 +2846,12 @@ button.danger {
     width: 118px;
     height: 62px;
     font-size: 0.76rem;
+  }
+
+  .profile-action-strip {
+    justify-content: flex-start;
+    margin: 8px 0 10px;
+    padding-right: 0;
   }
 
   .modal-backdrop {
