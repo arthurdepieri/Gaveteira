@@ -37,6 +37,9 @@ const navItems: Array<{ key: ViewKey; label: string; icon: ElementType }> = [
   { key: "settings", label: "Configurações", icon: Settings },
 ];
 
+const topNavItems = navItems.filter((item) => item.key === "home" || item.key === "feed");
+const secondaryNavItems = navItems.filter((item) => item.key !== "home" && item.key !== "feed");
+
 const drawerItems: Array<{ key: Category; label: string; icon: ElementType }> = [
   { key: "games", label: "Jogos", icon: Gamepad2 },
   { key: "books", label: "Livros", icon: BookOpen },
@@ -430,6 +433,16 @@ function App() {
         </div>
         <SyncStatusCard status={syncStatus} onReconnect={() => selectView("family")} />
         <nav>
+          {topNavItems.map((item) => {
+            const Icon = item.icon;
+            const active = view === item.key;
+            return (
+              <button key={item.key} className={active ? "active" : ""} onClick={() => selectView(item.key)}>
+                <Icon size={18} />
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
           <div className={`drawer-nav ${view in categoryLabels ? "active" : ""}`}>
             <button className="drawer-nav-trigger" type="button">
               <Archive size={18} />
@@ -468,7 +481,7 @@ function App() {
               </button>
             </div>
           </div>
-          {navItems.map((item) => {
+          {secondaryNavItems.map((item) => {
             const Icon = item.icon;
             const active = view === item.key;
             return (
