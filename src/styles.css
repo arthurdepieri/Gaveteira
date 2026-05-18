@@ -705,7 +705,8 @@ h2, h3 {
 
 .suggestion-card {
   grid-template-columns: 54px 1fr 24px;
-  min-height: 86px;
+  min-height: 112px;
+  align-items: start;
 }
 
 .suggestion-card small {
@@ -713,6 +714,33 @@ h2, h3 {
   font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+
+.suggestion-card strong {
+  white-space: normal;
+  line-height: 1.18;
+}
+
+.suggestion-copy {
+  display: grid;
+  gap: 3px;
+}
+
+.suggestion-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 4px;
+}
+
+.suggestion-reasons b {
+  padding: 3px 7px;
+  color: #4d3a24;
+  border: 1px solid #dec79b;
+  background: #fff4da;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  line-height: 1.2;
 }
 
 .filters {
