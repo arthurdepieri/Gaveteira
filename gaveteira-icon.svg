@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">Gaveteira</title>
+  <rect width="512" height="512" rx="96" fill="#fffaf1"/>
+  <path d="M88 130c0-26 21-47 47-47h242c26 0 47 21 47 47v252c0 26-21 47-47 47H135c-26 0-47-21-47-47V130Z" fill="#4a2d1c"/>
+  <path d="M124 151c0-16 13-29 29-29h206c16 0 29 13 29 29v72H124v-72Z" fill="#6d452a"/>
+  <path d="M124 251h264v64c0 16-13 29-29 29H153c-16 0-29-13-29-29v-64Z" fill="#c8782d"/>
+  <path d="M124 367h264v28c0 16-13 29-29 29H153c-16 0-29-13-29-29v-28Z" fill="#df9a4c"/>
+  <path d="M215 222h82c11 0 20 9 20 20v8c0 11-9 20-20 20h-82c-11 0-20-9-20-20v-8c0-11 9-20 20-20Z" fill="#fffaf1"/>
+  <path d="M215 338h82c11 0 20 9 20 20v8c0 11-9 20-20 20h-82c-11 0-20-9-20-20v-8c0-11 9-20 20-20Z" fill="#fffaf1"/>
+  <path d="M162 91h190c19 0 36 8 49 20L107 405c-12-13-19-30-19-49V165c0-41 33-74 74-74Z" fill="#ffffff" opacity="0.08"/>
+</svg>
