@@ -29,20 +29,20 @@ interface SyncStatus {
 }
 
 const navItems: Array<{ key: ViewKey; label: string; icon: ElementType }> = [
-  { key: "home", label: "Inicio", icon: Home },
+  { key: "home", label: "Início", icon: Home },
   { key: "feed", label: "Feed", icon: MessageSquare },
   { key: "wishlist", label: "Wishlist", icon: Library },
   { key: "progress", label: "Em andamento", icon: ListChecks },
-  { key: "stats", label: "Estatisticas", icon: BarChart3 },
-  { key: "settings", label: "Configuracoes", icon: Settings },
+  { key: "stats", label: "Estatísticas", icon: BarChart3 },
+  { key: "settings", label: "Configurações", icon: Settings },
 ];
 
 const drawerItems: Array<{ key: Category; label: string; icon: ElementType }> = [
   { key: "games", label: "Jogos", icon: Gamepad2 },
   { key: "books", label: "Livros", icon: BookOpen },
-  { key: "albums", label: "Albuns", icon: Disc3 },
+  { key: "albums", label: "Álbuns", icon: Disc3 },
   { key: "movies", label: "Filmes", icon: Film },
-  { key: "series", label: "Series", icon: Tv },
+  { key: "series", label: "Séries", icon: Tv },
 ];
 
 function App() {
@@ -55,8 +55,8 @@ function App() {
   const [bootstrappedCloudScope, setBootstrappedCloudScope] = useState("");
   const [syncStatus, setSyncStatus] = useState<SyncStatus>(() => ({
     kind: loadCloudSession() ? "loading" : "local",
-    message: loadCloudSession() ? "Preparando sincronizacao..." : "Modo local ativo.",
-    detail: loadCloudSession() ? "Conferindo sua sessao salva." : "Seus dados ficam neste navegador ate voce conectar uma conta.",
+    message: loadCloudSession() ? "Preparando sincronização..." : "Modo local ativo.",
+    detail: loadCloudSession() ? "Conferindo sua sessão salva." : "Seus dados ficam neste navegador até você conectar uma conta.",
   }));
   const [syncRetryTick, setSyncRetryTick] = useState(0);
   const [isOnline, setIsOnline] = useState(() => typeof navigator === "undefined" ? true : navigator.onLine);
@@ -98,7 +98,7 @@ function App() {
         setSyncStatus({
           kind: "local",
           message: "Modo local ativo.",
-          detail: "Seus dados ficam neste navegador ate voce conectar uma conta.",
+          detail: "Seus dados ficam neste navegador até você conectar uma conta.",
         });
       }
       return;
@@ -110,7 +110,7 @@ function App() {
     setSyncStatus({
       kind: "loading",
       message: "Carregando sua conta...",
-      detail: "Buscando os itens salvos na nuvem antes de sincronizar novas alteracoes.",
+      detail: "Buscando os itens salvos na nuvem antes de sincronizar novas alterações.",
     });
 
     fetchMyItems(effectiveSettings, cloudSession)
@@ -124,7 +124,7 @@ function App() {
         setSyncStatus({
           kind: "synced",
           message: safeCloudItems.length ? "Conta carregada." : "Conta pronta.",
-          detail: safeCloudItems.length ? "Itens da nuvem foram mesclados neste navegador." : "As proximas alteracoes serao sincronizadas automaticamente.",
+          detail: safeCloudItems.length ? "Itens da nuvem foram mesclados neste navegador." : "As próximas alterações serão sincronizadas automaticamente.",
         });
         setBootstrappedCloudScope(cloudScopeKey);
       })
@@ -137,7 +137,7 @@ function App() {
 
         setSyncStatus({
           kind: typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "error",
-          message: "Nao foi possivel carregar a nuvem.",
+          message: "Não foi possível carregar a nuvem.",
           detail: error instanceof Error ? error.message : "Tente novamente em instantes.",
         });
         setBootstrappedCloudScope("");
@@ -154,8 +154,8 @@ function App() {
     if (lastSyncedKeyRef.current !== syncPayloadKey && syncStatus.kind !== "syncing") {
       setSyncStatus({
         kind: isOnline ? "pending" : "offline",
-        message: isOnline ? "Alteracoes aguardando sincronizacao." : "Sem conexao.",
-        detail: isOnline ? "Vou enviar automaticamente em alguns instantes." : "Elas ficam salvas aqui e serao reenviadas quando a internet voltar.",
+        message: isOnline ? "Alterações aguardando sincronização." : "Sem conexão.",
+        detail: isOnline ? "Vou enviar automaticamente em alguns instantes." : "Elas ficam salvas aqui e serão reenviadas quando a internet voltar.",
       });
     }
 
@@ -177,8 +177,8 @@ function App() {
       if (cloudSession) {
         setSyncStatus({
           kind: "offline",
-          message: "Sem conexao.",
-          detail: "Suas alteracoes continuam salvas neste navegador e serao reenviadas quando a conexao voltar.",
+          message: "Sem conexão.",
+          detail: "Suas alterações continuam salvas neste navegador e serão reenviadas quando a conexão voltar.",
         });
       }
     }
@@ -341,7 +341,7 @@ function App() {
     setActiveItemMode("details");
     setSyncStatus({
       kind: "local",
-      message: "Sessao encerrada.",
+      message: "Sessão encerrada.",
       detail: "A Gaveteira continua funcionando localmente neste navegador.",
     });
   }
@@ -353,8 +353,8 @@ function App() {
     if (typeof navigator !== "undefined" && !navigator.onLine) {
       setSyncStatus({
         kind: "offline",
-        message: "Sem conexao.",
-        detail: "Suas alteracoes ficaram salvas aqui e serao reenviadas quando a internet voltar.",
+        message: "Sem conexão.",
+        detail: "Suas alterações ficaram salvas aqui e serão reenviadas quando a internet voltar.",
       });
       return;
     }
@@ -368,7 +368,7 @@ function App() {
     setSyncStatus({
       kind: "syncing",
       message: "Sincronizando...",
-      detail: pendingDeletes.length ? "Enviando alteracoes e removendo itens apagados da nuvem." : "Enviando as ultimas alteracoes para a nuvem.",
+      detail: pendingDeletes.length ? "Enviando alterações e removendo itens apagados da nuvem." : "Enviando as últimas alterações para a nuvem.",
     });
 
     try {
@@ -387,7 +387,7 @@ function App() {
       setSyncStatus({
         kind: "synced",
         message: "Tudo sincronizado.",
-        detail: "Suas alteracoes ja estao na nuvem.",
+        detail: "Suas alterações já estão na nuvem.",
       });
     } catch (error) {
       if (isSessionExpiredError(error)) {
@@ -395,7 +395,7 @@ function App() {
       } else {
         setSyncStatus({
           kind: typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "pending",
-          message: "Sincronizacao pendente.",
+          message: "Sincronização pendente.",
           detail: error instanceof Error ? error.message : "Vou tentar de novo automaticamente.",
         });
       }
@@ -413,7 +413,7 @@ function App() {
     setBootstrappedCloudScope("");
     setSyncStatus({
       kind: "expired",
-      message: "Sessao expirada.",
+      message: "Sessão expirada.",
       detail: error instanceof Error ? error.message : "Entre novamente para continuar sincronizando. Seus itens locais foram preservados.",
     });
   }
@@ -495,10 +495,10 @@ function App() {
       </aside>
       {mainView()}
       <SyncStatusCard status={syncStatus} onReconnect={() => selectView("family")} compact />
-      <nav className="mobile-bottom-nav" aria-label="Navegacao principal mobile">
+      <nav className="mobile-bottom-nav" aria-label="Navegação principal mobile">
         <button type="button" className={view === "home" ? "active" : ""} onClick={() => selectView("home")}>
           <Home size={20} />
-          <span>Inicio</span>
+          <span>Início</span>
         </button>
         <button type="button" className={view in categoryLabels ? "active" : ""} onClick={() => setMobileDrawersOpen(true)}>
           <Archive size={20} />

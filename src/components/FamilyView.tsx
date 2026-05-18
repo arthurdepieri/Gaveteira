@@ -70,7 +70,7 @@ export function FamilyView({
 
     byOwner[session.user.id] = byOwner[session.user.id] ?? {
       ownerId: session.user.id,
-      ownerName: session.profile?.displayName || session.user.email || "Voce",
+      ownerName: session.profile?.displayName || session.user.email || "Você",
       profile: session.profile,
       entries: [],
     };
@@ -141,7 +141,7 @@ export function FamilyView({
       setMessage("Sua gaveteira foi enviada para a nuvem.");
       await refreshSocial(true);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Nao foi possivel enviar seus itens.");
+      setMessage(error instanceof Error ? error.message : "Não foi possível enviar seus itens.");
     } finally {
       setLoading(false);
     }
@@ -161,7 +161,7 @@ export function FamilyView({
       onMergeItems(items);
       setMessage("Itens da sua conta foram mesclados neste navegador.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Nao foi possivel baixar seus itens.");
+      setMessage(error instanceof Error ? error.message : "Não foi possível baixar seus itens.");
     } finally {
       setLoading(false);
     }
@@ -184,7 +184,7 @@ export function FamilyView({
       setSocialItems(nextItems);
     } catch (error) {
       if (!silent) {
-        setMessage(error instanceof Error ? error.message : "Nao foi possivel carregar o social.");
+        setMessage(error instanceof Error ? error.message : "Não foi possível carregar o social.");
       }
     } finally {
       if (!silent) {
@@ -211,7 +211,7 @@ export function FamilyView({
       setMessage("Perfil atualizado.");
       setProfileEditing(false);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Nao foi possivel atualizar seu perfil.");
+      setMessage(error instanceof Error ? error.message : "Não foi possível atualizar seu perfil.");
     } finally {
       setLoading(false);
     }
@@ -226,7 +226,7 @@ export function FamilyView({
     try {
       setSearchResults(await searchProfiles(settings, session, searchQuery));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Nao foi possivel procurar pessoas.");
+      setMessage(error instanceof Error ? error.message : "Não foi possível procurar pessoas.");
     } finally {
       setLoading(false);
     }
@@ -244,7 +244,7 @@ export function FamilyView({
       setSearchResults((current) => current.filter((entry) => entry.id !== profile.id));
       await refreshSocial(true);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Nao foi possivel enviar o convite.");
+      setMessage(error instanceof Error ? error.message : "Não foi possível enviar o convite.");
     } finally {
       setLoading(false);
     }
@@ -258,10 +258,10 @@ export function FamilyView({
 
     try {
       await respondFriendRequest(settings, session, friendship.id, status);
-      setMessage(status === "accepted" ? `${friendship.profile.displayName} agora esta nos seus amigos.` : "Convite recusado.");
+      setMessage(status === "accepted" ? `${friendship.profile.displayName} agora está nos seus amigos.` : "Convite recusado.");
       await refreshSocial(true);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Nao foi possivel responder ao convite.");
+      setMessage(error instanceof Error ? error.message : "Não foi possível responder ao convite.");
     } finally {
       setLoading(false);
     }
@@ -274,7 +274,7 @@ export function FamilyView({
           <div>
             <p className="eyebrow">Opcional</p>
             <h1>Social</h1>
-            <p>Voce pode usar a Gaveteira inteira no modo local. Conecte uma conta quando quiser adicionar amigos e visitar outros perfis.</p>
+            <p>Você pode usar a Gaveteira inteira no modo local. Conecte uma conta quando quiser adicionar amigos e visitar outros perfis.</p>
           </div>
           <Cloud size={38} />
         </section>
@@ -282,7 +282,7 @@ export function FamilyView({
         <section className="setting-panel cloud-toolbar">
           <div>
             <h2>Modo local ativo</h2>
-            <p>{localItems.length} itens salvos neste navegador. Nada sera enviado para o Supabase ate voce entrar.</p>
+            <p>{localItems.length} itens salvos neste navegador. Nada será enviado para o Supabase até você entrar.</p>
           </div>
         </section>
 
@@ -309,7 +309,7 @@ export function FamilyView({
       <section className="setting-panel cloud-toolbar">
         <div>
           <h2>{session.profile?.displayName || session.user.email}</h2>
-          <p>Codigo de convite: <strong>{session.profile?.inviteCode || "gerado pelo Supabase"}</strong></p>
+          <p>Código de convite: <strong>{session.profile?.inviteCode || "gerado pelo Supabase"}</strong></p>
         </div>
         <div className="button-row">
           <button className="primary" onClick={uploadLocal} disabled={loading}><UploadCloud size={16} /> Enviar meus itens</button>
@@ -341,7 +341,7 @@ export function FamilyView({
               </div>
             </div>
             <div className="profile-showcase-side">
-              <span>Codigo</span>
+              <span>Código</span>
               <strong>{session.profile?.inviteCode || "--"}</strong>
               <button className="primary" type="button" onClick={() => setProfileEditing(true)}>
                 <Edit3 size={16} />
@@ -366,7 +366,7 @@ export function FamilyView({
                 <Avatar name={profileDraft.displayName} avatarUrl={profileDraft.avatarUrl} large />
                 <div className="form-grid">
                   <label className="field">
-                    <span>Nome publico</span>
+                    <span>Nome público</span>
                     <input value={profileDraft.displayName} onChange={(event) => setProfileDraft({ ...profileDraft, displayName: event.target.value })} />
                   </label>
                   <label className="field">
@@ -375,7 +375,7 @@ export function FamilyView({
                   </label>
                   <label className="field wide">
                     <span>Bio curta</span>
-                    <textarea value={profileDraft.bio} onChange={(event) => setProfileDraft({ ...profileDraft, bio: event.target.value })} placeholder="O que voce costuma jogar, ler, ouvir ou assistir?" />
+                    <textarea value={profileDraft.bio} onChange={(event) => setProfileDraft({ ...profileDraft, bio: event.target.value })} placeholder="O que você costuma jogar, ler, ouvir ou assistir?" />
                   </label>
                   <label className="field wide">
                     <span>Avatar por URL</span>
@@ -411,7 +411,7 @@ export function FamilyView({
             <h2>Procurar pessoas</h2>
           </div>
           <div className="social-search-row">
-            <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} onKeyDown={(event) => event.key === "Enter" ? runSearch() : undefined} placeholder="email, username, nome ou codigo" />
+            <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} onKeyDown={(event) => event.key === "Enter" ? runSearch() : undefined} placeholder="email, username, nome ou código" />
             <button className="primary" onClick={runSearch} disabled={loading || !searchQuery.trim()}>Buscar</button>
           </div>
           <div className="social-result-list">
@@ -499,7 +499,7 @@ export function FamilyView({
 
                     <div className="member-profile-tabs" aria-label="Conteudo do perfil">
                       <button type="button" className={memberProfileSection === "summary" ? "active" : ""} onClick={() => setMemberProfileSection("summary")}>Resumo</button>
-                      <button type="button" className={memberProfileSection === "stats" ? "active" : ""} onClick={() => setMemberProfileSection("stats")}>Estatisticas</button>
+                      <button type="button" className={memberProfileSection === "stats" ? "active" : ""} onClick={() => setMemberProfileSection("stats")}>Estatísticas</button>
                       <button type="button" className={memberProfileSection === "activity" ? "active" : ""} onClick={() => setMemberProfileSection("activity")}>Atividade</button>
                       <button type="button" className={memberProfileSection === "drawers" ? "active" : ""} onClick={() => setMemberProfileSection("drawers")}>Gavetas</button>
                     </div>
@@ -514,7 +514,7 @@ export function FamilyView({
                               {categoryLabels[card.category]}
                             </span>
                           ))}
-                          {!selectedProfile.categoryCards.some((card) => card.count > 0) ? <p className="empty">Este perfil ainda nao tem fichas sincronizadas.</p> : null}
+                          {!selectedProfile.categoryCards.some((card) => card.count > 0) ? <p className="empty">Este perfil ainda não tem fichas sincronizadas.</p> : null}
                         </div>
                       </div>
                     ) : null}
@@ -522,12 +522,12 @@ export function FamilyView({
                     {memberProfileSection === "stats" ? (
                       <>
                         <div className="member-profile-metrics">
-                          <ProfileMetric label="Media geral" value={selectedProfile.average ? selectedProfile.average.toFixed(1) : "--"} />
+                          <ProfileMetric label="Média geral" value={selectedProfile.average ? selectedProfile.average.toFixed(1) : "--"} />
                           <ProfileMetric label="Concluidos" value={selectedProfile.completed} />
                           <ProfileMetric label="Em andamento" value={selectedProfile.inProgress} />
                           <ProfileMetric label="Wishlist" value={selectedProfile.wishlist} />
-                          <ProfileMetric label="Categoria favorita" value={selectedProfile.topCategory} />
-                          <ProfileMetric label="Genero recorrente" value={selectedProfile.topGenre || "--"} />
+                          <ProfileMetric label="Catégoria favorita" value={selectedProfile.topCategory} />
+                          <ProfileMetric label="Gênero recorrente" value={selectedProfile.topGenre || "--"} />
                         </div>
 
                         <div className="member-category-row">
@@ -542,7 +542,7 @@ export function FamilyView({
 
                         <div className="social-tag-columns">
                           <TagCloud title="Tags mais usadas" tags={selectedProfile.topTags} />
-                          <TagCloud title="Generos mais recorrentes" tags={selectedProfile.topGenres} />
+                          <TagCloud title="Gêneros mais recorrentes" tags={selectedProfile.topGenres} />
                         </div>
                       </>
                     ) : null}
@@ -581,7 +581,7 @@ export function FamilyView({
                         </section>
 
                         <section>
-                          <h3><CalendarDays size={18} /> Ultimas adicoes</h3>
+                          <h3><CalendarDays size={18} /> Últimas adições</h3>
                           <div className="member-recent-list">
                             {selectedProfile.recent.length ? selectedProfile.recent.map((entry) => (
                               <button key={`recent-${entry.ownerId}-${entry.id}`} className="member-recent-item" onClick={() => setActiveEntry(entry)}>
@@ -669,7 +669,7 @@ function PersonIdentity({ profile }: { profile: SocialProfile }) {
       <Avatar name={profile.displayName} avatarUrl={profile.avatarUrl} />
       <span>
         <strong>{profile.displayName}</strong>
-        <small>{profile.username ? `@${profile.username}` : profile.inviteCode ? `codigo ${profile.inviteCode}` : profile.email || "perfil Gaveteira"}</small>
+        <small>{profile.username ? `@${profile.username}` : profile.inviteCode ? `código ${profile.inviteCode}` : profile.email || "perfil Gaveteira"}</small>
       </span>
     </div>
   );

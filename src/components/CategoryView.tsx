@@ -56,13 +56,13 @@ export function CategoryView({
       ["playedHoursAsc", "Menos horas jogadas"],
       ["ratingDesc", "Maior nota"],
       ["yearDesc", "Ano mais recente"],
-      ["titleAsc", "Titulo A-Z"],
+      ["titleAsc", "Título A-Z"],
     ] as Array<[SortMode, string]>
     : [
       ["recent", "Mais recentes"],
       ["ratingDesc", "Maior nota"],
       ["yearDesc", "Ano mais recente"],
-      ["titleAsc", "Titulo A-Z"],
+      ["titleAsc", "Título A-Z"],
     ] as Array<[SortMode, string]>;
 
   const filtered = baseItems.filter((item) => {
@@ -81,7 +81,7 @@ export function CategoryView({
         <div>
           <p className="eyebrow">Gaveta</p>
           <h1>{title}</h1>
-          <p>{filtered.length} de {baseItems.length} itens visiveis</p>
+          <p>{filtered.length} de {baseItems.length} itens visíveis</p>
         </div>
         {category ? (
           <button className="primary" onClick={() => onAdd(category)}>
@@ -105,7 +105,7 @@ export function CategoryView({
           {statusOptions.map((status) => <option key={status} value={status}>{status}</option>)}
         </select>
         <select value={filters.genre} onChange={(event) => onFiltersChange({ ...filters, genre: event.target.value })}>
-          <option value="">Genero</option>
+          <option value="">Gênero</option>
           {genres.map((genre) => <option key={genre} value={genre}>{genre}</option>)}
         </select>
         <select value={filters.minRating} onChange={(event) => onFiltersChange({ ...filters, minRating: event.target.value })}>

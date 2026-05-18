@@ -79,8 +79,7 @@ export function isSessionExpiredError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error ?? "");
   const normalized = message.toLowerCase();
 
-  return normalized.includes("sessao expirou")
-    || normalized.includes("sessão expirou")
+  return normalized.includes("sessão expirou")
     || normalized.includes("entre novamente")
     || normalized.includes("jwt expired")
     || normalized.includes("invalid refresh token")
@@ -116,7 +115,7 @@ export async function changeFamilyCode(settings: AppSettings, session: CloudSess
 
 export async function refreshCloudSession(settings: AppSettings, session: CloudSession): Promise<CloudSession> {
   if (!session.refreshToken) {
-    throw new Error("Sua sessao expirou. Entre novamente para renovar o acesso.");
+    throw new Error("Sua sessão expirou. Entre novamente para renovar o acesso.");
   }
 
   const response = await authRequest(settings, "/token?grant_type=refresh_token", {
@@ -124,7 +123,7 @@ export async function refreshCloudSession(settings: AppSettings, session: CloudS
   });
 
   if (!response.access_token) {
-    throw new Error("Nao foi possivel renovar a sessao. Entre novamente.");
+    throw new Error("Não foi possível renovar a sessão. Entre novamente.");
   }
 
   session.accessToken = response.access_token;
@@ -202,7 +201,7 @@ export async function fetchFamilyItems(settings: AppSettings, session: CloudSess
   return visibleRows.map((row) => ({
     id: row.id,
     ownerId: row.owner_id,
-    ownerName: profiles[row.owner_id]?.display_name || (row.owner_id === session.user.id ? "Voce" : "Pessoa da Gaveteira"),
+    ownerName: profiles[row.owner_id]?.display_name || (row.owner_id === session.user.id ? "Você" : "Pessoa da Gaveteira"),
     familyCode: row.family_code,
     item: row.item,
     updatedAt: row.updated_at,
@@ -224,7 +223,7 @@ export async function fetchSocialItems(settings: AppSettings, session: CloudSess
   return visibleRows.map((row) => ({
     id: row.id,
     ownerId: row.owner_id,
-    ownerName: profiles[row.owner_id]?.display_name || (row.owner_id === session.user.id ? "Voce" : "Pessoa da Gaveteira"),
+    ownerName: profiles[row.owner_id]?.display_name || (row.owner_id === session.user.id ? "Você" : "Pessoa da Gaveteira"),
     familyCode: row.family_code,
     item: row.item,
     updatedAt: row.updated_at,
@@ -272,7 +271,7 @@ export async function fetchFriendships(settings: AppSettings, session: CloudSess
 
 export async function sendFriendRequest(settings: AppSettings, session: CloudSession, addresseeId: string): Promise<Friendship> {
   if (addresseeId === session.user.id) {
-    throw new Error("Voce nao precisa adicionar a si mesmo.");
+    throw new Error("Você não precisa adicionar a si mesmo.");
   }
 
   const rows = await restRequest<FriendshipRow[]>(settings, session, "/rest/v1/friend_requests?select=id,requester_id,addressee_id,status,created_at,updated_at", {
@@ -412,7 +411,7 @@ async function authRequest(settings: AppSettings, path: string, body: unknown): 
   });
 
   const json = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(errorMessage(json, "Falha na autenticacao."));
+  if (!response.ok) throw new Error(errorMessage(json, "Falha na autenticação."));
   return json as SupabaseAuthResponse;
 }
 
@@ -457,10 +456,10 @@ async function safeFetch(url: string, init: RequestInit) {
     return await fetch(url, init);
   } catch {
     if (typeof navigator !== "undefined" && !navigator.onLine) {
-      throw new Error("Sem conexao com a internet. Suas alteracoes ficaram salvas neste navegador e serao reenviadas quando a conexao voltar.");
+      throw new Error("Sem conexão com a internet. Suas alterações ficaram salvas neste navegador e serão reenviadas quando a conexão voltar.");
     }
 
-    throw new Error("Nao foi possivel conectar ao Supabase. Verifique se o projeto esta ativo, se a Project URL esta correta e se a rede nao esta bloqueando supabase.co.");
+    throw new Error("Não foi possível conectar ao Supabase. Verifique se o projeto está ativo, se a Project URL está correta e se a rede não está bloqueando supabase.co.");
   }
 }
 
@@ -481,7 +480,7 @@ function requireCloudSettings(settings: AppSettings) {
   const supabaseAnonKey = settings.cloud?.supabaseAnonKey;
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error("Configure a URL e a anon key do Supabase em Configuracoes.");
+    throw new Error("Configure a URL e a anon key do Supabase em Configurações.");
   }
 
   return { supabaseUrl, supabaseAnonKey };
@@ -495,11 +494,11 @@ function normalizeSupabaseUrl(value?: string) {
   try {
     url = new URL(raw);
   } catch {
-    throw new Error("A Supabase URL precisa comecar com https:// e parecer com https://seu-projeto.supabase.co.");
+    throw new Error("A Supabase URL precisa começar com https:// e parecer com https://seu-projeto.supabase.co.");
   }
 
   if (url.hostname === "supabase.com" || url.pathname.includes("/dashboard/")) {
-    throw new Error("Use a Project URL do Supabase, nao o link do dashboard. Ela parece com https://seu-projeto.supabase.co.");
+    throw new Error("Use a Project URL do Supabase, não o link do dashboard. Ela parece com https://seu-projeto.supabase.co.");
   }
 
   if (!url.hostname.endsWith(".supabase.co") && !url.hostname.includes("localhost") && !url.hostname.includes("127.0.0.1")) {
@@ -520,7 +519,7 @@ function postgrestStringList(values: string[]) {
 
 function authResponseToSession(response: SupabaseAuthResponse): CloudSession {
   if (!response.access_token || !response.user) {
-    throw new Error("Login criado, mas o Supabase nao retornou uma sessao. Verifique se confirmacao por email esta ativa.");
+    throw new Error("Login criado, mas o Supabase não retornou uma sessão. Verifique se confirmação por email está ativa.");
   }
 
   return {
@@ -577,7 +576,7 @@ function isMissingProfileSocialColumns(error: unknown) {
     || normalized.includes("column profiles.favorite_categories does not exist")
     || normalized.includes("column profiles.invite_code does not exist")
     || (mentionsProfilesCache && mentionsSocialColumn)
-    || normalized.includes("atualizacao social da tabela profiles");
+    || normalized.includes("atualização social da tabela profiles");
 }
 
 function errorMessage(value: unknown, fallback: string) {
@@ -586,15 +585,15 @@ function errorMessage(value: unknown, fallback: string) {
   const normalized = raw.toLowerCase();
 
   if (normalized.includes("jwt expired") || normalized.includes("invalid refresh token") || normalized.includes("refresh token")) {
-    return "Sua sessao expirou. Entre novamente para continuar sincronizando.";
+    return "Sua sessão expirou. Entre novamente para continuar sincronizando.";
   }
 
   if (normalized.includes("failed to fetch")) {
-    return "Nao foi possivel conectar ao Supabase agora. Suas alteracoes ficaram pendentes neste navegador.";
+    return "Não foi possível conectar ao Supabase agora. Suas alterações ficaram pendentes neste navegador.";
   }
 
   if (normalized.includes("email rate limit exceeded")) {
-    return "O limite de emails do Supabase foi atingido. Tente entrar com uma conta ja criada ou aguarde antes de enviar outro email.";
+    return "O limite de emails do Supabase foi atingido. Tente entrar com uma conta já criada ou aguarde antes de enviar outro email.";
   }
 
   if (normalized.includes("invalid login credentials")) {
@@ -602,23 +601,23 @@ function errorMessage(value: unknown, fallback: string) {
   }
 
   if (normalized.includes("row-level security") || normalized.includes("permission denied")) {
-    return "O Supabase bloqueou essa operacao pelas regras de seguranca. Confira as politicas RLS do projeto.";
+    return "O Supabase bloqueou essa operação pelas regras de segurança. Confira as políticas RLS do projeto.";
   }
 
   if (normalized.includes("column profiles.") && normalized.includes("does not exist")) {
-    return "Seu Supabase ainda nao recebeu a atualizacao social da tabela profiles. Rode o SQL novo em supabase/schema.sql para ativar perfis e amigos.";
+    return "Seu Supabase ainda não recebeu a atualização social da tabela profiles. Rode o SQL novo em supabase/schema.sql para ativar perfis e amigos.";
   }
 
   if (normalized.includes("profiles") && normalized.includes("schema cache")) {
-    return "O Supabase ainda nao reconheceu os novos campos sociais da tabela profiles. Rode o SQL novo ou aguarde o cache do schema atualizar.";
+    return "O Supabase ainda não reconheceu os novos campos sociais da tabela profiles. Rode o SQL novo ou aguarde o cache do schema atualizar.";
   }
 
   if (normalized.includes("relation") && normalized.includes("friend_requests") && normalized.includes("does not exist")) {
-    return "Seu Supabase ainda nao tem a tabela de amizades. Rode o SQL novo em supabase/schema.sql para ativar amigos.";
+    return "Seu Supabase ainda não tem a tabela de amizades. Rode o SQL novo em supabase/schema.sql para ativar amigos.";
   }
 
   if (isUniqueFriendshipError(raw)) {
-    return "Esse convite de amizade ja existe.";
+    return "Esse convite de amizade já existe.";
   }
 
   return raw;

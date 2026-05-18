@@ -53,7 +53,7 @@ export function SocialFeedView({
 
     byOwner[session.user.id] = byOwner[session.user.id] ?? {
       ownerId: session.user.id,
-      ownerName: session.profile?.displayName || session.user.email || "Voce",
+      ownerName: session.profile?.displayName || session.user.email || "Você",
       profile: session.profile,
       entries: [],
     };
@@ -102,7 +102,7 @@ export function SocialFeedView({
       if (!silent) setMessage("Feed atualizado.");
     } catch (error) {
       if (!silent) {
-        setMessage(error instanceof Error ? error.message : "Nao foi possivel carregar o feed.");
+        setMessage(error instanceof Error ? error.message : "Não foi possível carregar o feed.");
       }
     } finally {
       if (!silent) setLoading(false);
@@ -116,7 +116,7 @@ export function SocialFeedView({
           <div>
             <p className="eyebrow">Movimento social</p>
             <h1>Feed</h1>
-            <p>Entre para acompanhar atualizacoes, comparacoes e sinais leves da sua rede.</p>
+            <p>Entre para acompanhar atualizações, comparações e sinais leves da sua rede.</p>
           </div>
           <Cloud size={38} />
         </section>
@@ -131,7 +131,7 @@ export function SocialFeedView({
         <div>
           <p className="eyebrow">Movimento social</p>
           <h1>Feed</h1>
-          <p>Eventos simples da sua rede e comparacoes entre gaveteiras, sem transformar tudo em mural barulhento.</p>
+          <p>Eventos simples da sua rede e comparações entre gaveteiras, sem transformar tudo em mural barulhento.</p>
         </div>
         <MessageSquare size={38} />
       </section>
@@ -139,7 +139,7 @@ export function SocialFeedView({
       <section className="setting-panel cloud-toolbar">
         <div>
           <h2>{session.profile?.displayName || session.user.email}</h2>
-          <p>{socialItems.length} fichas visiveis no seu feed.</p>
+          <p>{socialItems.length} fichas visíveis no seu feed.</p>
         </div>
         <div className="button-row">
           <button className="ghost" onClick={() => refreshFeed()} disabled={loading}><RefreshCw size={16} /> Atualizar feed</button>
@@ -153,7 +153,7 @@ export function SocialFeedView({
             <MessageSquare size={20} />
             <h2>Feed</h2>
           </div>
-          <span className="soft-label">sem comentarios por enquanto</span>
+          <span className="soft-label">sem comentários por enquanto</span>
         </div>
         <div className="feed-scope-tabs" aria-label="Filtrar feed">
           <button
@@ -183,8 +183,8 @@ export function SocialFeedView({
                   <small>{event.detail}</small>
                   <span>Abrir ficha</span>
                 </button>
-                <div className="reaction-row" aria-label="Reacoes">
-                  {["curti", "tambem quero", "ja vi"].map((reaction) => (
+                <div className="reaction-row" aria-label="Reações">
+                  {["curti", "também quero", "já vi"].map((reaction) => (
                     <button
                       key={reaction}
                       type="button"
@@ -198,21 +198,21 @@ export function SocialFeedView({
                 </div>
               </div>
             </article>
-          )) : <p className="empty">{feedScope === "friends" ? "Quando seus amigos atualizarem fichas, o movimento aparece aqui." : "Suas proximas alteracoes aparecem aqui como um historico leve."}</p>}
+          )) : <p className="empty">{feedScope === "friends" ? "Quando seus amigos atualizarem fichas, o movimento aparece aqui." : "Suas próximas alterações aparecem aqui como um histórico leve."}</p>}
         </div>
       </section>
 
       <section className="setting-panel social-comparison-panel">
         <div className="section-heading">
           <GitCompare size={20} />
-          <h2>Comparacoes</h2>
+          <h2>Comparações</h2>
         </div>
         <div className="comparison-grid">
           <InsightList title="Itens em comum" icon={<Eye size={17} />} items={socialComparisons.commonItems} />
           <InsightList title="Notas diferentes" icon={<GitCompare size={17} />} items={socialComparisons.ratingDifferences} />
           <InsightList title="Wishlist compartilhada" icon={<Sparkles size={17} />} items={socialComparisons.sharedWishlist} />
           <InsightList title="Favoritos do grupo" icon={<Heart size={17} />} items={socialComparisons.favoriteRanking} />
-          <InsightList title="Generos da galera" icon={<TrendingUp size={17} />} items={socialComparisons.topGenres} />
+          <InsightList title="Gêneros da galera" icon={<TrendingUp size={17} />} items={socialComparisons.topGenres} />
           <InsightList title="Ativos agora" icon={<Users size={17} />} items={socialComparisons.activePeople} />
         </div>
       </section>
@@ -248,7 +248,7 @@ function buildSocialFeed(entries: FamilyItem[], viewerId: string): FeedEvent[] {
   return [...entries]
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
     .map((entry) => {
-      const actor = entry.ownerId === viewerId ? "Voce" : entry.ownerName;
+      const actor = entry.ownerId === viewerId ? "Você" : entry.ownerName;
       const title = getTitle(entry.item) || "uma ficha";
       const rating = getRating(entry.item);
       const category = categoryLabels[entry.item.category];
@@ -273,7 +273,7 @@ function buildSocialFeed(entries: FamilyItem[], viewerId: string): FeedEvent[] {
       }
 
       if (opinion) {
-        return { id: `feed-${entry.ownerId}-${entry.id}-opinion`, kind: "opinion" as FeedKind, entry, text: `${actor} escreveu uma opiniao sobre ${title}.`, detail: opinion.length > 90 ? `${opinion.slice(0, 90)}...` : opinion, updatedAt: entry.updatedAt };
+        return { id: `feed-${entry.ownerId}-${entry.id}-opinion`, kind: "opinion" as FeedKind, entry, text: `${actor} escreveu uma opinião sobre ${title}.`, detail: opinion.length > 90 ? `${opinion.slice(0, 90)}...` : opinion, updatedAt: entry.updatedAt };
       }
 
       return { id: `feed-${entry.ownerId}-${entry.id}-added`, kind: "added" as FeedKind, entry, text: `${actor} adicionou ${title}.`, detail: detailParts.join(" / "), updatedAt: entry.updatedAt };
@@ -296,7 +296,7 @@ function buildSocialComparisons(groups: OwnerGroup[], viewerId: string) {
       const ratings = rated.map((entry) => getRating(entry.item));
       const spread = Math.max(...ratings) - Math.min(...ratings);
       if (spread < 1) return "";
-      return `${getTitle(rated[0].item)}: ${rated.map((entry) => `${entry.ownerId === viewerId ? "voce" : entry.ownerName} ${getRating(entry.item)}`).join(" x ")}`;
+      return `${getTitle(rated[0].item)}: ${rated.map((entry) => `${entry.ownerId === viewerId ? "você" : entry.ownerName} ${getRating(entry.item)}`).join(" x ")}`;
     })
     .filter(Boolean)
     .slice(0, 6);
@@ -310,13 +310,13 @@ function buildSocialComparisons(groups: OwnerGroup[], viewerId: string) {
     .filter((entry) => getRating(entry.item) >= 4.5)
     .sort((a, b) => getRating(b.item) - getRating(a.item))
     .slice(0, 6)
-    .map((entry) => `${getTitle(entry.item)} (${entry.ownerId === viewerId ? "voce" : entry.ownerName}, ${getRating(entry.item)})`);
+    .map((entry) => `${getTitle(entry.item)} (${entry.ownerId === viewerId ? "você" : entry.ownerName}, ${getRating(entry.item)})`);
 
   const topGenres = topEntries(entries.flatMap((entry) => getGenres(entry.item)), 6);
   const activePeople = groups
     .map((group) => {
       const count = group.entries.filter((entry) => isInProgress(entry.item)).length;
-      return count ? `${group.ownerId === viewerId ? "Voce" : group.ownerName}: ${count} em andamento` : "";
+      return count ? `${group.ownerId === viewerId ? "Você" : group.ownerName}: ${count} em andamento` : "";
     })
     .filter(Boolean)
     .slice(0, 6);
@@ -347,7 +347,7 @@ function comparableKey(item: CulturalItem) {
 }
 
 function ownerNames(entries: FamilyItem[], viewerId: string) {
-  return [...new Set(entries.map((entry) => entry.ownerId === viewerId ? "voce" : entry.ownerName))];
+  return [...new Set(entries.map((entry) => entry.ownerId === viewerId ? "você" : entry.ownerName))];
 }
 
 function getFinalOpinion(item: CulturalItem) {

@@ -32,7 +32,7 @@ export function AuthGate({
         : await signIn(settings, email, password);
       onAuthenticated(session);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Nao foi possivel entrar.");
+      setMessage(error instanceof Error ? error.message : "Não foi possível entrar.");
     } finally {
       setLoading(false);
     }
@@ -54,7 +54,7 @@ export function AuthGate({
               <Users size={20} />
               <h2>Social</h2>
             </div>
-            <p>Entre para salvar sua gaveteira na nuvem, criar seu perfil e adicionar amigos por busca, email ou codigo de convite.</p>
+            <p>Entre para salvar sua gaveteira na nuvem, criar seu perfil e adicionar amigos por busca, email ou código de convite.</p>
             <p className="empty">Sem login, tudo continua funcionando no modo local deste navegador.</p>
           </section>
 
@@ -66,13 +66,13 @@ export function AuthGate({
             <div className="form-grid">
               {mode === "signup" ? (
                 <label className="field">
-                  <span>Nome publico</span>
+                  <span>Nome público</span>
                   <input value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder="Arthur" />
                 </label>
               ) : null}
               <label className="field">
                 <span>Email</span>
-                <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" placeholder="voce@email.com" />
+                <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" placeholder="seu@email.com" />
               </label>
               <label className="field">
                 <span>Senha</span>
@@ -83,7 +83,7 @@ export function AuthGate({
               {mode === "signup" ? <UserPlus size={16} /> : <LogIn size={16} />}
               {loading ? "Conectando..." : mode === "signup" ? "Criar e sincronizar" : "Entrar e sincronizar"}
             </button>
-            {!configured ? <p className="form-error">A conexao tecnica com o Supabase ainda nao foi configurada no app.</p> : null}
+            {!configured ? <p className="form-error">A conexão técnica com o Supabase ainda não foi configurada no app.</p> : null}
             {message ? <p className="form-error">{message}</p> : null}
           </section>
         </div>

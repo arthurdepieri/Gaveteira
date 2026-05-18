@@ -37,7 +37,7 @@ export function buildStats(items: CulturalItem[]) {
       booksRead: byCategory("books").filter((item) => item.status === "Lido").length,
       albumsHeard: byCategory("albums").filter((item) => item.status === "Ouvido").length,
       moviesWatched: byCategory("movies").filter((item) => item.status === "Assistido").length,
-      seriesTracked: byCategory("series").filter((item) => ["Acompanhando", "Em dia", "Concluida"].includes(item.status)).length,
+      seriesTracked: byCategory("series").filter(isCompleted).length,
     },
     completedByYear: countBy(completed.map((item) => (getEndDate(item) ?? "").slice(0, 4)).filter(Boolean)),
     completedByMonth: countBy(completed.map((item) => (getEndDate(item) ?? "").slice(0, 7)).filter(Boolean)),

@@ -62,15 +62,15 @@ export function splitGenres(value: string) {
 }
 
 export function isWishlist(item: CulturalItem) {
-  return wishlistStatuses.includes(item.status);
+  return wishlistStatuses.some((status) => sameLabel(status, item.status));
 }
 
 export function isInProgress(item: CulturalItem) {
-  return progressStatuses.includes(item.status);
+  return progressStatuses.some((status) => sameLabel(status, item.status));
 }
 
 export function isCompleted(item: CulturalItem) {
-  return completedStatuses.includes(item.status);
+  return completedStatuses.some((status) => sameLabel(status, item.status));
 }
 
 export function getEndDate(item: CulturalItem) {
@@ -80,4 +80,15 @@ export function getEndDate(item: CulturalItem) {
 
 export function isCategory(value: string): value is Category {
   return ["games", "books", "albums", "movies", "series"].includes(value);
+}
+
+function sameLabel(left: string, right: string) {
+  return normalizeLabel(left) === normalizeLabel(right);
+}
+
+function normalizeLabel(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
 }

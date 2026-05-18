@@ -19,8 +19,8 @@ export function ItemDetails({
 }) {
   const sections = detailSections(item);
   const year = getYear(item);
-  const [activeMobileSection, setActiveMobileSection] = useState(sections[0]?.title ?? "Historico");
-  const mobileSections = [...sections.map((section) => section.title), "Historico", "Diario"];
+  const [activeMobileSection, setActiveMobileSection] = useState(sections[0]?.title ?? "Histórico");
+  const mobileSections = [...sections.map((section) => section.title), "Histórico", "Diário"];
 
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
@@ -75,7 +75,7 @@ export function ItemDetails({
           </div>
         </section>
 
-        <nav className="detail-mobile-tabs" aria-label="Secoes da ficha">
+        <nav className="detail-mobile-tabs" aria-label="Seções da ficha">
           {mobileSections.map((section) => (
             <button
               key={section}
@@ -106,8 +106,8 @@ export function ItemDetails({
           ))}
         </section>
 
-        <section className={`archive-block detail-mobile-panel ${activeMobileSection === "Historico" ? "active" : ""}`}>
-          <h3>Historico</h3>
+        <section className={`archive-block detail-mobile-panel ${activeMobileSection === "Histórico" ? "active" : ""}`}>
+          <h3>Histórico</h3>
           {item.timeline.length ? (
             <div className="timeline-list">
               {item.timeline.map((event) => (
@@ -121,8 +121,8 @@ export function ItemDetails({
           ) : <p className="empty">Nenhum evento registrado ainda.</p>}
         </section>
 
-        <section className={`archive-block detail-mobile-panel ${activeMobileSection === "Diario" ? "active" : ""}`}>
-          <h3>Diario</h3>
+        <section className={`archive-block detail-mobile-panel ${activeMobileSection === "Diário" ? "active" : ""}`}>
+          <h3>Diário</h3>
           {item.diary.length ? (
             <div className="diary-note-grid">
               {item.diary.map((entry) => (
@@ -142,45 +142,45 @@ export function ItemDetails({
 function detailSections(item: CulturalItem): Array<{ title: string; fields: Array<[string, string]> }> {
   if (item.category === "games") {
     return [
-      { title: "Ficha tecnica", fields: visibleFields([["Plataforma", item.platform], ["Desenvolvedora", item.developer], ["Publicadora", item.publisher], ["Ano de lancamento", item.releaseYear], ["Genero", item.genre]]) },
-      { title: "Progresso", fields: visibleFields([["Status", item.status], ["Inicio", item.startDate], ["Conclusao/abandono", item.endDate], ["Tempo jogado", item.timePlayed], ["Conclusao", item.completionType]]) },
-      { title: "Avaliacao", fields: visibleFields([["Nota", item.rating ? `${item.rating}/5` : ""], ["Dificuldade percebida", item.perceivedDifficulty]]) },
-      { title: "Notas pessoais", fields: visibleFields([["Comentarios/anotacoes", item.notes], ["Motivo de abandono", item.abandonmentReason]]) },
+      { title: "Ficha técnica", fields: visibleFields([["Plataforma", item.platform], ["Desenvolvedora", item.developer], ["Publicadora", item.publisher], ["Ano de lançamento", item.releaseYear], ["Gênero", item.genre]]) },
+      { title: "Progresso", fields: visibleFields([["Status", item.status], ["Início", item.startDate], ["Conclusão/abandono", item.endDate], ["Tempo jogado", item.timePlayed], ["Conclusão", item.completionType]]) },
+      { title: "Avaliação", fields: visibleFields([["Nota", item.rating ? `${item.rating}/5` : ""], ["Dificuldade percebida", item.perceivedDifficulty]]) },
+      { title: "Notas pessoais", fields: visibleFields([["Comentários/anotações", item.notes], ["Motivo de abandono", item.abandonmentReason]]) },
     ];
   }
 
   if (item.category === "books") {
     return [
-      { title: "Ficha tecnica", fields: visibleFields([["Autor", item.author], ["Editora", item.publisher], ["Ano de publicacao", item.publicationYear], ["Genero", item.genre], ["Formato", item.format], ["Paginas", item.pages]]) },
-      { title: "Progresso", fields: visibleFields([["Status", item.status], ["Inicio", item.startDate], ["Conclusao/abandono", item.endDate], ["Pagina atual", item.currentPage]]) },
-      { title: "Avaliacao", fields: visibleFields([["Nota", item.rating ? `${item.rating}/5` : ""], ["Opiniao final", item.finalOpinion]]) },
+      { title: "Ficha técnica", fields: visibleFields([["Autor", item.author], ["Editora", item.publisher], ["Ano de publicação", item.publicationYear], ["Gênero", item.genre], ["Formato", item.format], ["Páginas", item.pages]]) },
+      { title: "Progresso", fields: visibleFields([["Status", item.status], ["Início", item.startDate], ["Conclusão/abandono", item.endDate], ["Página atual", item.currentPage]]) },
+      { title: "Avaliação", fields: visibleFields([["Nota", item.rating ? `${item.rating}/5` : ""], ["Opinião final", item.finalOpinion]]) },
       { title: "Notas pessoais", fields: visibleFields([["Frases favoritas", item.favoriteQuotes], ["Resumo pessoal", item.personalSummary], ["Motivo de abandono", item.abandonmentReason]]) },
     ];
   }
 
   if (item.category === "albums") {
     return [
-      { title: "Ficha tecnica", fields: visibleFields([["Artista", item.artist], ["Ano de lancamento", item.releaseYear], ["Genero", item.genre]]) },
+      { title: "Ficha técnica", fields: visibleFields([["Artista", item.artist], ["Ano de lançamento", item.releaseYear], ["Gênero", item.genre]]) },
       { title: "Progresso", fields: visibleFields([["Status", item.status], ["Data em que ouvi", item.listenedDate], ["Vezes ouvido", item.listenCount], ["Escuta", item.listenMode]]) },
-      { title: "Avaliacao", fields: visibleFields([["Nota", item.rating ? `${item.rating}/5` : ""], ["Musicas favoritas", item.favoriteTracks], ["Musicas puladas", item.skippedTracks]]) },
-      { title: "Notas pessoais", fields: visibleFields([["Comentarios", item.comments]]) },
+      { title: "Avaliação", fields: visibleFields([["Nota", item.rating ? `${item.rating}/5` : ""], ["Músicas favoritas", item.favoriteTracks], ["Músicas puladas", item.skippedTracks]]) },
+      { title: "Notas pessoais", fields: visibleFields([["Comentários", item.comments]]) },
     ];
   }
 
   if (item.category === "movies") {
     return [
-      { title: "Ficha tecnica", fields: visibleFields([["Ano", item.year], ["Genero", item.genre], ["Direcao", item.director], ["Duracao", item.runtimeMinutes ? `${item.runtimeMinutes} min` : ""]]) },
-      { title: "Progresso", fields: visibleFields([["Status", item.status], ["Inicio", item.startDate], ["Conclusao", item.endDate]]) },
-      { title: "Avaliacao", fields: visibleFields([["Nota", item.rating ? `${item.rating}/5` : ""]]) },
-      { title: "Notas pessoais", fields: visibleFields([["Comentarios", item.comments]]) },
+      { title: "Ficha técnica", fields: visibleFields([["Ano", item.year], ["Gênero", item.genre], ["Direção", item.director], ["Duração", item.runtimeMinutes ? `${item.runtimeMinutes} min` : ""]]) },
+      { title: "Progresso", fields: visibleFields([["Status", item.status], ["Início", item.startDate], ["Conclusão", item.endDate]]) },
+      { title: "Avaliação", fields: visibleFields([["Nota", item.rating ? `${item.rating}/5` : ""]]) },
+      { title: "Notas pessoais", fields: visibleFields([["Comentários", item.comments]]) },
     ];
   }
 
   return [
-    { title: "Ficha tecnica", fields: visibleFields([["Ano", item.year], ["Genero", item.genre]]) },
-    { title: "Progresso", fields: visibleFields([["Status", item.status], ["Inicio", item.startDate], ["Conclusao", item.endDate], ["Temporada atual", item.currentSeason], ["Episodio atual", item.currentEpisode], ["Acompanhamento", item.trackingStatus]]) },
-    { title: "Avaliacao", fields: visibleFields([["Nota", item.rating ? `${item.rating}/5` : ""]]) },
-    { title: "Notas pessoais", fields: visibleFields([["Comentarios", item.comments]]) },
+    { title: "Ficha técnica", fields: visibleFields([["Ano", item.year], ["Gênero", item.genre]]) },
+    { title: "Progresso", fields: visibleFields([["Status", item.status], ["Início", item.startDate], ["Conclusão", item.endDate], ["Temporada atual", item.currentSeason], ["Episódio atual", item.currentEpisode], ["Acompanhamento", item.trackingStatus]]) },
+    { title: "Avaliação", fields: visibleFields([["Nota", item.rating ? `${item.rating}/5` : ""]]) },
+    { title: "Notas pessoais", fields: visibleFields([["Comentários", item.comments]]) },
   ];
 }
 

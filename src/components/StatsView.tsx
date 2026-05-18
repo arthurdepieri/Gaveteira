@@ -17,8 +17,8 @@ export function StatsView({ items }: { items: CulturalItem[] }) {
       <section className="list-header">
         <div>
           <p className="eyebrow">Leituras da gaveteira</p>
-          <h1>Estatisticas</h1>
-          <p>Um retrato rapido do que voce concluiu, largou, favoritou e acumulou para depois.</p>
+          <h1>Estatísticas</h1>
+          <p>Um retrato rapido do que você concluiu, largou, favoritou e acumulou para depois.</p>
         </div>
         <BarChart3 size={36} />
       </section>
@@ -27,9 +27,9 @@ export function StatsView({ items }: { items: CulturalItem[] }) {
         <Stat label="Jogos zerados" value={stats.headline.gamesCompleted} />
         <Stat label="Jogos abandonados" value={stats.headline.gamesAbandoned} />
         <Stat label="Livros lidos" value={stats.headline.booksRead} />
-        <Stat label="Albuns ouvidos" value={stats.headline.albumsHeard} />
+        <Stat label="Álbuns ouvidos" value={stats.headline.albumsHeard} />
         <Stat label="Filmes assistidos" value={stats.headline.moviesWatched} />
-        <Stat label="Series acompanhadas" value={stats.headline.seriesTracked} />
+        <Stat label="Séries acompanhadas" value={stats.headline.seriesTracked} />
         <Stat label="Em andamento" value={stats.inProgress.length} />
         <Stat label="Wishlist" value={stats.wishlist.length} />
       </section>
@@ -41,7 +41,7 @@ export function StatsView({ items }: { items: CulturalItem[] }) {
       </section>
 
       <section className="section">
-        <h2>Generos mais consumidos por categoria</h2>
+        <h2>Gêneros mais consumidos por categoria</h2>
         <div className="category-breakdown-grid">
           {categoryStats.map((entry) => (
             <section key={entry.category} className="category-breakdown-panel">
@@ -52,7 +52,7 @@ export function StatsView({ items }: { items: CulturalItem[] }) {
                   <div><i style={{ width: `${Math.max(12, value * 18)}%` }} /></div>
                   <strong>{value}</strong>
                 </div>
-              )) : <p className="empty">Sem generos ainda.</p>}
+              )) : <p className="empty">Sem gêneros ainda.</p>}
             </section>
           ))}
         </div>
@@ -77,10 +77,10 @@ export function StatsView({ items }: { items: CulturalItem[] }) {
                 <span><b>{entry.abandoned}</b> abandonados</span>
               </div>
               <div className="category-stat-detail">
-                <span>Media</span>
+                <span>Média</span>
                 <strong>{entry.average ? entry.average.toFixed(1) : "--"}</strong>
               </div>
-              <MiniList title="Generos" entries={entry.genres} />
+              <MiniList title="Gêneros" entries={entry.genres} />
               <MiniList title="Tags" entries={entry.tags} />
               <div className="category-favorites">
                 <span>Melhores avaliados</span>
@@ -97,7 +97,7 @@ export function StatsView({ items }: { items: CulturalItem[] }) {
       </section>
 
       <section className="section">
-        <h2>Media de notas por categoria</h2>
+        <h2>Média de notas por categoria</h2>
         <div className="meter-list">
           {averageEntries.map(([category, average]) => (
             <div className="meter" key={category}>

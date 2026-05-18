@@ -3,17 +3,17 @@ import { Category } from "../types";
 export const categoryLabels: Record<Category, string> = {
   games: "Jogos",
   books: "Livros",
-  albums: "Albuns",
+  albums: "Álbuns",
   movies: "Filmes",
-  series: "Series",
+  series: "Séries",
 };
 
 export const categorySingular: Record<Category, string> = {
   games: "jogo",
   books: "livro",
-  albums: "album",
+  albums: "álbum",
   movies: "filme",
-  series: "serie",
+  series: "série",
 };
 
 export const defaultStatuses: Record<Category, string[]> = {
@@ -21,7 +21,7 @@ export const defaultStatuses: Record<Category, string[]> = {
   books: ["Quero ler", "Lendo", "Lido", "Abandonado"],
   albums: ["Quero ouvir", "Ouvindo", "Ouvido", "Abandonado"],
   movies: ["Quero assistir", "Assistindo", "Assistido", "Abandonado"],
-  series: ["Quero assistir", "Acompanhando", "Em dia", "Concluida", "Abandonada"],
+  series: ["Quero assistir", "Acompanhando", "Em dia", "Concluída", "Abandonada"],
 };
 
 export const wishlistStatuses = [
@@ -45,7 +45,7 @@ export const completedStatuses = [
   "Lido",
   "Ouvido",
   "Assistido",
-  "Concluida",
+  "Concluída",
   "Em dia",
 ];
 

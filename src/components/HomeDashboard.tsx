@@ -46,7 +46,7 @@ export function HomeDashboard({
         <div>
           <p className="eyebrow">Arquivo pessoal de cultura</p>
           <h1>Gaveteira</h1>
-          <p>Uma mesa de controle local para o que voce jogou, leu, ouviu, assistiu, largou e ainda quer descobrir.</p>
+          <p>Uma mesa de controle local para o que você jogou, leu, ouviu, assistiu, largou e ainda quer descobrir.</p>
         </div>
         <div className="hero-counters" aria-label="Resumo rapido">
           <strong>{items.length}</strong>
@@ -57,9 +57,9 @@ export function HomeDashboard({
       <section className="quick-stats">
         <Metric label="Jogos zerados" value={stats.headline.gamesCompleted} />
         <Metric label="Livros lidos" value={stats.headline.booksRead} />
-        <Metric label="Albuns ouvidos" value={stats.headline.albumsHeard} />
+        <Metric label="Álbuns ouvidos" value={stats.headline.albumsHeard} />
         <Metric label="Filmes assistidos" value={stats.headline.moviesWatched} />
-        <Metric label="Series acompanhadas" value={stats.headline.seriesTracked} />
+        <Metric label="Séries acompanhadas" value={stats.headline.seriesTracked} />
         <Metric label="Na wishlist" value={stats.wishlist.length} />
       </section>
 
@@ -69,7 +69,7 @@ export function HomeDashboard({
             <div>
               <p className="eyebrow">Comece por uma ficha</p>
               <h2>Escolha uma gaveta para guardar o primeiro item</h2>
-              <p>Depois de digitar o nome, a ficha pode buscar capa e dados automaticamente quando houver fonte disponivel.</p>
+              <p>Depois de digitar o nome, a ficha pode buscar capa e dados automaticamente quando houver fonte disponível.</p>
             </div>
             <div className="quick-add-grid">
               {(Object.keys(categoryLabels) as Category[]).map((category) => {
@@ -105,8 +105,8 @@ export function HomeDashboard({
               <h2>{connectedToFamily ? "Social conectado" : "Gaveteira com amigos"}</h2>
               <p>
                 {connectedToFamily
-                  ? "Voce pode procurar pessoas, aceitar convites e visitar a gaveteira dos seus amigos."
-                  : "Ao entrar, cada login guarda seus proprios itens e voces conseguem visitar as gavetas uns dos outros."}
+                  ? "Você pode procurar pessoas, aceitar convites e visitar a gaveteira dos seus amigos."
+                  : "Ao entrar, cada login guarda seus proprios itens e vocês conseguem visitar as gavetas uns dos outros."}
               </p>
             </div>
             <button type="button" className="ghost" onClick={onOpenFamily}>{connectedToFamily ? "Ver social" : "Conectar"}</button>
@@ -151,7 +151,7 @@ export function HomeDashboard({
 
       <section className="home-live-grid" aria-label="Movimento recente da Gaveteira">
         <HomeShelf
-          title="Ultimas adicoes"
+          title="Últimas adições"
           icon={Clock3}
           items={latestItems}
           empty="Nada novo por aqui ainda."
@@ -162,7 +162,7 @@ export function HomeDashboard({
           title="Favoritos recentes"
           icon={Heart}
           items={recentFavorites}
-          empty="Suas notas altas vao aparecer aqui."
+          empty="Suas notas altas vão aparecer aqui."
           onOpenItem={onOpenItem}
           metaFor={(item) => [categoryLabels[item.category], item.rating ? `${item.rating}/5` : ""].filter(Boolean).join(" / ")}
         />
@@ -171,7 +171,7 @@ export function HomeDashboard({
       <section className="section home-suggestions">
         <div className="section-heading">
           <Lightbulb size={20} />
-          <h2>Sugestoes da Gaveteira</h2>
+          <h2>Sugestões da Gaveteira</h2>
         </div>
         {suggestions.length ? (
           <div className="suggestion-grid">

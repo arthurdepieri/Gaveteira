@@ -29,8 +29,8 @@ export function SettingsView({
     <main className="page">
       <section className="list-header">
         <div>
-          <p className="eyebrow">Preferencias locais</p>
-          <h1>Configuracoes</h1>
+          <p className="eyebrow">Preferências locais</p>
+          <h1>Configurações</h1>
           <p>Status, backup JSON e chaves para buscas automaticas futuras.</p>
         </div>
       </section>
@@ -52,7 +52,7 @@ export function SettingsView({
 
         <div className="setting-panel">
           <h2>Chaves de APIs</h2>
-          <p>Quando as integracoes forem ativadas, estas chaves serao usadas apenas localmente no seu navegador.</p>
+          <p>Quando as integrações forem ativadas, estas chaves serão usadas apenas localmente no seu navegador.</p>
           <div className="api-key-grid">
             {Object.keys(data.settings.apiKeys).concat(["igdb", "steam", "rawg", "googleBooks", "spotify", "lastfm", "tmdb", "omdb"])
               .filter((key, index, keys) => keys.indexOf(key) === index)

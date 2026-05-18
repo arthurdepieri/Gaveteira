@@ -50,7 +50,7 @@ export interface GameItem extends SharedFields {
   releaseYear?: number;
   genre?: string;
   perceivedDifficulty?: string;
-  completionType?: "Zerou" | "Platinou" | "Terminou a historia" | "Nao terminou";
+  completionType?: "Zerou" | "Platinou" | "Terminou a história" | "Não terminou";
   abandonmentReason?: string;
   notes?: string;
 }
@@ -64,7 +64,7 @@ export interface BookItem extends SharedFields {
   endDate?: string;
   pages?: number;
   currentPage?: number;
-  format?: "Fisico" | "Kindle" | "Audiobook" | "PDF" | "Outro";
+  format?: "Físico" | "Kindle" | "Audiobook" | "PDF" | "Outro";
   rating?: Rating;
   genre?: string;
   publisher?: string;
