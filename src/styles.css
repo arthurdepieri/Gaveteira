@@ -1463,6 +1463,23 @@ button.danger {
   text-transform: uppercase;
 }
 
+.profile-showcase-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.profile-showcase-heading .eyebrow {
+  margin: 0;
+}
+
+.profile-showcase-heading .primary {
+  width: auto;
+  min-height: 36px;
+  padding: 8px 12px;
+}
+
 .profile-showcase-body h2 {
   margin: 2px 0 0;
   max-width: 100%;
@@ -1526,14 +1543,6 @@ button.danger {
 .profile-showcase-side strong {
   color: var(--wood-dark);
   font-size: 1.1rem;
-}
-
-.profile-showcase-side .primary {
-  justify-self: end;
-  width: auto;
-  min-height: 40px;
-  margin-top: 18px;
-  padding: 9px 14px;
 }
 
 .social-top-grid.social-profile-tab {

@@ -352,7 +352,13 @@ export function FamilyView({
               <span className="profile-stamp">Meu arquivo</span>
             </div>
             <div className="profile-showcase-body">
-              <p className="eyebrow">Ficha pessoal</p>
+              <div className="profile-showcase-heading">
+                <p className="eyebrow">Ficha pessoal</p>
+                <button className="primary" type="button" onClick={() => setProfileEditing(true)}>
+                  <Edit3 size={16} />
+                  Editar
+                </button>
+              </div>
               <h2>{session.profile?.displayName || session.user.email || "Meu perfil"}</h2>
               <p className="profile-handle">@{session.profile?.username || session.profile?.inviteCode || "gaveteira"}</p>
               <p className="profile-bio">{session.profile?.bio || "Adicione uma bio curta para deixar seu perfil com cara de arquivo pessoal."}</p>
@@ -366,10 +372,6 @@ export function FamilyView({
             <div className="profile-showcase-side">
               <span>Código</span>
               <strong>{session.profile?.inviteCode || "--"}</strong>
-              <button className="primary" type="button" onClick={() => setProfileEditing(true)}>
-                <Edit3 size={16} />
-                Editar
-              </button>
             </div>
           </div>
 
