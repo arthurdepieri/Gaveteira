@@ -1,4 +1,5 @@
-import { Plus, Search } from "lucide-react";
+import { BookOpen, Disc3, Film, Gamepad2, Library, ListChecks, Plus, Search, Sparkles, Tv } from "lucide-react";
+import type { ElementType } from "react";
 import { Category, CulturalItem } from "../types";
 import { categoryLabels } from "../data/catalog";
 import { getGenres, getPlayedHours, getRating, getTitle, getYear, isInProgress, isWishlist } from "../utils/itemHelpers";
@@ -16,6 +17,39 @@ export interface Filters {
 }
 
 const emptyFilters: Filters = { search: "", year: "", status: "", genre: "", minRating: "", sort: "recent" };
+
+const emptyStateByCategory: Record<Category, { title: string; text: string; action: string; icon: ElementType }> = {
+  games: {
+    title: "Sua gaveta de jogos ainda está vazia.",
+    text: "Comece pelo jogo que você está jogando agora, um favorito antigo ou algo que quer jogar no futuro.",
+    action: "Adicionar primeiro jogo",
+    icon: Gamepad2,
+  },
+  books: {
+    title: "Sua gaveta de livros está esperando a primeira ficha.",
+    text: "Guarde o livro atual, um clássico da sua lista ou aquele PDF que vive aberto em alguma aba.",
+    action: "Buscar livro",
+    icon: BookOpen,
+  },
+  albums: {
+    title: "Nenhum disco arquivado ainda.",
+    text: "Registre um disco que você ouviu inteiro, quer ouvir com calma ou vive voltando.",
+    action: "Adicionar primeiro disco",
+    icon: Disc3,
+  },
+  movies: {
+    title: "Sua gaveta de filmes ainda não tem poster.",
+    text: "Comece por um filme recente, um favorito ou algo que você quer assistir depois.",
+    action: "Adicionar primeiro filme",
+    icon: Film,
+  },
+  series: {
+    title: "Nenhuma série acompanhada ainda.",
+    text: "Crie uma ficha para controlar temporada, episódio e status de acompanhamento.",
+    action: "Adicionar primeira série",
+    icon: Tv,
+  },
+};
 
 export function CategoryView({
   view,
@@ -120,9 +154,89 @@ export function CategoryView({
       </section>
 
       <section className="card-grid">
-        {filtered.length ? filtered.map((item) => <ItemCard key={item.id} item={item} onOpen={() => onOpen(item)} />) : <p className="empty">Nenhuma ficha encontrou essa combinacao.</p>}
+        {filtered.length ? filtered.map((item) => <ItemCard key={item.id} item={item} onOpen={() => onOpen(item)} />) : (
+          <EmptyCollectionState
+            view={view}
+            hasBaseItems={baseItems.length > 0}
+            onAdd={onAdd}
+            onClearFilters={() => onFiltersChange(emptyFilters)}
+          />
+        )}
       </section>
     </main>
+  );
+}
+
+function EmptyCollectionState({
+  view,
+  hasBaseItems,
+  onAdd,
+  onClearFilters,
+}: {
+  view: Category | "wishlist" | "progress";
+  hasBaseItems: boolean;
+  onAdd: (category: Category) => void;
+  onClearFilters: () => void;
+}) {
+  if (hasBaseItems) {
+    return (
+      <article className="empty-state-card">
+        <span className="empty-state-icon"><Search size={22} /></span>
+        <div>
+          <h2>Nada apareceu com esses filtros.</h2>
+          <p>Limpe os filtros para voltar a ver as fichas desta gaveta.</p>
+        </div>
+        <button type="button" className="ghost" onClick={onClearFilters}>Limpar filtros</button>
+      </article>
+    );
+  }
+
+  if (view === "wishlist") {
+    return (
+      <article className="empty-state-card">
+        <span className="empty-state-icon"><Library size={22} /></span>
+        <div>
+          <h2>Sua wishlist ainda está vazia.</h2>
+          <p>Crie uma ficha em qualquer gaveta usando um status de desejo: quero jogar, quero ler, quero ouvir ou quero assistir.</p>
+        </div>
+        <div className="empty-state-actions">
+          <button type="button" className="primary" onClick={() => onAdd("games")}><Plus size={16} /> Criar wishlist</button>
+          <button type="button" className="ghost" onClick={() => onAdd("books")}>Buscar livro</button>
+        </div>
+      </article>
+    );
+  }
+
+  if (view === "progress") {
+    return (
+      <article className="empty-state-card">
+        <span className="empty-state-icon"><ListChecks size={22} /></span>
+        <div>
+          <h2>Nada em andamento agora.</h2>
+          <p>Abra uma ficha para registrar o que você está jogando, lendo, ouvindo, vendo ou acompanhando.</p>
+        </div>
+        <div className="empty-state-actions">
+          <button type="button" className="primary" onClick={() => onAdd("games")}><Plus size={16} /> Começar por jogo</button>
+          <button type="button" className="ghost" onClick={() => onAdd("series")}>Adicionar série</button>
+        </div>
+      </article>
+    );
+  }
+
+  const state = emptyStateByCategory[view];
+  const Icon = state.icon;
+  return (
+    <article className="empty-state-card">
+      <span className="empty-state-icon"><Icon size={22} /></span>
+      <div>
+        <h2>{state.title}</h2>
+        <p>{state.text}</p>
+      </div>
+      <button type="button" className="primary" onClick={() => onAdd(view)}>
+        <Sparkles size={16} />
+        {state.action}
+      </button>
+    </article>
   );
 }
 

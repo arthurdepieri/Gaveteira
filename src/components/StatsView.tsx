@@ -27,7 +27,7 @@ export function StatsView({ items }: { items: CulturalItem[] }) {
         <Stat label="Jogos zerados" value={stats.headline.gamesCompleted} />
         <Stat label="Jogos abandonados" value={stats.headline.gamesAbandoned} />
         <Stat label="Livros lidos" value={stats.headline.booksRead} />
-        <Stat label="Álbuns ouvidos" value={stats.headline.albumsHeard} />
+        <Stat label="Discos ouvidos" value={stats.headline.albumsHeard} />
         <Stat label="Filmes assistidos" value={stats.headline.moviesWatched} />
         <Stat label="Séries acompanhadas" value={stats.headline.seriesTracked} />
         <Stat label="Em andamento" value={stats.inProgress.length} />

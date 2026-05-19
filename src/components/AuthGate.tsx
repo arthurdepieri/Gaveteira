@@ -67,7 +67,7 @@ export function AuthGate({
               {mode === "signup" ? (
                 <label className="field">
                   <span>Nome público</span>
-                  <input value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder="Arthur" />
+                  <input value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder="Maria" />
                 </label>
               ) : null}
               <label className="field">

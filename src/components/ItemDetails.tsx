@@ -1,8 +1,8 @@
-import { Edit3, ExternalLink, X } from "lucide-react";
+import { BookOpenText, Edit3, ExternalLink, Lock, Megaphone, Plus, X } from "lucide-react";
 import { useState } from "react";
-import { CulturalItem } from "../types";
+import { CulturalItem, DiaryEntry } from "../types";
 import { categoryLabels } from "../data/catalog";
-import { getTitle, getYear } from "../utils/itemHelpers";
+import { getTitle, getYear, uid } from "../utils/itemHelpers";
 import { Cover } from "./Cover";
 import { Stars } from "./Rating";
 
@@ -10,17 +10,28 @@ export function ItemDetails({
   item,
   ownerName,
   onEdit,
+  onUpdateItem,
   onClose,
 }: {
   item: CulturalItem;
   ownerName?: string;
   onEdit?: () => void;
+  onUpdateItem?: (item: CulturalItem) => void;
   onClose: () => void;
 }) {
   const sections = detailSections(item);
   const year = getYear(item);
   const [activeMobileSection, setActiveMobileSection] = useState(sections[0]?.title ?? "Histórico");
+  const [diaryOpen, setDiaryOpen] = useState(false);
   const mobileSections = [...sections.map((section) => section.title), "Histórico", "Diário"];
+  const canEditDiary = Boolean(onUpdateItem);
+  const visibleDiary = ownerName && !canEditDiary
+    ? item.diary.filter((entry) => entry.visibility === "friends")
+    : item.diary;
+
+  function updateDiary(diary: DiaryEntry[]) {
+    onUpdateItem?.({ ...item, diary, updatedAt: new Date().toISOString() } as CulturalItem);
+  }
 
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
@@ -31,6 +42,12 @@ export function ItemDetails({
             <h2>{getTitle(item)}</h2>
           </div>
           <div className="modal-actions">
+            {canEditDiary ? (
+              <button type="button" className="ghost compact" onClick={() => setDiaryOpen((current) => !current)}>
+                <BookOpenText size={16} />
+                Diário
+              </button>
+            ) : null}
             {onEdit ? (
               <button type="button" className="ghost compact" onClick={onEdit}>
                 <Edit3 size={16} />
@@ -42,6 +59,8 @@ export function ItemDetails({
             </button>
           </div>
         </header>
+
+        {diaryOpen ? <DiaryFocusPanel entries={item.diary} onChange={updateDiary} onClose={() => setDiaryOpen(false)} /> : null}
 
         <section className="detail-hero">
           <Cover item={item} />
@@ -122,20 +141,95 @@ export function ItemDetails({
         </section>
 
         <section className={`archive-block detail-mobile-panel ${activeMobileSection === "Diário" ? "active" : ""}`}>
-          <h3>Diário</h3>
-          {item.diary.length ? (
+          <div className="archive-block-heading">
+            <h3>Diário</h3>
+            {canEditDiary ? (
+              <button type="button" className="ghost compact" onClick={() => setDiaryOpen(true)}>
+                <BookOpenText size={15} />
+                Escrever
+              </button>
+            ) : null}
+          </div>
+          {visibleDiary.length ? (
             <div className="diary-note-grid">
-              {item.diary.map((entry) => (
-                <article key={entry.id} className="diary-note-card">
+              {visibleDiary.map((entry) => (
+                <article key={entry.id} className={`diary-note-card diary-note-${entry.visibility === "friends" ? "friends" : "private"}`}>
                   <strong>{entry.date || "Sem data"}</strong>
+                  <span className="diary-visibility-badge">
+                    {entry.visibility === "friends" ? <Megaphone size={13} /> : <Lock size={13} />}
+                    {entry.visibility === "friends" ? "Público" : "Privado"}
+                  </span>
                   <p>{entry.text}</p>
                 </article>
               ))}
             </div>
-          ) : <p className="empty">Nenhuma entrada de diario ainda.</p>}
+          ) : <p className="empty">{ownerName ? "Nenhuma entrada pública de diário ainda." : "Nenhuma entrada de diário ainda."}</p>}
         </section>
       </article>
     </div>
+  );
+}
+
+function DiaryFocusPanel({
+  entries,
+  onChange,
+  onClose,
+}: {
+  entries: DiaryEntry[];
+  onChange: (entries: DiaryEntry[]) => void;
+  onClose: () => void;
+}) {
+  const update = (id: string, patch: Partial<DiaryEntry>) => {
+    onChange(entries.map((entry) => entry.id === id ? { ...entry, ...patch } : entry));
+  };
+
+  function addEntry() {
+    onChange([
+      {
+        id: uid("diary"),
+        date: new Date().toISOString().slice(0, 10),
+        text: "",
+        visibility: "private",
+      },
+      ...entries,
+    ]);
+  }
+
+  return (
+    <section className="diary-focus-panel">
+      <div className="section-heading split">
+        <div className="section-heading">
+          <BookOpenText size={20} />
+          <h3>Diário do item</h3>
+        </div>
+        <button type="button" className="ghost compact" onClick={onClose}>
+          Fechar
+        </button>
+      </div>
+      <p className="diary-focus-note">Entradas públicas aparecem no Feed. Entradas privadas ficam guardadas só nesta ficha.</p>
+      <div className="diary-focus-list">
+        {entries.map((entry) => (
+          <article key={entry.id} className="diary-focus-entry">
+            <div className="diary-focus-meta">
+              <input type="date" value={entry.date} onChange={(event) => update(entry.id, { date: event.target.value })} />
+              <select value={entry.visibility ?? "private"} onChange={(event) => update(entry.id, { visibility: event.target.value as DiaryEntry["visibility"] })}>
+                <option value="private">Privado</option>
+                <option value="friends">Público no feed</option>
+              </select>
+              <button type="button" className="icon-button" onClick={() => onChange(entries.filter((item) => item.id !== entry.id))} aria-label="Remover entrada">
+                <X size={16} />
+              </button>
+            </div>
+            <textarea value={entry.text} onChange={(event) => update(entry.id, { text: event.target.value })} placeholder="Escreva uma impressão, memória, reação ou anotação..." />
+          </article>
+        ))}
+        {!entries.length ? <p className="empty">Comece uma entrada para registrar esse momento.</p> : null}
+      </div>
+      <button type="button" className="primary" onClick={addEntry}>
+        <Plus size={16} />
+        Nova entrada
+      </button>
+    </section>
   );
 }
 

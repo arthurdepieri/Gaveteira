@@ -15,6 +15,7 @@ export interface DiaryEntry {
   id: string;
   date: string;
   text: string;
+  visibility?: "private" | "friends";
 }
 
 export interface ExternalLink {

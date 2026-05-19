@@ -44,6 +44,7 @@ Deno.serve(async (request) => {
 
 async function search(category: Category, query: string): Promise<MetadataResult[]> {
   if (category === "games") return searchGames(query);
+  if (category === "books") return searchBooks(query);
   if (category === "albums") return searchAlbums(query);
   if (category === "movies") return searchMovies(query);
   if (category === "series") return searchSeries(query);
@@ -119,43 +120,106 @@ async function searchGames(query: string) {
   return results;
 }
 
+async function searchBooks(query: string) {
+  const variants = queryVariants(query);
+  const results = await Promise.all(variants.flatMap((variant) => [
+    searchGoogleBooks(variant),
+    searchGoogleBooks(`intitle:"${variant}"`),
+    searchOpenLibraryBooks(variant, "q"),
+    searchOpenLibraryBooks(variant, "title"),
+  ]));
+
+  return results.flat();
+}
+
+async function searchGoogleBooks(googleQuery: string): Promise<MetadataResult[]> {
+  const url = new URL("https://www.googleapis.com/books/v1/volumes");
+  url.searchParams.set("q", googleQuery);
+  url.searchParams.set("maxResults", "10");
+  url.searchParams.set("printType", "books");
+  url.searchParams.set("projection", "full");
+
+  const google = await fetchJson(url).catch(() => ({}));
+  return arrayOfRecords(recordValue(google).items).map((entry) => {
+    const info = recordValue(entry.volumeInfo);
+    const title = stringValue(info.title);
+    const authors = arrayOfStrings(info.authors).join(", ");
+    const categories = arrayOfStrings(info.categories).join(", ");
+    const publishedDate = stringValue(info.publishedDate);
+    const imageLinks = recordValue(info.imageLinks);
+    const isbn = bestIsbn(info.industryIdentifiers);
+    const volumeId = stringValue(entry.id);
+    const coverUrl = bestGoogleBookCover(imageLinks, volumeId) || openLibraryCoverByIsbn(isbn);
+    const previewLink = stringValue(info.previewLink);
+    const infoLink = stringValue(info.infoLink);
+
+    return {
+      id: `google-${volumeId || title}-${googleQuery}`,
+      provider: "Google Books",
+      title,
+      subtitle: [authors, publishedDate?.slice(0, 4)].filter(Boolean).join(" / "),
+      year: yearFromDate(publishedDate),
+      coverUrl,
+      patch: cleanPatch({
+        category: "books",
+        title,
+        author: authors,
+        genre: categories,
+        publisher: stringValue(info.publisher),
+        publicationYear: yearFromDate(publishedDate),
+        pages: numberValue(info.pageCount),
+        coverUrl,
+      }),
+      links: (previewLink || infoLink) ? [link("Google Books", previewLink || infoLink)] : [],
+    };
+  });
+}
+
+async function searchOpenLibraryBooks(query: string, mode: "q" | "title"): Promise<MetadataResult[]> {
+  const openLibraryUrl = new URL("https://openlibrary.org/search.json");
+  openLibraryUrl.searchParams.set(mode, query);
+  openLibraryUrl.searchParams.set("limit", "10");
+
+  const openLibrary = await fetchJson(openLibraryUrl).catch(() => ({}));
+  return arrayOfRecords(recordValue(openLibrary).docs).map((book) => {
+    const title = stringValue(book.title);
+    const author = arrayOfStrings(book.author_name).join(", ");
+    const coverId = stringValue(book.cover_i);
+    const coverEdition = stringValue(book.cover_edition_key);
+    const isbn = arrayOfStrings(book.isbn)[0];
+    const coverUrl = openLibraryCoverById(coverId) || openLibraryCoverByOlid(coverEdition) || openLibraryCoverByIsbn(isbn);
+    const key = stringValue(book.key);
+
+    return {
+      id: `openlibrary-${key || title}-${mode}`,
+      provider: "Open Library",
+      title,
+      subtitle: [author, stringValue(book.first_publish_year)].filter(Boolean).join(" / "),
+      year: numberValue(book.first_publish_year),
+      coverUrl,
+      patch: cleanPatch({
+        category: "books",
+        title,
+        author,
+        publicationYear: numberValue(book.first_publish_year),
+        coverUrl,
+      }),
+      links: key ? [link("Open Library", `https://openlibrary.org${key}`)] : [],
+    };
+  });
+}
+
 async function searchMovies(query: string) {
   const results: MetadataResult[] = [];
   const tmdbKey = Deno.env.get("TMDB_API_KEY");
   const omdbKey = Deno.env.get("OMDB_API_KEY");
 
   if (tmdbKey) {
-    const tmdbUrl = new URL("https://api.themoviedb.org/3/search/movie");
-    tmdbUrl.searchParams.set("api_key", tmdbKey);
-    tmdbUrl.searchParams.set("query", query);
-    tmdbUrl.searchParams.set("language", "pt-BR");
-    tmdbUrl.searchParams.set("include_adult", "false");
-
-    const tmdb = await fetchJson(tmdbUrl).catch(() => ({}));
-    results.push(...arrayOfRecords(tmdb.results).slice(0, 8).map((movie) => {
-      const title = stringValue(movie.title);
-      const releaseDate = stringValue(movie.release_date);
-      const posterPath = stringValue(movie.poster_path);
-      const id = stringValue(movie.id);
-      const coverUrl = posterPath ? `https://image.tmdb.org/t/p/w500${posterPath}` : "";
-
-      return {
-        id: `tmdb-movie-${id || title}`,
-        provider: "TMDB",
-        title,
-        subtitle: [releaseDate?.slice(0, 4), stringValue(movie.original_title)].filter(Boolean).join(" / "),
-        year: yearFromDate(releaseDate),
-        coverUrl,
-        patch: cleanPatch({
-          category: "movies",
-          title,
-          year: yearFromDate(releaseDate),
-          coverUrl,
-          comments: stringValue(movie.overview),
-        }),
-        links: id ? [link("TMDB", `https://www.themoviedb.org/movie/${id}`)] : [],
-      };
-    }));
+    const tmdbResults = await Promise.all(queryVariants(query).flatMap((variant) => [
+      searchTmdbMovies(variant, tmdbKey, "pt-BR"),
+      searchTmdbMovies(variant, tmdbKey, "en-US"),
+    ]));
+    results.push(...tmdbResults.flat());
   }
 
   if (omdbKey) {
@@ -190,6 +254,41 @@ async function searchMovies(query: string) {
   }
 
   return results;
+}
+
+async function searchTmdbMovies(query: string, apiKey: string, language: "pt-BR" | "en-US"): Promise<MetadataResult[]> {
+  const tmdbUrl = new URL("https://api.themoviedb.org/3/search/movie");
+  tmdbUrl.searchParams.set("api_key", apiKey);
+  tmdbUrl.searchParams.set("query", query);
+  tmdbUrl.searchParams.set("language", language);
+  tmdbUrl.searchParams.set("include_adult", "false");
+
+  const tmdb = await fetchJson(tmdbUrl).catch(() => ({}));
+  return arrayOfRecords(recordValue(tmdb).results).slice(0, 8).map((movie) => {
+    const title = stringValue(movie.title);
+    const releaseDate = stringValue(movie.release_date);
+    const posterPath = stringValue(movie.poster_path);
+    const backdropPath = stringValue(movie.backdrop_path);
+    const id = stringValue(movie.id);
+    const coverUrl = tmdbImageUrl(posterPath, "w500") || tmdbImageUrl(backdropPath, "w780");
+
+    return {
+      id: `tmdb-movie-${id || title}-${language}`,
+      provider: "TMDB",
+      title,
+      subtitle: [releaseDate?.slice(0, 4), stringValue(movie.original_title), language === "en-US" ? "resultado em ingles" : undefined].filter(Boolean).join(" / "),
+      year: yearFromDate(releaseDate),
+      coverUrl,
+      patch: cleanPatch({
+        category: "movies",
+        title,
+        year: yearFromDate(releaseDate),
+        coverUrl,
+        comments: stringValue(movie.overview),
+      }),
+      links: id ? [link("TMDB", `https://www.themoviedb.org/movie/${id}`)] : [],
+    };
+  });
 }
 
 async function searchAlbums(query: string) {
@@ -292,6 +391,10 @@ function arrayOfRecords(value: unknown): Record<string, unknown>[] {
   return Array.isArray(value) ? value.map(recordValue).filter((entry) => Object.keys(entry).length) : [];
 }
 
+function arrayOfStrings(value: unknown): string[] {
+  return Array.isArray(value) ? value.map(stringValue).filter(Boolean) : [];
+}
+
 function stringValue(value: unknown): string {
   if (value === null || value === undefined) return "";
   return String(value);
@@ -312,6 +415,56 @@ function normalizePosterUrl(url: string) {
   return url.replace("http://", "https://");
 }
 
+function normalizeCoverUrl(url: string) {
+  if (!url) return "";
+  return url.replace("http://", "https://").replace("&edge=curl", "");
+}
+
+function bestGoogleBookCover(imageLinks: Record<string, unknown>, volumeId = "") {
+  const cover =
+    stringValue(imageLinks.extraLarge) ||
+    stringValue(imageLinks.large) ||
+    stringValue(imageLinks.medium) ||
+    stringValue(imageLinks.small) ||
+    stringValue(imageLinks.thumbnail) ||
+    stringValue(imageLinks.smallThumbnail);
+
+  return upgradeGoogleBookCover(cover) || googleBookCoverByVolumeId(volumeId);
+}
+
+function bestIsbn(value: unknown) {
+  const identifiers = arrayOfRecords(value);
+  const isbn13 = identifiers.find((identifier) => stringValue(identifier.type) === "ISBN_13");
+  const isbn10 = identifiers.find((identifier) => stringValue(identifier.type) === "ISBN_10");
+  return stringValue((isbn13 ?? isbn10 ?? identifiers[0])?.identifier);
+}
+
+function openLibraryCoverByIsbn(isbn: string) {
+  return isbn ? `https://covers.openlibrary.org/b/isbn/${encodeURIComponent(isbn)}-L.jpg?default=false` : "";
+}
+
+function openLibraryCoverById(id: string) {
+  return id ? `https://covers.openlibrary.org/b/id/${encodeURIComponent(id)}-L.jpg?default=false` : "";
+}
+
+function openLibraryCoverByOlid(id: string) {
+  return id ? `https://covers.openlibrary.org/b/olid/${encodeURIComponent(id)}-L.jpg?default=false` : "";
+}
+
+function googleBookCoverByVolumeId(id: string) {
+  return id ? `https://books.google.com/books/publisher/content/images/frontcover/${encodeURIComponent(id)}?fife=w800-h1200&source=gbs_api` : "";
+}
+
+function upgradeGoogleBookCover(url: string) {
+  return normalizeCoverUrl(url)
+    .replace("zoom=1", "zoom=3")
+    .replace("zoom=2", "zoom=3");
+}
+
+function tmdbImageUrl(path: string, size: "w500" | "w780") {
+  return path ? `https://image.tmdb.org/t/p/${size}${path}` : "";
+}
+
 function link(label: string, url: string) {
   return { id: crypto.randomUUID(), label, url };
 }
@@ -322,7 +475,7 @@ function cleanPatch(patch: Record<string, unknown>) {
 
 function rankedResults(query: string, results: MetadataResult[], limit = 8) {
   const seen = new Set<string>();
-  const unique = results.filter((result) => {
+  const unique = hydrateMissingCovers(results).filter((result) => {
     const key = `${result.provider}:${result.title}:${result.year ?? ""}`.toLowerCase();
     if (seen.has(key) || !result.title) return false;
     seen.add(key);
@@ -332,6 +485,31 @@ function rankedResults(query: string, results: MetadataResult[], limit = 8) {
   return unique
     .sort((a, b) => titleRank(query, a.title) - titleRank(query, b.title) || Number(Boolean(b.coverUrl)) - Number(Boolean(a.coverUrl)))
     .slice(0, limit);
+}
+
+function hydrateMissingCovers(results: MetadataResult[]) {
+  return results.map((result) => {
+    if (result.coverUrl) return result;
+    const sibling = results.find((candidate) => candidate.coverUrl && sameWork(result, candidate));
+    if (!sibling?.coverUrl) return result;
+
+    return {
+      ...result,
+      coverUrl: sibling.coverUrl,
+      patch: cleanPatch({
+        ...result.patch,
+        coverUrl: sibling.coverUrl,
+      }),
+    };
+  });
+}
+
+function sameWork(left: MetadataResult, right: MetadataResult) {
+  if (left === right) return false;
+  const sameTitle = titleRank(left.title, right.title) <= 1 || titleRank(right.title, left.title) <= 1;
+  if (!sameTitle) return false;
+  if (left.year && right.year) return left.year === right.year;
+  return true;
 }
 
 function titleRank(query: string, title: string) {
@@ -353,4 +531,17 @@ function normalizeTitle(value: string) {
     .replace(/[^a-z0-9]+/g, " ")
     .trim()
     .replace(/\s+/g, " ");
+}
+
+function queryVariants(query: string) {
+  const variants = [
+    query,
+    query.replace(/\([^)]*\)/g, " "),
+    query.replace(/\[[^\]]*\]/g, " "),
+    query.replace(/\b(edi[cç][aã]o|edition|volume|vol\.?|livro|book)\b.*$/i, " "),
+  ]
+    .map((value) => value.trim().replace(/\s+/g, " "))
+    .filter((value) => value.length >= 2);
+
+  return [...new Set(variants)].slice(0, 3);
 }

@@ -82,6 +82,41 @@ export function isCategory(value: string): value is Category {
   return ["games", "books", "albums", "movies", "series"].includes(value);
 }
 
+export function isEmptyCulturalItem(item: CulturalItem) {
+  const hasSharedInfo =
+    Boolean(item.coverUrl?.trim()) ||
+    item.tags.some((tag) => tag.trim()) ||
+    item.links.some((link) => link.label.trim() || link.url.trim()) ||
+    item.timeline.some((event) => event.date.trim() || event.note?.trim()) ||
+    item.diary.some((entry) => entry.text.trim()) ||
+    Boolean(item.rating);
+
+  if (hasSharedInfo) return false;
+
+  const ignoredKeys = new Set([
+    "id",
+    "category",
+    "status",
+    "visibility",
+    "tags",
+    "coverUrl",
+    "links",
+    "timeline",
+    "diary",
+    "createdAt",
+    "updatedAt",
+    "rating",
+  ]);
+
+  return !Object.entries(item).some(([key, value]) => {
+    if (ignoredKeys.has(key)) return false;
+    if (typeof value === "string") return value.trim().length > 0;
+    if (typeof value === "number") return Number.isFinite(value);
+    if (typeof value === "boolean") return true;
+    return value != null;
+  });
+}
+
 function sameLabel(left: string, right: string) {
   return normalizeLabel(left) === normalizeLabel(right);
 }

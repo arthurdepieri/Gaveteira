@@ -3,7 +3,7 @@ import { Category } from "../types";
 export const categoryLabels: Record<Category, string> = {
   games: "Jogos",
   books: "Livros",
-  albums: "Álbuns",
+  albums: "Discos",
   movies: "Filmes",
   series: "Séries",
 };
@@ -11,7 +11,7 @@ export const categoryLabels: Record<Category, string> = {
 export const categorySingular: Record<Category, string> = {
   games: "jogo",
   books: "livro",
-  albums: "álbum",
+  albums: "disco",
   movies: "filme",
   series: "série",
 };

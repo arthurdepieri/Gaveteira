@@ -70,7 +70,11 @@ export function SocialFeedView({
     return Object.values(byOwner);
   }, [acceptedFriends, session, socialItems]);
 
-  const socialFeed = useMemo(() => buildSocialFeed(socialItems, session?.user.id ?? ""), [session?.user.id, socialItems]);
+  const socialFeed = useMemo(() => {
+    const viewerId = session?.user.id ?? "";
+    return [...buildSocialFeed(socialItems, viewerId), ...buildDiaryFeed(socialItems, viewerId)]
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  }, [session?.user.id, socialItems]);
   const friendFeed = socialFeed.filter((event) => event.entry.ownerId !== session?.user.id);
   const myFeed = socialFeed.filter((event) => event.entry.ownerId === session?.user.id);
   const visibleFeed = (feedScope === "friends" ? friendFeed : myFeed).slice(0, 12);
@@ -175,7 +179,7 @@ export function SocialFeedView({
           {visibleFeed.length ? visibleFeed.map((event) => (
             <article key={event.id} className="social-feed-event">
               <div className={`feed-event-icon feed-event-${event.kind}`}>
-                {event.kind === "finished" ? <ShieldCheck size={16} /> : event.kind === "favorite" ? <Heart size={16} /> : event.kind === "opinion" ? <MessageSquare size={16} /> : event.kind === "abandoned" ? <X size={16} /> : <Sparkles size={16} />}
+                {event.kind === "finished" ? <ShieldCheck size={16} /> : event.kind === "favorite" ? <Heart size={16} /> : event.kind === "opinion" || event.kind === "diary" ? <MessageSquare size={16} /> : event.kind === "abandoned" ? <X size={16} /> : <Sparkles size={16} />}
               </div>
               <div>
                 <button type="button" className="feed-open-button" onClick={() => setActiveEntry(event.entry)}>
@@ -233,7 +237,7 @@ function InsightList({ title, icon, items }: { title: string; icon: ReactNode; i
   );
 }
 
-type FeedKind = "added" | "finished" | "abandoned" | "favorite" | "opinion" | "wishlist";
+type FeedKind = "added" | "finished" | "abandoned" | "favorite" | "opinion" | "wishlist" | "diary";
 
 interface FeedEvent {
   id: string;
@@ -278,6 +282,26 @@ function buildSocialFeed(entries: FamilyItem[], viewerId: string): FeedEvent[] {
 
       return { id: `feed-${entry.ownerId}-${entry.id}-added`, kind: "added" as FeedKind, entry, text: `${actor} adicionou ${title}.`, detail: detailParts.join(" / "), updatedAt: entry.updatedAt };
     });
+}
+
+function buildDiaryFeed(entries: FamilyItem[], viewerId: string): FeedEvent[] {
+  return entries.flatMap((entry) => {
+    if (entry.item.visibility === "private") return [];
+
+    const actor = entry.ownerId === viewerId ? "Você" : entry.ownerName;
+    const title = getTitle(entry.item) || "uma ficha";
+
+    return entry.item.diary
+      .filter((diary) => diary.visibility === "friends" && diary.text.trim())
+      .map((diary) => ({
+        id: `feed-${entry.ownerId}-${entry.id}-diary-${diary.id}`,
+        kind: "diary" as FeedKind,
+        entry,
+        text: `${actor} escreveu no diário de ${title}.`,
+        detail: diary.text.length > 110 ? `${diary.text.slice(0, 110)}...` : diary.text,
+        updatedAt: diary.date || entry.updatedAt,
+      }));
+  });
 }
 
 function buildSocialComparisons(groups: OwnerGroup[], viewerId: string) {

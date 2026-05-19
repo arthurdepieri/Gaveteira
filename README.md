@@ -73,7 +73,7 @@ Provedores usados nesta versao:
 
 - Jogos: RAWG com chave configurada, Steam quando disponivel e Wikidata como fallback.
 - Livros: Google Books e Open Library.
-- Albuns: MusicBrainz e Cover Art Archive.
+- Discos: MusicBrainz e Cover Art Archive.
 - Filmes: TMDB com chave configurada, iTunes quando disponivel e Wikidata como fallback.
 - Series: TMDB com chave configurada e TVMaze como fallback.
 

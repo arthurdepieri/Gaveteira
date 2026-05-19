@@ -27,6 +27,7 @@ export function FamilyView({
   onAuthenticated,
   onUpdateSettings,
   socialTab,
+  onSocialTabChange,
 }: {
   settings: AppSettings;
   session: CloudSession | null;
@@ -36,6 +37,7 @@ export function FamilyView({
   onAuthenticated: (session: CloudSession) => void;
   onUpdateSettings: (settings: AppSettings) => void;
   socialTab: "profile" | "friends";
+  onSocialTabChange: (tab: "profile" | "friends") => void;
 }) {
   const [socialItems, setSocialItems] = useState<FamilyItem[]>([]);
   const [friendships, setFriendships] = useState<Friendship[]>([]);
@@ -328,6 +330,17 @@ export function FamilyView({
         </div>
         {socialTab === "profile" ? <UserCheck size={38} /> : <Users size={38} />}
       </section>
+
+      <nav className="social-mobile-switch" aria-label="Alternar área social">
+        <button type="button" className={socialTab === "profile" ? "active" : ""} onClick={() => onSocialTabChange("profile")}>
+          <UserCheck size={17} />
+          Meu perfil
+        </button>
+        <button type="button" className={socialTab === "friends" ? "active" : ""} onClick={() => onSocialTabChange("friends")}>
+          <Users size={17} />
+          Amigos
+        </button>
+      </nav>
 
       <section className="setting-panel cloud-toolbar">
         <div>
@@ -678,7 +691,13 @@ export function FamilyView({
           </>
         ) : <p className="empty">{socialTab === "profile" ? "Seu perfil aparece aqui assim que a conta carregar." : "Adicione amigos para visitar outras gaveteiras."}</p>}
       </section>
-      {activeEntry ? <ItemDetails item={activeEntry.item} ownerName={activeEntry.ownerName} onClose={() => setActiveEntry(null)} /> : null}
+      {activeEntry ? (
+        <ItemDetails
+          item={activeEntry.item}
+          ownerName={activeEntry.ownerName}
+          onClose={() => setActiveEntry(null)}
+        />
+      ) : null}
     </main>
   );
 }

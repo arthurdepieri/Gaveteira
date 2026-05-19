@@ -187,14 +187,15 @@ function steamHeaderImage(appId: string) {
 }
 
 async function searchBooks(query: string): Promise<MetadataResult[]> {
-  const [googleResults, googleTitleResults, openLibraryResults, openLibraryTitleResults] = await Promise.all([
-    searchGoogleBooks(query),
-    searchGoogleBooks(`intitle:"${query}"`),
-    searchOpenLibraryBooks(query, "q"),
-    searchOpenLibraryBooks(query, "title"),
-  ]);
+  const variants = queryVariants(query);
+  const results = await Promise.all(variants.flatMap((variant) => [
+    searchGoogleBooks(variant),
+    searchGoogleBooks(`intitle:"${variant}"`),
+    searchOpenLibraryBooks(variant, "q"),
+    searchOpenLibraryBooks(variant, "title"),
+  ]));
 
-  return rankedResults(query, [...googleResults, ...googleTitleResults, ...openLibraryResults, ...openLibraryTitleResults], 12);
+  return rankedResults(query, results.flat(), 12);
 }
 
 async function searchGoogleBooks(googleQuery: string): Promise<MetadataResult[]> {
@@ -213,12 +214,13 @@ async function searchGoogleBooks(googleQuery: string): Promise<MetadataResult[]>
       const publishedDate = stringValue(info.publishedDate);
       const imageLinks = recordValue(info.imageLinks);
       const isbn = bestIsbn(info.industryIdentifiers);
-      const coverUrl = bestGoogleBookCover(imageLinks) || openLibraryCoverByIsbn(isbn);
+      const volumeId = stringValue(entry.id);
+      const coverUrl = bestGoogleBookCover(imageLinks, volumeId) || openLibraryCoverByIsbn(isbn);
       const previewLink = stringValue(info.previewLink);
       const infoLink = stringValue(info.infoLink);
 
       return {
-        id: `google-${stringValue(entry.id) || title}-${googleQuery}`,
+        id: `google-${volumeId || title}-${googleQuery}`,
         provider: "Google Books",
         title,
         subtitle: [authors, publishedDate?.slice(0, 4)].filter(Boolean).join(" / "),
@@ -402,40 +404,12 @@ async function searchMovies(query: string, settings: AppSettings): Promise<Metad
   const allResults: MetadataResult[] = [];
 
   if (settings.apiKeys.tmdb) {
-    const tmdbUrl = new URL("https://api.themoviedb.org/3/search/movie");
-    tmdbUrl.searchParams.set("api_key", settings.apiKeys.tmdb);
-    tmdbUrl.searchParams.set("query", query);
-    tmdbUrl.searchParams.set("language", "pt-BR");
-    tmdbUrl.searchParams.set("include_adult", "false");
+    const tmdbResults = await Promise.all(queryVariants(query).flatMap((variant) => [
+      searchTmdbMovies(variant, settings.apiKeys.tmdb!, "pt-BR"),
+      searchTmdbMovies(variant, settings.apiKeys.tmdb!, "en-US"),
+    ]));
 
-    const tmdbResults = await fetchJson(tmdbUrl)
-      .then((json) => arrayOfRecords(json.results).slice(0, 6).map((movie) => {
-        const title = stringValue(movie.title);
-        const releaseDate = stringValue(movie.release_date);
-        const posterPath = stringValue(movie.poster_path);
-        const id = stringValue(movie.id);
-        const coverUrl = posterPath ? `https://image.tmdb.org/t/p/w500${posterPath}` : "";
-
-        return {
-          id: `tmdb-movie-${id || title}`,
-          provider: "TMDB",
-          title,
-          subtitle: [releaseDate?.slice(0, 4), stringValue(movie.original_title)].filter(Boolean).join(" / "),
-          year: yearFromDate(releaseDate),
-          coverUrl,
-          patch: cleanPatch({
-            category: "movies",
-            title,
-            year: yearFromDate(releaseDate),
-            coverUrl,
-            comments: stringValue(movie.overview),
-          }),
-          links: id ? [link("TMDB", `https://www.themoviedb.org/movie/${id}`)] : [],
-        } satisfies MetadataResult;
-      }))
-      .catch(() => []);
-
-    allResults.push(...tmdbResults);
+    allResults.push(...tmdbResults.flat());
   }
 
   if (settings.apiKeys.omdb) {
@@ -487,6 +461,42 @@ async function searchMovies(query: string, settings: AppSettings): Promise<Metad
   allResults.push(...wikidataResults);
 
   return rankedResults(query, allResults);
+}
+
+async function searchTmdbMovies(query: string, apiKey: string, language: "pt-BR" | "en-US"): Promise<MetadataResult[]> {
+  const tmdbUrl = new URL("https://api.themoviedb.org/3/search/movie");
+  tmdbUrl.searchParams.set("api_key", apiKey);
+  tmdbUrl.searchParams.set("query", query);
+  tmdbUrl.searchParams.set("language", language);
+  tmdbUrl.searchParams.set("include_adult", "false");
+
+  return fetchJson(tmdbUrl)
+    .then((json) => arrayOfRecords(json.results).slice(0, 6).map((movie) => {
+      const title = stringValue(movie.title);
+      const releaseDate = stringValue(movie.release_date);
+      const posterPath = stringValue(movie.poster_path);
+      const backdropPath = stringValue(movie.backdrop_path);
+      const id = stringValue(movie.id);
+      const coverUrl = tmdbImageUrl(posterPath, "w500") || tmdbImageUrl(backdropPath, "w780");
+
+      return {
+        id: `tmdb-movie-${id || title}-${language}`,
+        provider: "TMDB",
+        title,
+        subtitle: [releaseDate?.slice(0, 4), stringValue(movie.original_title), language === "en-US" ? "resultado em inglês" : undefined].filter(Boolean).join(" / "),
+        year: yearFromDate(releaseDate),
+        coverUrl,
+        patch: cleanPatch({
+          category: "movies",
+          title,
+          year: yearFromDate(releaseDate),
+          coverUrl,
+          comments: stringValue(movie.overview),
+        }),
+        links: id ? [link("TMDB", `https://www.themoviedb.org/movie/${id}`)] : [],
+      } satisfies MetadataResult;
+    }))
+    .catch(() => []);
 }
 
 async function searchOmdbMovies(query: string, apiKey: string): Promise<MetadataResult[]> {
@@ -670,7 +680,7 @@ function minutesFromMillis(value?: number) {
   return value ? Math.round(value / 60000) : undefined;
 }
 
-function bestGoogleBookCover(imageLinks: JsonRecord) {
+function bestGoogleBookCover(imageLinks: JsonRecord, volumeId = "") {
   const cover =
     stringValue(imageLinks.extraLarge) ||
     stringValue(imageLinks.large) ||
@@ -679,7 +689,7 @@ function bestGoogleBookCover(imageLinks: JsonRecord) {
     stringValue(imageLinks.thumbnail) ||
     stringValue(imageLinks.smallThumbnail);
 
-  return normalizeCoverUrl(cover);
+  return upgradeGoogleBookCover(cover) || googleBookCoverByVolumeId(volumeId);
 }
 
 function bestIsbn(value: unknown) {
@@ -709,6 +719,20 @@ function normalizeCoverUrl(url: string) {
 function normalizePosterUrl(url: string) {
   if (!url || url === "N/A") return "";
   return normalizeCoverUrl(url);
+}
+
+function tmdbImageUrl(path: string, size: "w500" | "w780") {
+  return path ? `https://image.tmdb.org/t/p/${size}${path}` : "";
+}
+
+function googleBookCoverByVolumeId(id: string) {
+  return id ? `https://books.google.com/books/publisher/content/images/frontcover/${encodeURIComponent(id)}?fife=w800-h1200&source=gbs_api` : "";
+}
+
+function upgradeGoogleBookCover(url: string) {
+  return normalizeCoverUrl(url)
+    .replace("zoom=1", "zoom=3")
+    .replace("zoom=2", "zoom=3");
 }
 
 function upscaleAppleArtwork(url: string) {
@@ -882,7 +906,7 @@ function uniqueResults(results: MetadataResult[], limit = 8) {
 }
 
 function rankedResults(query: string, results: MetadataResult[], limit = 8) {
-  const unique = uniqueResults(results, 50);
+  const unique = uniqueResults(hydrateMissingCovers(results), 50);
   const buckets = new Map<number, MetadataResult[]>();
 
   unique.forEach((result) => {
@@ -897,6 +921,32 @@ function rankedResults(query: string, results: MetadataResult[], limit = 8) {
   });
 
   return ranked.slice(0, limit);
+}
+
+function hydrateMissingCovers(results: MetadataResult[]) {
+  return results.map((result) => {
+    if (result.coverUrl) return result;
+
+    const sibling = results.find((candidate) => candidate.coverUrl && sameWork(result, candidate));
+    if (!sibling?.coverUrl) return result;
+
+    return {
+      ...result,
+      coverUrl: sibling.coverUrl,
+      patch: cleanPatch({
+        ...result.patch,
+        coverUrl: sibling.coverUrl,
+      }),
+    };
+  });
+}
+
+function sameWork(left: MetadataResult, right: MetadataResult) {
+  if (left === right) return false;
+  const sameTitle = titleRank(left.title, right.title) <= 1 || titleRank(right.title, left.title) <= 1;
+  if (!sameTitle) return false;
+  if (left.year && right.year) return left.year === right.year;
+  return true;
 }
 
 function roundRobinProviders(results: MetadataResult[]) {
@@ -965,6 +1015,19 @@ function stripEdition(value: string) {
     .replace(/\b(remaster(ed)?|definitive|deluxe|ultimate|complete|goty|game of the year|edition|versao|version)\b/g, "")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function queryVariants(query: string) {
+  const variants = [
+    query,
+    query.replace(/\([^)]*\)/g, " "),
+    query.replace(/\[[^\]]*\]/g, " "),
+    query.replace(/\b(edi[cç][aã]o|edition|volume|vol\.?|livro|book)\b.*$/i, " "),
+  ]
+    .map((value) => value.trim().replace(/\s+/g, " "))
+    .filter((value) => value.length >= 2);
+
+  return [...new Set(variants)].slice(0, 3);
 }
 
 function providerPriority(provider: string) {

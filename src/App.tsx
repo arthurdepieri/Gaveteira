@@ -15,6 +15,7 @@ import { SocialFeedView } from "./components/SocialFeedView";
 import { deleteMyItem, fetchMyItems, isSessionExpiredError, loadCloudSession, saveCloudSession, syncMyItems } from "./services/supabaseCloud";
 import { withSharedCloudSettings } from "./config/sharedCloud";
 import { withoutLegacyDemoItems } from "./utils/legacyDemoItems";
+import { isEmptyCulturalItem } from "./utils/itemHelpers";
 
 const PENDING_DELETES_KEY = "gaveteira-pending-deletes:v1";
 const INSTALL_DISMISSED_KEY = "gaveteira-install-dismissed:v1";
@@ -27,6 +28,9 @@ interface SyncStatus {
   kind: SyncKind;
   message: string;
   detail?: string;
+  savedAt?: string;
+  pendingItems?: number;
+  pendingDeletes?: number;
 }
 
 interface BeforeInstallPromptEvent extends Event {
@@ -49,7 +53,7 @@ const secondaryNavItems = navItems.filter((item) => item.key !== "home" && item.
 const drawerItems: Array<{ key: Category; label: string; icon: ElementType }> = [
   { key: "games", label: "Jogos", icon: Gamepad2 },
   { key: "books", label: "Livros", icon: BookOpen },
-  { key: "albums", label: "Álbuns", icon: Disc3 },
+  { key: "albums", label: "Discos", icon: Disc3 },
   { key: "movies", label: "Filmes", icon: Film },
   { key: "series", label: "Séries", icon: Tv },
 ];
@@ -77,6 +81,7 @@ function App() {
   const syncInFlightRef = useRef(false);
   const syncQueuedRef = useRef(false);
   const lastSyncedKeyRef = useRef("");
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
   const pendingDeletesRef = useRef(pendingDeletes);
   const effectiveSettings = useMemo(() => withSharedCloudSettings(data.settings), [data.settings]);
   const cloudScopeKey = useMemo(() => JSON.stringify({
@@ -167,7 +172,9 @@ function App() {
           kind: "synced",
           message: safeCloudItems.length ? "Conta carregada." : "Conta pronta.",
           detail: safeCloudItems.length ? "Itens da nuvem foram mesclados neste navegador." : "As próximas alterações serão sincronizadas automaticamente.",
+          savedAt: new Date().toISOString(),
         });
+        setLastSyncedAt(new Date().toISOString());
         setBootstrappedCloudScope(cloudScopeKey);
       })
       .catch((error) => {
@@ -198,6 +205,9 @@ function App() {
         kind: isOnline ? "pending" : "offline",
         message: isOnline ? "Alterações aguardando sincronização." : "Sem conexão.",
         detail: isOnline ? "Vou enviar automaticamente em alguns instantes." : "Elas ficam salvas aqui e serão reenviadas quando a internet voltar.",
+        savedAt: lastSyncedAt ?? undefined,
+        pendingItems: data.items.length,
+        pendingDeletes: pendingDeletes.length,
       });
     }
 
@@ -221,6 +231,9 @@ function App() {
           kind: "offline",
           message: "Sem conexão.",
           detail: "Suas alterações continuam salvas neste navegador e serão reenviadas quando a conexão voltar.",
+          savedAt: lastSyncedAt ?? undefined,
+          pendingItems: data.items.length,
+          pendingDeletes: pendingDeletesRef.current.length,
         });
       }
     }
@@ -234,7 +247,7 @@ function App() {
       window.removeEventListener("offline", markOffline);
       window.clearInterval(intervalId);
     };
-  }, [cloudSession]);
+  }, [cloudSession, data.items.length, lastSyncedAt]);
 
   const activeItem = useMemo(() => data.items.find((item) => item.id === activeItemId) ?? null, [activeItemId, data.items]);
 
@@ -260,6 +273,16 @@ function App() {
       setPendingDeletes((current) => current.includes(id) ? current : [...current, id]);
     }
     setActiveItemId(null);
+  }
+
+  function closeItemForm() {
+    if (activeItem && isEmptyCulturalItem(activeItem)) {
+      deleteItem(activeItem.id);
+      return;
+    }
+
+    setActiveItemId(null);
+    setActiveItemMode("details");
   }
 
   function updateData(patch: Partial<AppData>) {
@@ -291,11 +314,15 @@ function App() {
       return (
         <HomeDashboard
           items={data.items}
+          settings={effectiveSettings}
+          session={cloudSession}
           onOpenCategory={(next) => selectView(next)}
           onOpenItem={openItemDetails}
           onAddItem={addItem}
           onOpenFamily={() => selectView("family")}
           connectedToFamily={Boolean(cloudSession)}
+          profileReady={Boolean(cloudSession?.profile?.displayName)}
+          favoriteDrawersReady={Boolean(cloudSession?.profile?.favoriteCategories?.length)}
         />
       );
     }
@@ -322,6 +349,7 @@ function App() {
           onAuthenticated={authenticated}
           onUpdateSettings={updateSettings}
           socialTab={socialSection}
+          onSocialTabChange={setSocialSection}
         />
       );
     }
@@ -404,6 +432,11 @@ function App() {
     });
   }
 
+  function retrySyncNow() {
+    setIsOnline(typeof navigator === "undefined" ? true : navigator.onLine);
+    setSyncRetryTick((current) => current + 1);
+  }
+
   async function autoSync() {
     if (!cloudSession || !cloudBootstrapped) return;
     if (lastSyncedKeyRef.current === syncPayloadKey) return;
@@ -413,6 +446,9 @@ function App() {
         kind: "offline",
         message: "Sem conexão.",
         detail: "Suas alterações ficaram salvas aqui e serão reenviadas quando a internet voltar.",
+        savedAt: lastSyncedAt ?? undefined,
+        pendingItems: data.items.length,
+        pendingDeletes: pendingDeletes.length,
       });
       return;
     }
@@ -427,6 +463,9 @@ function App() {
       kind: "syncing",
       message: "Sincronizando...",
       detail: pendingDeletes.length ? "Enviando alterações e removendo itens apagados da nuvem." : "Enviando as últimas alterações para a nuvem.",
+      savedAt: lastSyncedAt ?? undefined,
+      pendingItems: data.items.length,
+      pendingDeletes: pendingDeletes.length,
     });
 
     try {
@@ -442,19 +481,25 @@ function App() {
       if (pendingDeletes.length) {
         setPendingDeletes([]);
       }
+      const syncedAt = new Date().toISOString();
+      setLastSyncedAt(syncedAt);
       setSyncStatus({
         kind: "synced",
         message: "Tudo sincronizado.",
         detail: "Suas alterações já estão na nuvem.",
+        savedAt: syncedAt,
       });
     } catch (error) {
       if (isSessionExpiredError(error)) {
         expireSession(error);
       } else {
         setSyncStatus({
-          kind: typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "pending",
-          message: "Sincronização pendente.",
-          detail: error instanceof Error ? error.message : "Vou tentar de novo automaticamente.",
+          kind: typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "error",
+          message: typeof navigator !== "undefined" && !navigator.onLine ? "Sem conexão." : "Falha ao enviar.",
+          detail: error instanceof Error ? `${error.message} Vou tentar de novo automaticamente.` : "Vou tentar de novo automaticamente.",
+          savedAt: lastSyncedAt ?? undefined,
+          pendingItems: data.items.length,
+          pendingDeletes: pendingDeletes.length,
         });
       }
     } finally {
@@ -473,6 +518,9 @@ function App() {
       kind: "expired",
       message: "Sessão expirada.",
       detail: error instanceof Error ? error.message : "Entre novamente para continuar sincronizando. Seus itens locais foram preservados.",
+      savedAt: lastSyncedAt ?? undefined,
+      pendingItems: data.items.length,
+      pendingDeletes: pendingDeletes.length,
     });
   }
 
@@ -486,7 +534,7 @@ function App() {
             <small>{cloudSession ? cloudSession.profile?.displayName || cloudSession.user.email || "minha conta" : "modo local"}</small>
           </div>
         </div>
-        <SyncStatusCard status={syncStatus} onReconnect={() => selectView("family")} />
+        <SyncStatusCard status={syncStatus} onReconnect={() => selectView("family")} onRetry={retrySyncNow} />
         <nav>
           {topNavItems.map((item) => {
             const Icon = item.icon;
@@ -562,7 +610,7 @@ function App() {
         )}
       </aside>
       {mainView()}
-      <SyncStatusCard status={syncStatus} onReconnect={() => selectView("family")} compact />
+      <SyncStatusCard status={syncStatus} onReconnect={() => selectView("family")} onRetry={retrySyncNow} compact />
       <nav className="mobile-bottom-nav" aria-label="Navegação principal mobile">
         <button type="button" className={view === "home" ? "active" : ""} onClick={() => selectView("home")}>
           <Home size={20} />
@@ -622,6 +670,7 @@ function App() {
       {activeItem && activeItemMode === "details" ? (
         <ItemDetails
           item={activeItem}
+          onUpdateItem={upsertItem}
           onEdit={() => setActiveItemMode("edit")}
           onClose={() => setActiveItemId(null)}
         />
@@ -634,7 +683,7 @@ function App() {
           cloudSession={cloudSession ?? undefined}
           onSave={upsertItem}
           onDelete={deleteItem}
-          onClose={() => setActiveItemId(null)}
+          onClose={closeItemForm}
         />
       ) : null}
     </div>
@@ -676,10 +725,12 @@ function InstallAppPrompt({
 function SyncStatusCard({
   status,
   onReconnect,
+  onRetry,
   compact = false,
 }: {
   status: SyncStatus;
   onReconnect: () => void;
+  onRetry: () => void;
   compact?: boolean;
 }) {
   const Icon = status.kind === "synced" ? CheckCircle2
@@ -688,7 +739,8 @@ function SyncStatusCard({
         : status.kind === "expired" ? LogIn
           : status.kind === "local" ? CloudOff
             : AlertTriangle;
-  const actionable = status.kind === "expired" || status.kind === "local";
+  const action = syncAction(status.kind);
+  const meta = syncMeta(status);
 
   return (
     <section className={`sync-card sync-card-${status.kind}${compact ? " sync-card-compact" : ""}`} aria-live="polite">
@@ -696,16 +748,84 @@ function SyncStatusCard({
         <Icon size={compact ? 16 : 18} />
       </div>
       <div>
-        <strong>{status.message}</strong>
+        <span className="sync-card-label">{syncLabel(status.kind)}</span>
+        <strong>{compact ? syncCompactMessage(status) : status.message}</strong>
         {status.detail && !compact ? <span>{status.detail}</span> : null}
+        {!compact && meta.length ? (
+          <div className="sync-card-meta">
+            {meta.map((entry) => <small key={entry}>{entry}</small>)}
+          </div>
+        ) : null}
       </div>
-      {actionable && !compact ? (
-        <button type="button" onClick={onReconnect}>
-          {status.kind === "expired" ? "Entrar" : "Conectar"}
+      {action && !compact ? (
+        <button type="button" onClick={action.kind === "reconnect" ? onReconnect : onRetry}>
+          {action.label}
         </button>
       ) : null}
     </section>
   );
+}
+
+function syncLabel(kind: SyncKind) {
+  const labels: Record<SyncKind, string> = {
+    local: "Salvo localmente",
+    loading: "Carregando nuvem",
+    pending: "Pendente",
+    syncing: "Enviando",
+    synced: "Enviado",
+    offline: "Sem conexão",
+    expired: "Sessão expirada",
+    error: "Falhou",
+  };
+
+  return labels[kind];
+}
+
+function syncCompactMessage(status: SyncStatus) {
+  if (status.kind === "pending") return "Alterações na fila.";
+  if (status.kind === "syncing") return "Enviando para a nuvem...";
+  if (status.kind === "offline") return "Sem conexão. Tudo ficou salvo.";
+  if (status.kind === "expired") return "Sessão expirada. Entre de novo.";
+  if (status.kind === "error") return "Falha ao enviar. Tentarei de novo.";
+  return status.message;
+}
+
+function syncAction(kind: SyncKind): { kind: "reconnect" | "retry"; label: string } | null {
+  if (kind === "local") return { kind: "reconnect", label: "Conectar nuvem" };
+  if (kind === "expired") return { kind: "reconnect", label: "Entrar novamente" };
+  if (kind === "error") return { kind: "retry", label: "Tentar agora" };
+  if (kind === "pending") return { kind: "retry", label: "Enviar agora" };
+  if (kind === "offline") return { kind: "retry", label: "Verificar conexão" };
+  return null;
+}
+
+function syncMeta(status: SyncStatus) {
+  const meta: string[] = [];
+
+  if (status.savedAt) {
+    meta.push(`Último envio: ${formatSyncTime(status.savedAt)}`);
+  }
+
+  if (status.kind === "pending" || status.kind === "syncing" || status.kind === "offline" || status.kind === "error" || status.kind === "expired") {
+    if (status.pendingItems) {
+      meta.push(`${status.pendingItems} fichas no lote`);
+    }
+    if (status.pendingDeletes) {
+      meta.push(`${status.pendingDeletes} exclusões pendentes`);
+    }
+  }
+
+  return meta;
+}
+
+function formatSyncTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "agora";
+
+  return date.toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function loadPendingDeletes() {

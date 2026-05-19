@@ -1,11 +1,14 @@
-import { Archive, BookOpen, CheckCircle2, Circle, Clock3, Disc3, Film, Gamepad2, Heart, Library, Lightbulb, ListChecks, Sparkles, Tv, Users } from "lucide-react";
+import { Archive, BookOpen, CheckCircle2, Circle, Clock3, Disc3, Film, Gamepad2, Heart, Library, Lightbulb, ListChecks, MessageSquare, RefreshCw, Sparkles, Tv, Users } from "lucide-react";
 import type { ElementType } from "react";
-import { Category, CulturalItem } from "../types";
+import { useEffect, useMemo, useState } from "react";
+import { AppSettings, Category, CloudSession, CulturalItem, FamilyItem } from "../types";
 import { categoryLabels } from "../data/catalog";
 import { buildStats } from "../utils/stats";
 import { Cover } from "./Cover";
 import { Stars } from "./Rating";
 import { getGenres, getPlayedHours, getRating, getTitle, getYear, isInProgress, isWishlist } from "../utils/itemHelpers";
+import { fetchSocialItems } from "../services/supabaseCloud";
+import { ItemDetails } from "./ItemDetails";
 
 const icons: Record<Category, ElementType> = {
   games: Gamepad2,
@@ -15,21 +18,36 @@ const icons: Record<Category, ElementType> = {
   series: Tv,
 };
 
+const ONBOARDING_SYNC_SKIP_KEY = "gaveteira-onboarding-sync-skipped:v1";
+
 export function HomeDashboard({
   items,
+  settings,
+  session,
   onOpenCategory,
   onOpenItem,
   onAddItem,
   onOpenFamily,
   connectedToFamily,
+  profileReady,
+  favoriteDrawersReady,
 }: {
   items: CulturalItem[];
+  settings: AppSettings;
+  session: CloudSession | null;
   onOpenCategory: (category: Category | "wishlist" | "progress") => void;
   onOpenItem: (item: CulturalItem) => void;
   onAddItem: (category: Category) => void;
   onOpenFamily: () => void;
   connectedToFamily: boolean;
+  profileReady: boolean;
+  favoriteDrawersReady: boolean;
 }) {
+  const [syncSkipped, setSyncSkipped] = useState(() => localStorage.getItem(ONBOARDING_SYNC_SKIP_KEY) === "true");
+  const [socialItems, setSocialItems] = useState<FamilyItem[]>([]);
+  const [socialLoading, setSocialLoading] = useState(false);
+  const [socialError, setSocialError] = useState("");
+  const [activeSocialEntry, setActiveSocialEntry] = useState<FamilyItem | null>(null);
   const stats = buildStats(items);
   const latestItems = [...items].sort((a, b) => dateTime(b.createdAt || b.updatedAt) - dateTime(a.createdAt || a.updatedAt)).slice(0, 5);
   const recentFavorites = [...items]
@@ -37,8 +55,54 @@ export function HomeDashboard({
     .sort((a, b) => dateTime(b.updatedAt) - dateTime(a.updatedAt) || getRating(b) - getRating(a))
     .slice(0, 5);
   const suggestions = buildSuggestions(items);
-  const checklist = buildOnboardingChecklist(items, connectedToFamily);
-  const showOnboarding = checklist.some((entry) => !entry.done) || items.length < 3;
+  const friendActivity = useMemo(() => buildFriendActivity(socialItems, session?.user.id ?? ""), [socialItems, session?.user.id]);
+  const checklist = buildOnboardingChecklist({ items, connectedToFamily, profileReady, favoriteDrawersReady, syncSkipped });
+  const showOnboarding = checklist.some((entry) => !entry.done) || items.length < 2;
+
+  useEffect(() => {
+    if (!session) {
+      setSocialItems([]);
+      return;
+    }
+
+    let cancelled = false;
+    const currentSession = session;
+    refreshSocialSilently();
+    const intervalId = window.setInterval(refreshSocialSilently, 45_000);
+
+    async function refreshSocialSilently() {
+      setSocialError("");
+      try {
+        const nextItems = await fetchSocialItems(settings, currentSession);
+        if (!cancelled) setSocialItems(nextItems);
+      } catch (error) {
+        if (!cancelled) setSocialError(error instanceof Error ? error.message : "Não foi possível carregar a atividade dos amigos.");
+      }
+    }
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [session?.user.id, settings]);
+
+  function skipSync() {
+    localStorage.setItem(ONBOARDING_SYNC_SKIP_KEY, "true");
+    setSyncSkipped(true);
+  }
+
+  async function refreshSocial() {
+    if (!session) return;
+    setSocialLoading(true);
+    setSocialError("");
+    try {
+      setSocialItems(await fetchSocialItems(settings, session));
+    } catch (error) {
+      setSocialError(error instanceof Error ? error.message : "Não foi possível carregar a atividade dos amigos.");
+    } finally {
+      setSocialLoading(false);
+    }
+  }
 
   return (
     <main className="page">
@@ -57,7 +121,7 @@ export function HomeDashboard({
       <section className="quick-stats">
         <Metric label="Jogos zerados" value={stats.headline.gamesCompleted} />
         <Metric label="Livros lidos" value={stats.headline.booksRead} />
-        <Metric label="Álbuns ouvidos" value={stats.headline.albumsHeard} />
+        <Metric label="Discos ouvidos" value={stats.headline.albumsHeard} />
         <Metric label="Filmes assistidos" value={stats.headline.moviesWatched} />
         <Metric label="Séries acompanhadas" value={stats.headline.seriesTracked} />
         <Metric label="Na wishlist" value={stats.wishlist.length} />
@@ -67,9 +131,9 @@ export function HomeDashboard({
         <section className="onboarding-grid" aria-label="Primeiros passos">
           <article className="onboarding-card onboarding-start">
             <div>
-              <p className="eyebrow">Comece por uma ficha</p>
-              <h2>Escolha uma gaveta para guardar o primeiro item</h2>
-              <p>Depois de digitar o nome, a ficha pode buscar capa e dados automaticamente quando houver fonte disponível.</p>
+              <p className="eyebrow">Primeiros passos</p>
+              <h2>Monte sua Gaveteira sem encarar uma tela vazia</h2>
+              <p>Crie seu perfil, escolha gavetas favoritas e guarde a primeira ficha. A nuvem pode vir agora ou depois.</p>
             </div>
             <div className="quick-add-grid">
               {(Object.keys(categoryLabels) as Category[]).map((category) => {
@@ -102,14 +166,21 @@ export function HomeDashboard({
           <article className="onboarding-card family-onboarding">
             <Users size={22} />
             <div>
-              <h2>{connectedToFamily ? "Social conectado" : "Gaveteira com amigos"}</h2>
+              <h2>{connectedToFamily ? "Social conectado" : syncSkipped ? "Sincronização pulada por enquanto" : "Conectar ou pular"}</h2>
               <p>
                 {connectedToFamily
                   ? "Você pode procurar pessoas, aceitar convites e visitar a gaveteira dos seus amigos."
-                  : "Ao entrar, cada login guarda seus proprios itens e vocês conseguem visitar as gavetas uns dos outros."}
+                  : syncSkipped
+                    ? "Tudo continua salvo neste navegador. Quando quiser, abra Social para conectar."
+                    : "Entre para salvar na nuvem e ver amigos, ou pule para começar só no aparelho."}
               </p>
             </div>
-            <button type="button" className="ghost" onClick={onOpenFamily}>{connectedToFamily ? "Ver social" : "Conectar"}</button>
+            <div className="onboarding-sync-actions">
+              <button type="button" className="ghost" onClick={onOpenFamily}>{connectedToFamily ? "Ver social" : "Conectar"}</button>
+              {!connectedToFamily && !syncSkipped ? (
+                <button type="button" className="ghost subtle" onClick={skipSync}>Pular por agora</button>
+              ) : null}
+            </div>
           </article>
         </section>
       ) : null}
@@ -149,7 +220,15 @@ export function HomeDashboard({
         </button>
       </section>
 
-      <section className="home-live-grid" aria-label="Movimento recente da Gaveteira">
+      <section className="section home-life-panel" aria-label="Painel da vida cultural">
+        <div className="section-heading split">
+          <div className="section-heading">
+            <Sparkles size={20} />
+            <h2>Painel da vida cultural</h2>
+          </div>
+          <span className="soft-label">{connectedToFamily ? "local + amigos" : "local"}</span>
+        </div>
+        <div className="home-live-grid" aria-label="Movimento recente da Gaveteira">
         <HomeShelf
           title="Últimas adições"
           icon={Clock3}
@@ -166,6 +245,16 @@ export function HomeDashboard({
           onOpenItem={onOpenItem}
           metaFor={(item) => [categoryLabels[item.category], item.rating ? `${item.rating}/5` : ""].filter(Boolean).join(" / ")}
         />
+        <FriendActivityShelf
+          connected={connectedToFamily}
+          loading={socialLoading}
+          error={socialError}
+          activity={friendActivity}
+          onOpenFamily={onOpenFamily}
+          onRefresh={refreshSocial}
+          onOpenEntry={setActiveSocialEntry}
+        />
+        </div>
       </section>
 
       <section className="section home-suggestions">
@@ -217,6 +306,7 @@ export function HomeDashboard({
           )}
         </div>
       </section>
+      {activeSocialEntry ? <ItemDetails item={activeSocialEntry.item} ownerName={activeSocialEntry.ownerName} onClose={() => setActiveSocialEntry(null)} /> : null}
     </main>
   );
 }
@@ -230,32 +320,49 @@ function Metric({ label, value }: { label: string; value: number }) {
   );
 }
 
-function buildOnboardingChecklist(items: CulturalItem[], connectedToFamily: boolean) {
+type OnboardingStep = {
+  label: string;
+  done: boolean;
+  action: (
+    addItem: (category: Category) => void,
+    openFamily: () => void,
+    openCategory: (category: Category | "wishlist" | "progress") => void,
+  ) => void;
+};
+
+function buildOnboardingChecklist({
+  items,
+  connectedToFamily,
+  profileReady,
+  favoriteDrawersReady,
+  syncSkipped,
+}: {
+  items: CulturalItem[];
+  connectedToFamily: boolean;
+  profileReady: boolean;
+  favoriteDrawersReady: boolean;
+  syncSkipped: boolean;
+}): OnboardingStep[] {
   return [
     {
-      label: "Criar primeira ficha",
+      label: "Criar perfil",
+      done: profileReady,
+      action: (_addItem: (category: Category) => void, openFamily: () => void) => openFamily(),
+    },
+    {
+      label: "Escolher gavetas favoritas",
+      done: favoriteDrawersReady,
+      action: (_addItem: (category: Category) => void, openFamily: () => void) => openFamily(),
+    },
+    {
+      label: "Adicionar primeiro item",
       done: items.length > 0,
       action: (addItem: (category: Category) => void) => addItem("games"),
     },
     {
-      label: "Dar uma nota",
-      done: items.some((item) => getRating(item) > 0),
-      action: (_addItem: (category: Category) => void, _openFamily: () => void, openCategory: (category: Category | "wishlist" | "progress") => void) => openCategory("progress"),
-    },
-    {
-      label: "Marcar algo na wishlist",
-      done: items.some(isWishlist),
-      action: (_addItem: (category: Category) => void, _openFamily: () => void, openCategory: (category: Category | "wishlist" | "progress") => void) => openCategory("wishlist"),
-    },
-    {
-      label: "Conectar social",
-      done: connectedToFamily,
+      label: connectedToFamily ? "Sincronização conectada" : syncSkipped ? "Sincronização pulada" : "Conectar ou pular sincronização",
+      done: connectedToFamily || syncSkipped,
       action: (_addItem: (category: Category) => void, openFamily: () => void) => openFamily(),
-    },
-    {
-      label: "Acompanhar algo em andamento",
-      done: items.some(isInProgress),
-      action: (_addItem: (category: Category) => void, _openFamily: () => void, openCategory: (category: Category | "wishlist" | "progress") => void) => openCategory("progress"),
     },
   ];
 }
@@ -293,6 +400,73 @@ function HomeShelf({
           </button>
         )) : <p className="empty">{empty}</p>}
       </div>
+    </section>
+  );
+}
+
+type FriendActivity = {
+  entry: FamilyItem;
+  text: string;
+  detail: string;
+};
+
+function FriendActivityShelf({
+  connected,
+  loading,
+  error,
+  activity,
+  onOpenFamily,
+  onRefresh,
+  onOpenEntry,
+}: {
+  connected: boolean;
+  loading: boolean;
+  error: string;
+  activity: FriendActivity[];
+  onOpenFamily: () => void;
+  onRefresh: () => void;
+  onOpenEntry: (entry: FamilyItem) => void;
+}) {
+  return (
+    <section className="section home-shelf home-friend-activity">
+      <div className="section-heading split">
+        <div className="section-heading">
+          <MessageSquare size={20} />
+          <h2>Atividade dos amigos</h2>
+        </div>
+        {connected ? (
+          <button type="button" className="ghost compact" onClick={onRefresh} disabled={loading}>
+            <RefreshCw size={14} />
+            Atualizar
+          </button>
+        ) : null}
+      </div>
+      {!connected ? (
+        <div className="home-social-empty">
+          <p>Conecte a Gaveteira para ver o que seus amigos estão adicionando, terminando ou favoritando.</p>
+          <button type="button" className="primary" onClick={onOpenFamily}>Abrir Social</button>
+        </div>
+      ) : error ? (
+        <div className="home-social-empty">
+          <p>{error}</p>
+          <button type="button" className="ghost" onClick={onRefresh}>Tentar de novo</button>
+        </div>
+      ) : activity.length ? (
+        <div className="home-shelf-list">
+          {activity.map((event) => (
+            <button key={`${event.entry.ownerId}-${event.entry.id}-${event.entry.updatedAt}`} className="home-shelf-item home-activity-item" onClick={() => onOpenEntry(event.entry)}>
+              <Cover item={event.entry.item} compact />
+              <span>
+                <strong>{event.text}</strong>
+                <small>{event.detail}</small>
+              </span>
+              <MessageSquare size={16} />
+            </button>
+          ))}
+        </div>
+      ) : (
+        <p className="empty">{loading ? "Carregando atividade..." : "Quando seus amigos movimentarem fichas, aparece aqui."}</p>
+      )}
     </section>
   );
 }
@@ -583,6 +757,36 @@ function normalizeAffinityKey(value: string) {
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .trim();
+}
+
+function buildFriendActivity(entries: FamilyItem[], viewerId: string): FriendActivity[] {
+  return entries
+    .filter((entry) => entry.ownerId !== viewerId && entry.item.visibility !== "private")
+    .sort((a, b) => dateTime(b.updatedAt) - dateTime(a.updatedAt))
+    .slice(0, 5)
+    .map((entry) => ({
+      entry,
+      text: friendActivityText(entry),
+      detail: [categoryLabels[entry.item.category], entry.item.status, formatActivityDate(entry.updatedAt)].filter(Boolean).join(" / "),
+    }));
+}
+
+function friendActivityText(entry: FamilyItem) {
+  const title = getTitle(entry.item) || "uma ficha";
+  const rating = getRating(entry.item);
+  const name = entry.ownerName;
+
+  if (entry.item.status.toLowerCase().includes("abandon")) return `${name} abandonou ${title}`;
+  if (rating >= 4.5) return `${name} favoritou ${title}`;
+  if (isInProgress(entry.item)) return `${name} está consumindo ${title}`;
+  if (isWishlist(entry.item)) return `${name} quer consumir ${title}`;
+  return `${name} adicionou ${title}`;
+}
+
+function formatActivityDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
 }
 
 function dateTime(value: string) {
