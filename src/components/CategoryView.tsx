@@ -2,7 +2,7 @@ import { BookOpen, Disc3, Film, Gamepad2, Library, ListChecks, Plus, Search, Spa
 import type { ElementType } from "react";
 import { Category, CulturalItem } from "../types";
 import { categoryLabels } from "../data/catalog";
-import { getGenres, getPlayedHours, getRating, getTitle, getYear, isInProgress, isWishlist } from "../utils/itemHelpers";
+import { getGenres, getPlayedHours, getRating, getTitle, getYear, isInProgress, isVisibleToFriends, isWishlist } from "../utils/itemHelpers";
 import { ItemCard } from "./ItemCard";
 
 type SortMode = "recent" | "titleAsc" | "yearDesc" | "ratingDesc" | "playedHoursDesc" | "playedHoursAsc";
@@ -13,10 +13,11 @@ export interface Filters {
   status: string;
   genre: string;
   minRating: string;
+  visibility: string;
   sort: SortMode;
 }
 
-const emptyFilters: Filters = { search: "", year: "", status: "", genre: "", minRating: "", sort: "recent" };
+const emptyFilters: Filters = { search: "", year: "", status: "", genre: "", minRating: "", visibility: "", sort: "recent" };
 
 const emptyStateByCategory: Record<Category, { title: string; text: string; action: string; icon: ElementType }> = {
   games: {
@@ -106,7 +107,9 @@ export function CategoryView({
     const matchesStatus = !filters.status || item.status === filters.status;
     const matchesGenre = !filters.genre || getGenres(item).includes(filters.genre);
     const matchesRating = !filters.minRating || getRating(item) >= Number(filters.minRating);
-    return matchesSearch && matchesYear && matchesStatus && matchesGenre && matchesRating;
+    const matchesVisibility = !filters.visibility
+      || (filters.visibility === "private" ? !isVisibleToFriends(item) : isVisibleToFriends(item));
+    return matchesSearch && matchesYear && matchesStatus && matchesGenre && matchesRating && matchesVisibility;
   }).sort((a, b) => sortItems(a, b, filters.sort));
 
   return (
@@ -145,6 +148,11 @@ export function CategoryView({
         <select value={filters.minRating} onChange={(event) => onFiltersChange({ ...filters, minRating: event.target.value })}>
           <option value="">Nota minima</option>
           {[0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map((rating) => <option key={rating} value={rating}>{rating}+</option>)}
+        </select>
+        <select value={filters.visibility} onChange={(event) => onFiltersChange({ ...filters, visibility: event.target.value })}>
+          <option value="">Visibilidade</option>
+          <option value="private">Privado</option>
+          <option value="friends">Amigos</option>
         </select>
         <select value={filters.sort} onChange={(event) => onFiltersChange({ ...filters, sort: event.target.value as SortMode })}>
           <option value="">Ordenar</option>

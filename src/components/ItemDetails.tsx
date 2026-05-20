@@ -1,8 +1,9 @@
-import { BookOpenText, Edit3, ExternalLink, Lock, Megaphone, Plus, X } from "lucide-react";
+import { BookOpenText, Edit3, ExternalLink, ImageIcon, Lock, Megaphone, Plus, Search, Sparkles, X } from "lucide-react";
 import { useState } from "react";
-import { CulturalItem, DiaryEntry } from "../types";
+import { AppSettings, CloudSession, CulturalItem, DiaryEntry } from "../types";
 import { categoryLabels } from "../data/catalog";
-import { getTitle, getYear, isCompleted, uid } from "../utils/itemHelpers";
+import { getItemVisibility, getItemVisibilityLabel, getTitle, getYear, isCompleted, uid } from "../utils/itemHelpers";
+import { MetadataResult, searchMetadata } from "../services/metadata";
 import { Cover } from "./Cover";
 import { Stars } from "./Rating";
 
@@ -19,6 +20,8 @@ export function ItemDetails({
   item,
   ownerName,
   focusDiaryId,
+  settings,
+  cloudSession,
   onEdit,
   onUpdateItem,
   onClose,
@@ -26,6 +29,8 @@ export function ItemDetails({
   item: CulturalItem;
   ownerName?: string;
   focusDiaryId?: string;
+  settings?: AppSettings;
+  cloudSession?: CloudSession;
   onEdit?: () => void;
   onUpdateItem?: (item: CulturalItem) => void;
   onClose: () => void;
@@ -34,13 +39,16 @@ export function ItemDetails({
   const year = getYear(item);
   const [activeMobileSection, setActiveMobileSection] = useState(sections[0]?.title ?? "Histórico");
   const [diaryOpen, setDiaryOpen] = useState(Boolean(focusDiaryId));
+  const [coverSearchOpen, setCoverSearchOpen] = useState(false);
   const mobileSections = [...sections.map((section) => section.title), "Histórico", "Diário"];
   const canEditDiary = Boolean(onUpdateItem);
+  const canChangeCover = Boolean(settings && onUpdateItem);
   const visibleDiary = ownerName && !canEditDiary
     ? item.diary.filter((entry) => entry.visibility === "friends")
     : item.diary;
   const timelineEntries = buildStoryTimeline(item, visibleDiary);
   const finalSummary = buildFinalSummarySuggestion(item);
+  const itemVisibility = getItemVisibility(item);
 
   function updateDiary(diary: DiaryEntry[]) {
     onUpdateItem?.({ ...item, diary, updatedAt: new Date().toISOString() } as CulturalItem);
@@ -61,6 +69,12 @@ export function ItemDetails({
                 Diário
               </button>
             ) : null}
+            {canChangeCover ? (
+              <button type="button" className="ghost compact" onClick={() => setCoverSearchOpen((current) => !current)}>
+                <ImageIcon size={16} />
+                Trocar capa
+              </button>
+            ) : null}
             {onEdit ? (
               <button type="button" className="ghost compact" onClick={onEdit}>
                 <Edit3 size={16} />
@@ -73,7 +87,20 @@ export function ItemDetails({
           </div>
         </header>
 
-        {diaryOpen ? <DiaryFocusPanel entries={item.diary} onChange={updateDiary} onClose={() => setDiaryOpen(false)} /> : null}
+        {diaryOpen ? <DiaryFocusPanel entries={item.diary} itemVisibility={itemVisibility} onChange={updateDiary} onClose={() => setDiaryOpen(false)} /> : null}
+        {coverSearchOpen && settings ? (
+          <CoverSearchPanel
+            item={item}
+            settings={settings}
+            cloudSession={cloudSession}
+            onApply={(result) => {
+              if (!result.coverUrl) return;
+              onUpdateItem?.({ ...item, coverUrl: result.coverUrl, updatedAt: new Date().toISOString() } as CulturalItem);
+              setCoverSearchOpen(false);
+            }}
+            onClose={() => setCoverSearchOpen(false)}
+          />
+        ) : null}
 
         <section className="detail-hero">
           <Cover item={item} />
@@ -84,7 +111,17 @@ export function ItemDetails({
               {year ? <span>{year}</span> : null}
               {item.genre ? <span>{item.genre}</span> : null}
               {ownerName ? <span>{ownerName}</span> : null}
+              <span className={`visibility-pill visibility-${itemVisibility}`}>
+                {getItemVisibilityLabel(item)}
+              </span>
             </div>
+            {!ownerName ? (
+              <p className={`privacy-note privacy-note-${itemVisibility}`}>
+                {itemVisibility === "private"
+                  ? "Esta ficha está privada e não aparece para amigos, no Feed ou nas comparações sociais."
+                  : "Esta ficha está visível para amigos. Entradas privadas do diário continuam ocultas."}
+              </p>
+            ) : null}
             <div className="detail-rating-line">
               <Stars value={item.rating} />
               <strong>{item.rating ? `${item.rating}/5` : "Sem nota"}</strong>
@@ -193,10 +230,12 @@ export function ItemDetails({
 
 function DiaryFocusPanel({
   entries,
+  itemVisibility,
   onChange,
   onClose,
 }: {
   entries: DiaryEntry[];
+  itemVisibility: ReturnType<typeof getItemVisibility>;
   onChange: (entries: DiaryEntry[]) => void;
   onClose: () => void;
 }) {
@@ -233,7 +272,11 @@ function DiaryFocusPanel({
           Fechar
         </button>
       </div>
-      <p className="diary-focus-note">Entradas públicas aparecem no Feed. Entradas privadas ficam guardadas só nesta ficha. Ao mudar a privacidade, as próximas entradas seguem essa escolha.</p>
+      <p className="diary-focus-note">
+        {itemVisibility === "private"
+          ? "Esta ficha está privada. Mesmo uma entrada marcada como visível para amigos só aparecerá quando a ficha também estiver visível."
+          : "Entradas visíveis para amigos aparecem no Feed. Entradas privadas ficam guardadas só nesta ficha. Ao mudar a privacidade, as próximas entradas seguem essa escolha."}
+      </p>
       <div className="diary-prompt-row" aria-label="Sugestões de escrita">
         {diaryPrompts.map((prompt) => <span key={prompt}>{prompt}</span>)}
       </div>
@@ -262,6 +305,80 @@ function DiaryFocusPanel({
         <Plus size={16} />
         Nova entrada
       </button>
+    </section>
+  );
+}
+
+function CoverSearchPanel({
+  item,
+  settings,
+  cloudSession,
+  onApply,
+  onClose,
+}: {
+  item: CulturalItem;
+  settings: AppSettings;
+  cloudSession?: CloudSession;
+  onApply: (result: MetadataResult) => void;
+  onClose: () => void;
+}) {
+  const [query, setQuery] = useState(getTitle(item));
+  const [results, setResults] = useState<MetadataResult[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function runSearch() {
+    setLoading(true);
+    setError("");
+    setResults([]);
+
+    try {
+      const found = await searchMetadata(item, settings, query, cloudSession);
+      const covers = found.filter((result) => result.coverUrl);
+      setResults(covers);
+      if (!covers.length) {
+        setError("Nenhuma capa encontrada. Tente um título mais específico ou use o formulário completo.");
+      }
+    } catch (searchError) {
+      setError(searchError instanceof Error ? searchError.message : "Não foi possível buscar capas agora.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <section className="cover-search-panel">
+      <div className="section-heading split">
+        <div className="section-heading">
+          <ImageIcon size={20} />
+          <h3>Trocar capa</h3>
+        </div>
+        <button type="button" className="ghost compact" onClick={onClose}>
+          Fechar
+        </button>
+      </div>
+      <div className="cover-search-row">
+        <label className="search-field">
+          <Search size={16} />
+          <input value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => event.key === "Enter" ? runSearch() : undefined} placeholder={item.category === "books" ? "Buscar capa por título, autor ou ISBN" : "Buscar capas por título"} />
+        </label>
+        <button type="button" className="primary" onClick={runSearch} disabled={loading || !query.trim()}>
+          <Sparkles size={16} />
+          {loading ? "Buscando..." : "Buscar capas"}
+        </button>
+      </div>
+      {error ? <p className="metadata-error">{error}</p> : null}
+      {results.length ? (
+        <div className="cover-search-results">
+          {results.map((result) => (
+            <button type="button" key={`cover-${result.id}`} className="cover-search-result" onClick={() => onApply(result)}>
+              <span>{result.coverUrl ? <img src={result.coverUrl} alt="" /> : <ImageIcon size={18} />}</span>
+              <strong>{result.title}</strong>
+              <small>{[result.provider, result.subtitle].filter(Boolean).join(" / ")}</small>
+            </button>
+          ))}
+        </div>
+      ) : null}
     </section>
   );
 }

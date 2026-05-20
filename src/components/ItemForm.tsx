@@ -23,7 +23,7 @@ export function createBlankItem(category: Category, status: string): CulturalIte
     id: uid(category),
     category,
     status,
-    visibility: "friends" as SocialVisibility,
+    visibility: "private" as SocialVisibility,
     tags: [],
     links: [],
     timeline: [],
@@ -100,12 +100,11 @@ export function ItemForm({
             </MobileFieldGroup>
             <MobileFieldGroup title="Capa e tags">
               <Field label="Visibilidade">
-                <select value={item.visibility ?? "friends"} onChange={(event) => update({ visibility: event.target.value as SocialVisibility })}>
+                <select value={item.visibility === "private" ? "private" : "friends"} onChange={(event) => update({ visibility: event.target.value as SocialVisibility })}>
                   <option value="private">Privado</option>
-                  <option value="friends">Amigos</option>
-                  <option value="group">FamÃ­lia/grupo</option>
-                  <option value="public">PÃºblico por link (futuro)</option>
+                  <option value="friends">Visível para amigos</option>
                 </select>
+                <small>{item.visibility === "private" ? "Só você vê esta ficha na área social." : "Amigos podem ver a ficha; o diário ainda respeita a privacidade de cada entrada."}</small>
               </Field>
               <Field label="Capa ou poster">
                 <input value={item.coverUrl ?? ""} onChange={(event) => update({ coverUrl: event.target.value })} placeholder="URL da imagem" />
@@ -203,7 +202,7 @@ function MetadataLookup({
       <div className="metadata-search">
         <label className="search-field">
           <Search size={16} />
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Digite o nome e busque metadados" />
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={item.category === "books" ? "Digite título, autor ou ISBN" : "Digite o nome e busque metadados"} />
         </label>
         <button type="button" className="primary" onClick={() => runSearch("data")} disabled={loading}>
           <Sparkles size={16} />

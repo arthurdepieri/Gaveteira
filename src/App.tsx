@@ -12,17 +12,32 @@ import { StatsView } from "./components/StatsView";
 import { SettingsView } from "./components/SettingsView";
 import { FamilyView } from "./components/FamilyView";
 import { SocialFeedView } from "./components/SocialFeedView";
-import { deleteMyItem, fetchMyItems, isSessionExpiredError, loadCloudSession, saveCloudSession, syncMyItems } from "./services/supabaseCloud";
+import { deleteMyItem, fetchMyItems, fetchMyProfile, isSessionExpiredError, loadCloudSession, saveCloudSession, upsertMyItem } from "./services/supabaseCloud";
 import { withSharedCloudSettings } from "./config/sharedCloud";
 import { withoutLegacyDemoItems } from "./utils/legacyDemoItems";
-import { isEmptyCulturalItem } from "./utils/itemHelpers";
+import { getTitle, getWorkKey, isEmptyCulturalItem } from "./utils/itemHelpers";
 
 const PENDING_DELETES_KEY = "gaveteira-pending-deletes:v1";
+const SYNC_QUEUE_KEY = "gaveteira-sync-queue:v1";
 const INSTALL_DISMISSED_KEY = "gaveteira-install-dismissed:v1";
 const AUTO_SYNC_DELAY_MS = 900;
 const AUTO_SYNC_RETRY_MS = 30_000;
 
 type SyncKind = "local" | "loading" | "pending" | "syncing" | "synced" | "offline" | "expired" | "error";
+type SyncQueueAction = "upsert" | "delete";
+type SyncQueueStatus = "pending" | "syncing" | "failed";
+
+interface SyncQueueEntry {
+  id: string;
+  itemId: string;
+  action: SyncQueueAction;
+  status: SyncQueueStatus;
+  title: string;
+  category?: Category;
+  updatedAt: string;
+  attempts: number;
+  lastError?: string;
+}
 
 interface SyncStatus {
   kind: SyncKind;
@@ -31,6 +46,7 @@ interface SyncStatus {
   savedAt?: string;
   pendingItems?: number;
   pendingDeletes?: number;
+  failedItems?: number;
 }
 
 interface BeforeInstallPromptEvent extends Event {
@@ -73,16 +89,18 @@ function App() {
   }));
   const [syncRetryTick, setSyncRetryTick] = useState(0);
   const [isOnline, setIsOnline] = useState(() => typeof navigator === "undefined" ? true : navigator.onLine);
-  const [pendingDeletes, setPendingDeletes] = useState<string[]>(() => loadPendingDeletes());
+  const [syncQueue, setSyncQueue] = useState<SyncQueueEntry[]>(() => loadSyncQueue(loadPendingDeletes()));
   const [socialSection, setSocialSection] = useState<"profile" | "friends">("profile");
   const [mobileDrawersOpen, setMobileDrawersOpen] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+  const [standaloneMode, setStandaloneMode] = useState(() => isStandaloneApp());
   const syncInFlightRef = useRef(false);
   const syncQueuedRef = useRef(false);
   const lastSyncedKeyRef = useRef("");
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
-  const pendingDeletesRef = useRef(pendingDeletes);
+  const syncQueueRef = useRef(syncQueue);
+  const dataRef = useRef(data);
   const effectiveSettings = useMemo(() => withSharedCloudSettings(data.settings), [data.settings]);
   const cloudScopeKey = useMemo(() => JSON.stringify({
     userId: cloudSession?.user.id ?? "",
@@ -90,11 +108,12 @@ function App() {
   const cloudBootstrapped = Boolean(cloudSession && bootstrappedCloudScope === cloudScopeKey);
   const syncPayloadKey = useMemo(() => JSON.stringify({
     userId: cloudSession?.user.id ?? "",
-    items: data.items.map((item) => [item.id, item.updatedAt]),
-    deletes: pendingDeletes,
-  }), [cloudSession?.user.id, data.items, pendingDeletes]);
+    queue: syncQueue.map((entry) => [entry.id, entry.action, entry.status, entry.updatedAt, entry.attempts]),
+  }), [cloudSession?.user.id, syncQueue]);
+  const queueCounts = useMemo(() => getSyncQueueCounts(syncQueue), [syncQueue]);
 
   useEffect(() => {
+    dataRef.current = data;
     saveData(data);
   }, [data]);
 
@@ -134,9 +153,20 @@ function App() {
   }, [cloudSession]);
 
   useEffect(() => {
-    pendingDeletesRef.current = pendingDeletes;
-    savePendingDeletes(pendingDeletes);
-  }, [pendingDeletes]);
+    const standaloneQuery = window.matchMedia("(display-mode: standalone)");
+    const updateStandaloneMode = () => setStandaloneMode(isStandaloneApp());
+
+    updateStandaloneMode();
+    standaloneQuery.addEventListener("change", updateStandaloneMode);
+
+    return () => standaloneQuery.removeEventListener("change", updateStandaloneMode);
+  }, []);
+
+  useEffect(() => {
+    syncQueueRef.current = syncQueue;
+    saveSyncQueue(syncQueue);
+    savePendingDeletes(syncQueue.filter((entry) => entry.action === "delete").map((entry) => entry.itemId));
+  }, [syncQueue]);
 
   useEffect(() => {
     if (!cloudSession) {
@@ -160,10 +190,11 @@ function App() {
       detail: "Buscando os itens salvos na nuvem antes de sincronizar novas alterações.",
     });
 
-    fetchMyItems(effectiveSettings, cloudSession)
-      .then((cloudItems) => {
+    Promise.all([fetchMyItems(effectiveSettings, cloudSession), fetchMyProfile(effectiveSettings, cloudSession)])
+      .then(([cloudItems, freshProfile]) => {
         if (cancelled) return;
-        const pendingDeleteIds = new Set(pendingDeletesRef.current);
+        setCloudSession({ ...cloudSession, profile: freshProfile });
+        const pendingDeleteIds = new Set(syncQueueRef.current.filter((entry) => entry.action === "delete").map((entry) => entry.itemId));
         const safeCloudItems = withoutLegacyDemoItems(cloudItems).filter((item) => !pendingDeleteIds.has(item.id));
         if (safeCloudItems.length) {
           mergeItems(safeCloudItems);
@@ -199,6 +230,7 @@ function App() {
 
   useEffect(() => {
     if (!cloudSession || !cloudBootstrapped) return;
+    if (!syncQueue.length) return;
 
     if (lastSyncedKeyRef.current !== syncPayloadKey && syncStatus.kind !== "syncing") {
       setSyncStatus({
@@ -206,8 +238,9 @@ function App() {
         message: isOnline ? "Alterações aguardando sincronização." : "Sem conexão.",
         detail: isOnline ? "Vou enviar automaticamente em alguns instantes." : "Elas ficam salvas aqui e serão reenviadas quando a internet voltar.",
         savedAt: lastSyncedAt ?? undefined,
-        pendingItems: data.items.length,
-        pendingDeletes: pendingDeletes.length,
+        pendingItems: queueCounts.upserts,
+        pendingDeletes: queueCounts.deletes,
+        failedItems: queueCounts.failed,
       });
     }
 
@@ -216,7 +249,7 @@ function App() {
     }, AUTO_SYNC_DELAY_MS);
 
     return () => window.clearTimeout(timeoutId);
-  }, [cloudSession, cloudBootstrapped, syncPayloadKey, syncRetryTick]);
+  }, [cloudSession, cloudBootstrapped, syncPayloadKey, syncRetryTick, syncQueue.length, syncStatus.kind, queueCounts, isOnline, lastSyncedAt]);
 
   useEffect(() => {
     function retrySync() {
@@ -232,8 +265,9 @@ function App() {
           message: "Sem conexão.",
           detail: "Suas alterações continuam salvas neste navegador e serão reenviadas quando a conexão voltar.",
           savedAt: lastSyncedAt ?? undefined,
-          pendingItems: data.items.length,
-          pendingDeletes: pendingDeletesRef.current.length,
+          pendingItems: getSyncQueueCounts(syncQueueRef.current).upserts,
+          pendingDeletes: getSyncQueueCounts(syncQueueRef.current).deletes,
+          failedItems: getSyncQueueCounts(syncQueueRef.current).failed,
         });
       }
     }
@@ -247,9 +281,22 @@ function App() {
       window.removeEventListener("offline", markOffline);
       window.clearInterval(intervalId);
     };
-  }, [cloudSession, data.items.length, lastSyncedAt]);
+  }, [cloudSession, lastSyncedAt]);
 
   const activeItem = useMemo(() => data.items.find((item) => item.id === activeItemId) ?? null, [activeItemId, data.items]);
+
+  function enqueueUpsert(item: CulturalItem) {
+    const entry = createSyncQueueEntry("upsert", item.id, item);
+    setSyncQueue((current) => upsertQueueEntry(current, entry));
+  }
+
+  function enqueueDelete(itemId: string, item?: CulturalItem) {
+    const entry = createSyncQueueEntry("delete", itemId, item);
+    setSyncQueue((current) => upsertQueueEntry(
+      current.filter((queueItem) => !(queueItem.itemId === itemId && queueItem.action === "upsert")),
+      entry,
+    ));
+  }
 
   function upsertItem(item: CulturalItem) {
     setData((current) => ({
@@ -258,6 +305,7 @@ function App() {
         ? current.items.map((entry) => entry.id === item.id ? item : entry)
         : [item, ...current.items],
     }));
+    enqueueUpsert(item);
     setActiveItemId(item.id);
   }
 
@@ -267,17 +315,18 @@ function App() {
     setActiveItemMode("edit");
   }
 
-  function deleteItem(id: string) {
+  function deleteItem(id: string, enqueue = true) {
+    const item = dataRef.current.items.find((entry) => entry.id === id);
     setData((current) => ({ ...current, items: current.items.filter((item) => item.id !== id) }));
-    if (cloudSession) {
-      setPendingDeletes((current) => current.includes(id) ? current : [...current, id]);
+    if (enqueue) {
+      enqueueDelete(id, item);
     }
     setActiveItemId(null);
   }
 
   function closeItemForm() {
     if (activeItem && isEmptyCulturalItem(activeItem)) {
-      deleteItem(activeItem.id);
+      deleteItem(activeItem.id, false);
       return;
     }
 
@@ -295,7 +344,7 @@ function App() {
 
   function mergeItems(items: CulturalItem[]) {
     setData((current) => {
-      const pendingDeleteIds = new Set(pendingDeletesRef.current);
+      const pendingDeleteIds = new Set(syncQueueRef.current.filter((entry) => entry.action === "delete").map((entry) => entry.itemId));
       const byId = new Map(withoutLegacyDemoItems(current.items).map((item) => [item.id, item]));
       withoutLegacyDemoItems(items).forEach((item) => {
         if (pendingDeleteIds.has(item.id)) return;
@@ -305,7 +354,7 @@ function App() {
         }
       });
 
-      return { ...current, items: [...byId.values()] };
+      return { ...current, items: dedupeItemsByWork([...byId.values()]) };
     });
   }
 
@@ -320,6 +369,7 @@ function App() {
           onOpenItem={openItemDetails}
           onAddItem={addItem}
           onOpenFamily={() => selectView("family")}
+          onOpenFeed={() => selectView("feed")}
           connectedToFamily={Boolean(cloudSession)}
           profileReady={Boolean(cloudSession?.profile?.displayName)}
           favoriteDrawersReady={Boolean(cloudSession?.profile?.favoriteCategories?.length)}
@@ -355,7 +405,17 @@ function App() {
         />
       );
     }
-    if (view === "settings") return <SettingsView data={data} onReplaceData={setData} onUpdateData={updateData} />;
+    if (view === "settings") {
+      return (
+        <SettingsView
+          data={data}
+          settings={effectiveSettings}
+          session={cloudSession}
+          onReplaceData={setData}
+          onUpdateData={updateData}
+        />
+      );
+    }
 
     return (
       <CategoryView
@@ -435,22 +495,62 @@ function App() {
   }
 
   function retrySyncNow() {
+    setSyncQueue((current) => current.map((entry) => entry.status === "failed" ? { ...entry, status: "pending", lastError: undefined } : entry));
     setIsOnline(typeof navigator === "undefined" ? true : navigator.onLine);
     setSyncRetryTick((current) => current + 1);
   }
 
+  function retrySyncEntry(entryId: string) {
+    setSyncQueue((current) => current.map((entry) => entry.id === entryId ? { ...entry, status: "pending", lastError: undefined } : entry));
+    setIsOnline(typeof navigator === "undefined" ? true : navigator.onLine);
+    setSyncRetryTick((current) => current + 1);
+  }
+
+  function markQueueEntrySyncing(entryId: string) {
+    setSyncQueue((current) => {
+      const next = current.map((entry) => entry.id === entryId ? { ...entry, status: "syncing" as const } : entry);
+      syncQueueRef.current = next;
+      saveSyncQueue(next);
+      return next;
+    });
+  }
+
+  function markQueueEntryFailed(entryId: string, error: unknown) {
+    const lastError = error instanceof Error ? error.message : "Erro desconhecido.";
+    setSyncQueue((current) => {
+      const next = current.map((entry) => entry.id === entryId
+        ? { ...entry, status: "failed" as const, attempts: entry.attempts + 1, lastError }
+        : entry);
+      syncQueueRef.current = next;
+      saveSyncQueue(next);
+      return next;
+    });
+  }
+
+  function removeQueueEntry(entryId: string) {
+    setSyncQueue((current) => {
+      const next = current.filter((entry) => entry.id !== entryId);
+      syncQueueRef.current = next;
+      saveSyncQueue(next);
+      return next;
+    });
+  }
+
   async function autoSync() {
     if (!cloudSession || !cloudBootstrapped) return;
-    if (lastSyncedKeyRef.current === syncPayloadKey) return;
+    const queueToSync = syncQueueRef.current.filter((entry) => entry.status !== "syncing");
+    if (!queueToSync.length || lastSyncedKeyRef.current === syncPayloadKey) return;
 
     if (typeof navigator !== "undefined" && !navigator.onLine) {
+      const counts = getSyncQueueCounts(syncQueueRef.current);
       setSyncStatus({
         kind: "offline",
         message: "Sem conexão.",
         detail: "Suas alterações ficaram salvas aqui e serão reenviadas quando a internet voltar.",
         savedAt: lastSyncedAt ?? undefined,
-        pendingItems: data.items.length,
-        pendingDeletes: pendingDeletes.length,
+        pendingItems: counts.upserts,
+        pendingDeletes: counts.deletes,
+        failedItems: counts.failed,
       });
       return;
     }
@@ -461,27 +561,52 @@ function App() {
     }
 
     syncInFlightRef.current = true;
+    const counts = getSyncQueueCounts(syncQueueRef.current);
+    const pendingDeletes = queueToSync.filter((entry) => entry.action === "delete");
     setSyncStatus({
       kind: "syncing",
       message: "Sincronizando...",
       detail: pendingDeletes.length ? "Enviando alterações e removendo itens apagados da nuvem." : "Enviando as últimas alterações para a nuvem.",
       savedAt: lastSyncedAt ?? undefined,
-      pendingItems: data.items.length,
-      pendingDeletes: pendingDeletes.length,
+      pendingItems: counts.upserts,
+      pendingDeletes: counts.deletes,
+      failedItems: counts.failed,
     });
 
     try {
-      for (const itemId of pendingDeletes) {
-        await deleteMyItem(effectiveSettings, cloudSession, itemId);
+      for (const entry of queueToSync) {
+        markQueueEntrySyncing(entry.id);
+
+        try {
+          if (entry.action === "delete") {
+            await deleteMyItem(effectiveSettings, cloudSession, entry.itemId);
+          } else {
+            const item = dataRef.current.items.find((candidate) => candidate.id === entry.itemId);
+            if (item) {
+              await upsertMyItem(effectiveSettings, cloudSession, item);
+            }
+          }
+
+          removeQueueEntry(entry.id);
+        } catch (error) {
+          if (isSessionExpiredError(error)) throw error;
+          markQueueEntryFailed(entry.id, error);
+        }
       }
-
-      const pendingDeleteIds = new Set(pendingDeletes);
-      const itemsToSync = pendingDeleteIds.size ? data.items.filter((item) => !pendingDeleteIds.has(item.id)) : data.items;
-
-      await syncMyItems(effectiveSettings, cloudSession, itemsToSync);
       lastSyncedKeyRef.current = syncPayloadKey;
-      if (pendingDeletes.length) {
-        setPendingDeletes([]);
+      const remainingQueue = syncQueueRef.current.filter((entry) => entry.status !== "syncing");
+      if (remainingQueue.length) {
+        const remainingCounts = getSyncQueueCounts(remainingQueue);
+        setSyncStatus({
+          kind: "error",
+          message: "Algumas alterações não foram enviadas.",
+          detail: "A fila foi preservada. Você pode reenviar apenas o que falhou.",
+          savedAt: lastSyncedAt ?? undefined,
+          pendingItems: remainingCounts.upserts,
+          pendingDeletes: remainingCounts.deletes,
+          failedItems: remainingCounts.failed,
+        });
+        return;
       }
       const syncedAt = new Date().toISOString();
       setLastSyncedAt(syncedAt);
@@ -495,13 +620,15 @@ function App() {
       if (isSessionExpiredError(error)) {
         expireSession(error);
       } else {
+        const counts = getSyncQueueCounts(syncQueueRef.current);
         setSyncStatus({
           kind: typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "error",
           message: typeof navigator !== "undefined" && !navigator.onLine ? "Sem conexão." : "Falha ao enviar.",
           detail: error instanceof Error ? `${error.message} Vou tentar de novo automaticamente.` : "Vou tentar de novo automaticamente.",
           savedAt: lastSyncedAt ?? undefined,
-          pendingItems: data.items.length,
-          pendingDeletes: pendingDeletes.length,
+          pendingItems: counts.upserts,
+          pendingDeletes: counts.deletes,
+          failedItems: counts.failed,
         });
       }
     } finally {
@@ -514,6 +641,7 @@ function App() {
   }
 
   function expireSession(error: unknown) {
+    const counts = getSyncQueueCounts(syncQueueRef.current);
     setCloudSession(null);
     setBootstrappedCloudScope("");
     setSyncStatus({
@@ -521,13 +649,14 @@ function App() {
       message: "Sessão expirada.",
       detail: error instanceof Error ? error.message : "Entre novamente para continuar sincronizando. Seus itens locais foram preservados.",
       savedAt: lastSyncedAt ?? undefined,
-      pendingItems: data.items.length,
-      pendingDeletes: pendingDeletes.length,
+      pendingItems: counts.upserts,
+      pendingDeletes: counts.deletes,
+      failedItems: counts.failed,
     });
   }
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell${standaloneMode ? " app-shell-standalone" : ""}`}>
       <aside className="sidebar">
         <div className="brand">
           <span className="brand-mark">G</span>
@@ -536,7 +665,7 @@ function App() {
             <small>{cloudSession ? cloudSession.profile?.displayName || cloudSession.user.email || "minha conta" : "modo local"}</small>
           </div>
         </div>
-        <SyncStatusCard status={syncStatus} onReconnect={() => selectView("family")} onRetry={retrySyncNow} />
+        <SyncStatusCard status={syncStatus} queue={syncQueue} onReconnect={() => selectView("family")} onRetry={retrySyncNow} onRetryEntry={retrySyncEntry} />
         <nav>
           {topNavItems.map((item) => {
             const Icon = item.icon;
@@ -612,7 +741,7 @@ function App() {
         )}
       </aside>
       {mainView()}
-      <SyncStatusCard status={syncStatus} onReconnect={() => selectView("family")} onRetry={retrySyncNow} compact />
+      <SyncStatusCard status={syncStatus} queue={syncQueue} onReconnect={() => selectView("family")} onRetry={retrySyncNow} onRetryEntry={retrySyncEntry} compact />
       <nav className="mobile-bottom-nav" aria-label="Navegação principal mobile">
         <button type="button" className={view === "home" ? "active" : ""} onClick={() => selectView("home")}>
           <Home size={20} />
@@ -672,6 +801,8 @@ function App() {
       {activeItem && activeItemMode === "details" ? (
         <ItemDetails
           item={activeItem}
+          settings={effectiveSettings}
+          cloudSession={cloudSession ?? undefined}
           onUpdateItem={upsertItem}
           onEdit={() => setActiveItemMode("edit")}
           onClose={() => setActiveItemId(null)}
@@ -703,36 +834,56 @@ function InstallAppPrompt({
   onInstall: () => void;
   onDismiss: () => void;
 }) {
+  const installText = canInstall
+    ? "Abra em tela cheia, com ícone próprio e navegação mais limpa no celular."
+    : isIos
+      ? "No iPhone, a instalação é feita pelo botão de compartilhar do Safari."
+      : "Use o menu do navegador para adicionar a Gaveteira à tela inicial.";
+
   return (
-    <section className="install-card" aria-live="polite">
+    <section className={`install-card${isIos && !canInstall ? " install-card-ios" : " install-card-native"}`} aria-live="polite">
       <div className="install-card-icon">
-        {isIos && !canInstall ? <Share size={18} /> : <Download size={18} />}
+        <span>G</span>
       </div>
-      <div>
+      <div className="install-card-copy">
+        <small>Modo app</small>
         <strong>Instalar Gaveteira</strong>
-        <span>
-          {canInstall
-            ? "Abra como app no celular, com ícone na tela inicial."
-            : "No iPhone, toque em compartilhar e depois em Adicionar à Tela de Início."}
-        </span>
+        <span>{installText}</span>
+        {isIos && !canInstall ? (
+          <ol className="install-steps">
+            <li><Share size={14} /> Compartilhar</li>
+            <li>Adicionar à Tela de Início</li>
+          </ol>
+        ) : (
+          <div className="install-perks">
+            <span>sem barra do navegador</span>
+            <span>atalho rápido</span>
+          </div>
+        )}
       </div>
-      {canInstall ? <button type="button" onClick={onInstall}>Instalar</button> : null}
-      <button className="install-card-close" type="button" onClick={onDismiss} aria-label="Fechar aviso de instalação">
-        <X size={16} />
-      </button>
+      <div className="install-card-actions">
+        {canInstall ? <button type="button" onClick={onInstall}><Download size={15} /> Instalar</button> : null}
+        <button className="install-card-close" type="button" onClick={onDismiss} aria-label="Fechar aviso de instalação">
+          <X size={16} />
+        </button>
+      </div>
     </section>
   );
 }
 
 function SyncStatusCard({
   status,
+  queue,
   onReconnect,
   onRetry,
+  onRetryEntry,
   compact = false,
 }: {
   status: SyncStatus;
+  queue: SyncQueueEntry[];
   onReconnect: () => void;
   onRetry: () => void;
+  onRetryEntry: (entryId: string) => void;
   compact?: boolean;
 }) {
   const Icon = status.kind === "synced" ? CheckCircle2
@@ -756,6 +907,25 @@ function SyncStatusCard({
         {!compact && meta.length ? (
           <div className="sync-card-meta">
             {meta.map((entry) => <small key={entry}>{entry}</small>)}
+          </div>
+        ) : null}
+        {!compact && queue.length ? (
+          <div className="sync-queue-list">
+            {queue.slice(0, 5).map((entry) => (
+              <div className={`sync-queue-item sync-queue-item-${entry.status}`} key={entry.id}>
+                <div>
+                  <strong>{entry.title}</strong>
+                  <small>{syncQueueLabel(entry)} {entry.category ? `- ${categoryLabels[entry.category]}` : ""}</small>
+                  {entry.lastError ? <small className="sync-queue-error">{entry.lastError}</small> : null}
+                </div>
+                {entry.status === "failed" ? (
+                  <button type="button" onClick={() => onRetryEntry(entry.id)}>Reenviar</button>
+                ) : (
+                  <span>{syncQueueStatusLabel(entry.status)}</span>
+                )}
+              </div>
+            ))}
+            {queue.length > 5 ? <small className="sync-queue-more">+{queue.length - 5} pendências na fila</small> : null}
           </div>
         ) : null}
       </div>
@@ -817,7 +987,25 @@ function syncMeta(status: SyncStatus) {
     }
   }
 
+  if (status.failedItems) {
+    meta.push(`${status.failedItems} falhas`);
+  }
+
   return meta;
+}
+
+function syncQueueLabel(entry: SyncQueueEntry) {
+  return entry.action === "delete" ? "Exclusão" : "Alteração";
+}
+
+function syncQueueStatusLabel(status: SyncQueueStatus) {
+  const labels: Record<SyncQueueStatus, string> = {
+    pending: "Na fila",
+    syncing: "Enviando",
+    failed: "Falhou",
+  };
+
+  return labels[status];
 }
 
 function formatSyncTime(value: string) {
@@ -828,6 +1016,132 @@ function formatSyncTime(value: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function loadSyncQueue(legacyDeletes: string[] = []): SyncQueueEntry[] {
+  const raw = localStorage.getItem(SYNC_QUEUE_KEY);
+  const legacyEntries = legacyDeletes.map((itemId) => createSyncQueueEntry("delete", itemId));
+
+  if (!raw) return legacyEntries;
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return legacyEntries;
+
+    const entries: SyncQueueEntry[] = parsed.flatMap((entry) => {
+      if (!entry || typeof entry !== "object") return [];
+      const candidate = entry as Partial<SyncQueueEntry>;
+      if (typeof candidate.id !== "string" || typeof candidate.itemId !== "string") return [];
+      if (candidate.action !== "upsert" && candidate.action !== "delete") return [];
+
+      return [{
+        id: candidate.id,
+        itemId: candidate.itemId,
+        action: candidate.action,
+        status: candidate.status === "failed" ? "failed" as const : "pending" as const,
+        title: typeof candidate.title === "string" && candidate.title.trim() ? candidate.title : "Ficha sem título",
+        category: candidate.category,
+        updatedAt: typeof candidate.updatedAt === "string" ? candidate.updatedAt : new Date().toISOString(),
+        attempts: typeof candidate.attempts === "number" ? candidate.attempts : 0,
+        lastError: typeof candidate.lastError === "string" ? candidate.lastError : undefined,
+      }];
+    });
+
+    return mergeQueueEntries([...legacyEntries, ...entries]);
+  } catch {
+    localStorage.removeItem(SYNC_QUEUE_KEY);
+    return legacyEntries;
+  }
+}
+
+function saveSyncQueue(entries: SyncQueueEntry[]) {
+  if (!entries.length) {
+    localStorage.removeItem(SYNC_QUEUE_KEY);
+    return;
+  }
+
+  localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(entries));
+}
+
+function createSyncQueueEntry(action: SyncQueueAction, itemId: string, item?: CulturalItem): SyncQueueEntry {
+  return {
+    id: `${action}:${itemId}`,
+    itemId,
+    action,
+    status: "pending",
+    title: item ? getTitle(item) || "Ficha sem título" : "Ficha removida",
+    category: item?.category,
+    updatedAt: item?.updatedAt ?? new Date().toISOString(),
+    attempts: 0,
+  };
+}
+
+function upsertQueueEntry(entries: SyncQueueEntry[], entry: SyncQueueEntry) {
+  const existing = entries.find((candidate) => candidate.id === entry.id);
+  const nextEntry = existing ? {
+    ...existing,
+    ...entry,
+    attempts: existing.attempts,
+    status: "pending" as const,
+    lastError: undefined,
+  } : entry;
+
+  return mergeQueueEntries([nextEntry, ...entries.filter((candidate) => candidate.id !== entry.id)]);
+}
+
+function mergeQueueEntries(entries: SyncQueueEntry[]) {
+  const byId = new Map<string, SyncQueueEntry>();
+  entries.forEach((entry) => byId.set(entry.id, entry));
+  return [...byId.values()].sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime());
+}
+
+function getSyncQueueCounts(entries: SyncQueueEntry[]) {
+  return {
+    total: entries.length,
+    upserts: entries.filter((entry) => entry.action === "upsert").length,
+    deletes: entries.filter((entry) => entry.action === "delete").length,
+    failed: entries.filter((entry) => entry.status === "failed").length,
+  };
+}
+
+function dedupeItemsByWork(items: CulturalItem[]) {
+  const byWork = new Map<string, CulturalItem>();
+  const withoutKey: CulturalItem[] = [];
+
+  items.forEach((item) => {
+    const key = getWorkKey(item);
+    if (!key) {
+      withoutKey.push(item);
+      return;
+    }
+
+    const existing = byWork.get(key);
+    byWork.set(key, existing ? mergeDuplicateItems(existing, item) : item);
+  });
+
+  return [...byWork.values(), ...withoutKey].sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime());
+}
+
+function mergeDuplicateItems(left: CulturalItem, right: CulturalItem) {
+  const newest = new Date(right.updatedAt).getTime() >= new Date(left.updatedAt).getTime() ? right : left;
+  const oldest = newest === right ? left : right;
+
+  return {
+    ...oldest,
+    ...newest,
+    tags: [...new Set([...oldest.tags, ...newest.tags])],
+    links: mergeById(oldest.links, newest.links),
+    timeline: mergeById(oldest.timeline, newest.timeline),
+    diary: mergeById(oldest.diary, newest.diary),
+    coverUrl: newest.coverUrl || oldest.coverUrl,
+    updatedAt: newest.updatedAt,
+  } as CulturalItem;
+}
+
+function mergeById<T extends { id: string }>(left: T[], right: T[]) {
+  const byId = new Map<string, T>();
+  [...left, ...right].forEach((entry) => byId.set(entry.id, entry));
+  return [...byId.values()];
 }
 
 function loadPendingDeletes() {

@@ -392,6 +392,10 @@ export async function updateMyProfile(settings: AppSettings, session: CloudSessi
   });
 }
 
+export async function fetchMyProfile(settings: AppSettings, session: CloudSession): Promise<SocialProfile> {
+  return getOrCreateProfile(settings, session);
+}
+
 async function upsertProfile(settings: AppSettings, session: CloudSession, profile: Partial<SocialProfile> & { displayName: string }): Promise<SocialProfile> {
   const row: Record<string, unknown> = {
     id: session.user.id,

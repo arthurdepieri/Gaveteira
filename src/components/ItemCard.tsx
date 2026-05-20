@@ -1,12 +1,13 @@
 import { CulturalItem } from "../types";
 import { Cover } from "./Cover";
 import { Stars } from "./Rating";
-import { getGenre, getTitle, getYear } from "../utils/itemHelpers";
+import { getGenre, getItemVisibility, getItemVisibilityLabel, getTitle, getYear } from "../utils/itemHelpers";
 
 export function ItemCard({ item, onOpen }: { item: CulturalItem; onOpen: () => void }) {
   const gameTime = item.category === "games" ? item.timePlayed?.trim() || "--:--" : "";
   const progress = getProgressLabel(item);
   const diaryBadges = getDiaryBadges(item);
+  const visibility = getItemVisibility(item);
 
   return (
     <button className="item-card" onClick={onOpen}>
@@ -17,6 +18,9 @@ export function ItemCard({ item, onOpen }: { item: CulturalItem; onOpen: () => v
             <span>{item.status}</span>
             {getYear(item) ? <span>{getYear(item)}</span> : null}
           </div>
+          <span className={`visibility-pill visibility-${visibility}`}>
+            {getItemVisibilityLabel(item)}
+          </span>
           <h3>{getTitle(item)}</h3>
           <p>{getGenre(item) || "Sem genero"}</p>
           {item.category === "games" ? <p className="item-card-playtime">Tempo jogado: {gameTime}</p> : null}

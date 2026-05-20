@@ -8,7 +8,6 @@ import { Cover } from "./Cover";
 import { Stars } from "./Rating";
 import { getGenres, getPlayedHours, getRating, getTitle, getYear, isInProgress, isWishlist } from "../utils/itemHelpers";
 import { fetchSocialItems } from "../services/supabaseCloud";
-import { ItemDetails } from "./ItemDetails";
 
 const icons: Record<Category, ElementType> = {
   games: Gamepad2,
@@ -28,6 +27,7 @@ export function HomeDashboard({
   onOpenItem,
   onAddItem,
   onOpenFamily,
+  onOpenFeed,
   connectedToFamily,
   profileReady,
   favoriteDrawersReady,
@@ -39,6 +39,7 @@ export function HomeDashboard({
   onOpenItem: (item: CulturalItem) => void;
   onAddItem: (category: Category) => void;
   onOpenFamily: () => void;
+  onOpenFeed: () => void;
   connectedToFamily: boolean;
   profileReady: boolean;
   favoriteDrawersReady: boolean;
@@ -47,7 +48,6 @@ export function HomeDashboard({
   const [socialItems, setSocialItems] = useState<FamilyItem[]>([]);
   const [socialLoading, setSocialLoading] = useState(false);
   const [socialError, setSocialError] = useState("");
-  const [activeSocialEntry, setActiveSocialEntry] = useState<FamilyItem | null>(null);
   const stats = buildStats(items);
   const latestItems = [...items].sort((a, b) => dateTime(b.createdAt || b.updatedAt) - dateTime(a.createdAt || a.updatedAt)).slice(0, 5);
   const recentFavorites = [...items]
@@ -251,8 +251,8 @@ export function HomeDashboard({
           error={socialError}
           activity={friendActivity}
           onOpenFamily={onOpenFamily}
+          onOpenFeed={onOpenFeed}
           onRefresh={refreshSocial}
-          onOpenEntry={setActiveSocialEntry}
         />
         </div>
       </section>
@@ -306,7 +306,6 @@ export function HomeDashboard({
           )}
         </div>
       </section>
-      {activeSocialEntry ? <ItemDetails item={activeSocialEntry.item} ownerName={activeSocialEntry.ownerName} onClose={() => setActiveSocialEntry(null)} /> : null}
     </main>
   );
 }
@@ -416,35 +415,40 @@ function FriendActivityShelf({
   error,
   activity,
   onOpenFamily,
+  onOpenFeed,
   onRefresh,
-  onOpenEntry,
 }: {
   connected: boolean;
   loading: boolean;
   error: string;
   activity: FriendActivity[];
   onOpenFamily: () => void;
+  onOpenFeed: () => void;
   onRefresh: () => void;
-  onOpenEntry: (entry: FamilyItem) => void;
 }) {
+  const preview = activity.slice(0, 3);
+
   return (
     <section className="section home-shelf home-friend-activity">
       <div className="section-heading split">
         <div className="section-heading">
           <MessageSquare size={20} />
-          <h2>Atividade dos amigos</h2>
+          <h2>Resumo social</h2>
         </div>
         {connected ? (
-          <button type="button" className="ghost compact" onClick={onRefresh} disabled={loading}>
-            <RefreshCw size={14} />
-            Atualizar
-          </button>
+          <div className="home-social-actions">
+            <button type="button" className="ghost compact" onClick={onRefresh} disabled={loading}>
+              <RefreshCw size={14} />
+              Atualizar
+            </button>
+            <button type="button" className="ghost compact" onClick={onOpenFeed}>Ver Feed</button>
+          </div>
         ) : null}
       </div>
       {!connected ? (
         <div className="home-social-empty">
-          <p>Conecte a Gaveteira para ver o que seus amigos estão adicionando, terminando ou favoritando.</p>
-          <button type="button" className="primary" onClick={onOpenFamily}>Abrir Social</button>
+          <p>Conecte a Gaveteira para ver um resumo discreto da sua rede.</p>
+          <button type="button" className="primary" onClick={onOpenFamily}>Abrir Amigos</button>
         </div>
       ) : error ? (
         <div className="home-social-empty">
@@ -452,18 +456,21 @@ function FriendActivityShelf({
           <button type="button" className="ghost" onClick={onRefresh}>Tentar de novo</button>
         </div>
       ) : activity.length ? (
+        <>
         <div className="home-shelf-list">
-          {activity.map((event) => (
-            <button key={`${event.entry.ownerId}-${event.entry.id}-${event.entry.updatedAt}`} className="home-shelf-item home-activity-item" onClick={() => onOpenEntry(event.entry)}>
+          {preview.map((event) => (
+            <div key={`${event.entry.ownerId}-${event.entry.id}-${event.entry.updatedAt}`} className="home-shelf-item home-activity-item">
               <Cover item={event.entry.item} compact />
               <span>
                 <strong>{event.text}</strong>
                 <small>{event.detail}</small>
               </span>
               <MessageSquare size={16} />
-            </button>
+            </div>
           ))}
         </div>
+        <p className="home-social-hint">Movimento completo, diário público e comparações ficam no Feed.</p>
+        </>
       ) : (
         <p className="empty">{loading ? "Carregando atividade..." : "Quando seus amigos movimentarem fichas, aparece aqui."}</p>
       )}

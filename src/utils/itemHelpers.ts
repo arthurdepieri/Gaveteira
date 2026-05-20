@@ -1,4 +1,4 @@
-import { Category, CulturalItem } from "../types";
+import { Category, CulturalItem, SocialVisibility } from "../types";
 import { completedStatuses, progressStatuses, wishlistStatuses } from "../data/catalog";
 
 export function uid(prefix = "id") {
@@ -28,9 +28,33 @@ export function getGenres(item: CulturalItem) {
   return splitGenres(getGenre(item));
 }
 
+export function getWorkKey(item: CulturalItem) {
+  const title = normalizeWorkText(getTitle(item));
+  if (!title) return "";
+
+  const year = getYear(item);
+  return `${item.category}:${title}:${year ?? ""}`;
+}
+
 export function getPlayedHours(item: CulturalItem) {
   if (item.category !== "games" || !item.timePlayed) return 0;
   return parsePlayedHours(item.timePlayed);
+}
+
+export function getItemVisibility(item: CulturalItem): SocialVisibility {
+  return item.visibility ?? "friends";
+}
+
+export function getItemVisibilityLabel(item: CulturalItem) {
+  const visibility = getItemVisibility(item);
+  if (visibility === "private") return "Privado";
+  if (visibility === "friends") return "Visível para amigos";
+  if (visibility === "group") return "Grupo";
+  return "Público";
+}
+
+export function isVisibleToFriends(item: CulturalItem) {
+  return getItemVisibility(item) !== "private";
 }
 
 export function parsePlayedHours(value: string) {
@@ -119,6 +143,10 @@ export function isEmptyCulturalItem(item: CulturalItem) {
 
 function sameLabel(left: string, right: string) {
   return normalizeLabel(left) === normalizeLabel(right);
+}
+
+function normalizeWorkText(value: string) {
+  return normalizeLabel(value).replace(/\s+/g, " ").trim();
 }
 
 function normalizeLabel(value: string) {

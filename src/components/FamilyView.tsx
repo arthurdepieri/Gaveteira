@@ -2,7 +2,7 @@ import { CalendarDays, Cloud, Edit3, Heart, LogOut, RefreshCw, Search, Sparkles,
 import { useEffect, useMemo, useState } from "react";
 import { AppSettings, Category, CloudSession, CulturalItem, FamilyItem, Friendship, SocialProfile } from "../types";
 import { categoryLabels } from "../data/catalog";
-import { deleteFriendship, fetchFriendships, fetchMyItems, fetchSocialItems, respondFriendRequest, searchProfiles, sendFriendRequest, syncMyItems, updateMyProfile } from "../services/supabaseCloud";
+import { deleteFriendship, fetchFriendships, fetchMyItems, fetchMyProfile, fetchSocialItems, respondFriendRequest, searchProfiles, sendFriendRequest, syncMyItems, updateMyProfile } from "../services/supabaseCloud";
 import { getGenres, getRating, getTitle, getYear, isCompleted, isInProgress, isWishlist } from "../utils/itemHelpers";
 import { Cover } from "./Cover";
 import { Stars } from "./Rating";
@@ -45,7 +45,7 @@ export function FamilyView({
   const [loading, setLoading] = useState(false);
   const [selectedOwnerId, setSelectedOwnerId] = useState("");
   const [sortMode, setSortMode] = useState<"ratingDesc" | "ratingAsc" | "recent">("ratingDesc");
-  const [memberProfileSection, setMemberProfileSection] = useState<"summary" | "stats" | "activity" | "drawers">("summary");
+  const [memberProfileSection, setMemberProfileSection] = useState<"summary" | "favorites" | "current" | "recent" | "drawers" | "stats">("summary");
   const [activeEntry, setActiveEntry] = useState<FamilyItem | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SocialProfile[]>([]);
@@ -181,12 +181,16 @@ export function FamilyView({
     }
 
     try {
-      const [nextFriendships, nextItems] = await Promise.all([
+      const [nextFriendships, nextItems, freshProfile] = await Promise.all([
         fetchFriendships(settings, session),
         fetchSocialItems(settings, session),
+        fetchMyProfile(settings, session),
       ]);
       setFriendships(nextFriendships);
       setSocialItems(nextItems);
+      if (JSON.stringify(freshProfile) !== JSON.stringify(session.profile)) {
+        onAuthenticated({ ...session, profile: freshProfile });
+      }
     } catch (error) {
       if (!silent) {
         setMessage(error instanceof Error ? error.message : "Não foi possível carregar o social.");
@@ -219,6 +223,19 @@ export function FamilyView({
       setMessage(error instanceof Error ? error.message : "Não foi possível atualizar seu perfil.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function uploadAvatarFile(file?: File) {
+    if (!file) return;
+
+    setMessage("");
+    try {
+      const avatarUrl = await fileToAvatarDataUrl(file);
+      setProfileDraft((current) => ({ ...current, avatarUrl }));
+      setMessage("Foto carregada. Salve o perfil para sincronizar.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Não foi possível carregar essa foto.");
     }
   }
 
@@ -422,6 +439,15 @@ export function FamilyView({
                     <span>Avatar por URL</span>
                     <input value={profileDraft.avatarUrl} onChange={(event) => setProfileDraft({ ...profileDraft, avatarUrl: event.target.value })} placeholder="Opcional" />
                   </label>
+                  <label className="field wide avatar-upload-field">
+                    <span>Enviar foto</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(event) => uploadAvatarFile(event.target.files?.[0])}
+                    />
+                    <small>A imagem será reduzida antes de salvar no perfil.</small>
+                  </label>
                   <div className="field wide favorite-drawers-field">
                     <span>Gavetas favoritas</span>
                     <div className="category-chip-editor">
@@ -503,11 +529,11 @@ export function FamilyView({
       </>
       ) : null}
 
+      {socialTab === "friends" ? (
       <section className="section">
-        <h2>{socialTab === "profile" ? "Minha ficha social" : "Perfis e gaveteiras"}</h2>
+        <h2>Perfis dos amigos</h2>
         {selectedGroup ? (
           <>
-            {socialTab === "friends" ? (
             <div className="family-owners">
               {friendGroups.map((group) => (
                 <button
@@ -523,7 +549,6 @@ export function FamilyView({
                 </button>
               ))}
             </div>
-            ) : null}
 
             {selectedGroup ? (
               <div className="family-group">
@@ -552,16 +577,35 @@ export function FamilyView({
                       </div>
                     </div>
 
-                    <div className="member-profile-tabs" aria-label="Conteudo do perfil">
+                    <div className="member-profile-tabs" aria-label="Conteúdo do perfil">
                       <button type="button" className={memberProfileSection === "summary" ? "active" : ""} onClick={() => setMemberProfileSection("summary")}>Resumo</button>
-                      <button type="button" className={memberProfileSection === "stats" ? "active" : ""} onClick={() => setMemberProfileSection("stats")}>Estatísticas</button>
-                      <button type="button" className={memberProfileSection === "activity" ? "active" : ""} onClick={() => setMemberProfileSection("activity")}>Atividade</button>
+                      <button type="button" className={memberProfileSection === "favorites" ? "active" : ""} onClick={() => setMemberProfileSection("favorites")}>Favoritos</button>
+                      <button type="button" className={memberProfileSection === "current" ? "active" : ""} onClick={() => setMemberProfileSection("current")}>Em andamento</button>
+                      <button type="button" className={memberProfileSection === "recent" ? "active" : ""} onClick={() => setMemberProfileSection("recent")}>Últimas adições</button>
                       <button type="button" className={memberProfileSection === "drawers" ? "active" : ""} onClick={() => setMemberProfileSection("drawers")}>Gavetas</button>
+                      <button type="button" className={memberProfileSection === "stats" ? "active" : ""} onClick={() => setMemberProfileSection("stats")}>Mais</button>
                     </div>
 
                     {memberProfileSection === "summary" ? (
                       <div className="member-profile-summary">
                         <p>{selectedProfile.summary}</p>
+                        <div className="member-profile-quick-actions" aria-label="Abrir recortes do perfil">
+                          <button type="button" onClick={() => setMemberProfileSection("favorites")}>
+                            <Heart size={16} />
+                            <span>Favoritos</span>
+                            <strong>{selectedProfile.favorites.length}</strong>
+                          </button>
+                          <button type="button" onClick={() => setMemberProfileSection("current")}>
+                            <Sparkles size={16} />
+                            <span>Em andamento</span>
+                            <strong>{selectedProfile.currently.length}</strong>
+                          </button>
+                          <button type="button" onClick={() => setMemberProfileSection("recent")}>
+                            <CalendarDays size={16} />
+                            <span>Últimas adições</span>
+                            <strong>{selectedProfile.recent.length}</strong>
+                          </button>
+                        </div>
                         <div className="member-category-row">
                           {selectedProfile.categoryCards.filter((card) => card.count > 0).map((card) => (
                             <span key={card.category}>
@@ -602,8 +646,8 @@ export function FamilyView({
                       </>
                     ) : null}
 
-                    {memberProfileSection === "activity" ? (
-                      <div className="member-profile-sections">
+                    {memberProfileSection === "favorites" ? (
+                      <div className="member-profile-sections single">
                         <section>
                           <h3><Heart size={18} /> Favoritos fixados</h3>
                           <div className="member-highlight-list">
@@ -619,7 +663,11 @@ export function FamilyView({
                             )) : <p className="empty">Sem favoritos fixados ainda.</p>}
                           </div>
                         </section>
+                      </div>
+                    ) : null}
 
+                    {memberProfileSection === "current" ? (
+                      <div className="member-profile-sections single">
                         <section>
                           <h3><Sparkles size={18} /> Atualmente consumindo</h3>
                           <div className="member-recent-list">
@@ -634,7 +682,11 @@ export function FamilyView({
                             )) : <p className="empty">Nada em andamento agora.</p>}
                           </div>
                         </section>
+                      </div>
+                    ) : null}
 
+                    {memberProfileSection === "recent" ? (
+                      <div className="member-profile-sections single">
                         <section>
                           <h3><CalendarDays size={18} /> Últimas adições</h3>
                           <div className="member-recent-list">
@@ -689,8 +741,9 @@ export function FamilyView({
               </div>
             ) : null}
           </>
-        ) : <p className="empty">{socialTab === "profile" ? "Seu perfil aparece aqui assim que a conta carregar." : "Adicione amigos para visitar outras gaveteiras."}</p>}
+        ) : <p className="empty">Adicione amigos para visitar outras gaveteiras.</p>}
       </section>
+      ) : null}
       {activeEntry ? (
         <ItemDetails
           item={activeEntry.item}
@@ -875,10 +928,55 @@ function toggleCategory(categories: Category[], category: Category) {
     : [...categories, category];
 }
 
+function fileToAvatarDataUrl(file: File) {
+  if (!file.type.startsWith("image/")) {
+    return Promise.reject(new Error("Escolha um arquivo de imagem."));
+  }
+
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Não foi possível ler a imagem."));
+    reader.onload = () => {
+      const image = new Image();
+      image.onerror = () => reject(new Error("Não foi possível processar essa imagem."));
+      image.onload = () => {
+        const size = 512;
+        const canvas = document.createElement("canvas");
+        const context = canvas.getContext("2d");
+        if (!context) {
+          reject(new Error("Seu navegador não conseguiu preparar a foto."));
+          return;
+        }
+
+        const sourceSize = Math.min(image.naturalWidth, image.naturalHeight);
+        const sourceX = (image.naturalWidth - sourceSize) / 2;
+        const sourceY = (image.naturalHeight - sourceSize) / 2;
+
+        canvas.width = size;
+        canvas.height = size;
+        context.fillStyle = "#fffaf1";
+        context.fillRect(0, 0, size, size);
+        context.drawImage(image, sourceX, sourceY, sourceSize, sourceSize, 0, 0, size, size);
+        resolve(canvas.toDataURL("image/jpeg", 0.82));
+      };
+      image.src = String(reader.result);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 function Avatar({ name, avatarUrl, large = false }: { name: string; avatarUrl?: string; large?: boolean }) {
+  const [imageFailed, setImageFailed] = useState(false);
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [avatarUrl]);
+
+  const showImage = Boolean(avatarUrl && !imageFailed);
+
   return (
     <span className={`family-owner-avatar member-profile-avatar${large ? " large-avatar" : ""}`}>
-      {avatarUrl ? <img src={avatarUrl} alt="" /> : avatarText(name)}
+      {showImage ? <img src={avatarUrl} alt="" referrerPolicy="no-referrer" onError={() => setImageFailed(true)} /> : avatarText(name)}
     </span>
   );
 }

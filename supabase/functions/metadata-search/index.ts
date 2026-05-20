@@ -122,22 +122,34 @@ async function searchGames(query: string) {
 
 async function searchBooks(query: string) {
   const variants = queryVariants(query);
-  const results = await Promise.all(variants.flatMap((variant) => [
-    searchGoogleBooks(variant),
-    searchGoogleBooks(`intitle:"${variant}"`),
-    searchOpenLibraryBooks(variant, "q"),
-    searchOpenLibraryBooks(variant, "title"),
-  ]));
+  const isbn = normalizeIsbn(query);
+  const isbnSearches = isbn ? [
+    searchGoogleBooks(`isbn:${isbn}`, "pt"),
+    searchGoogleBooks(`isbn:${isbn}`),
+    searchOpenLibraryBooks(isbn, "isbn"),
+  ] : [];
+  const results = await Promise.all([
+    ...isbnSearches,
+    ...variants.flatMap((variant) => [
+      searchGoogleBooks(variant, "pt"),
+      searchGoogleBooks(`intitle:"${variant}"`, "pt"),
+      searchOpenLibraryBooks(variant, "q"),
+      searchOpenLibraryBooks(variant, "title"),
+      searchGoogleBooks(variant),
+      searchGoogleBooks(`intitle:"${variant}"`),
+    ]),
+  ]);
 
   return results.flat();
 }
 
-async function searchGoogleBooks(googleQuery: string): Promise<MetadataResult[]> {
+async function searchGoogleBooks(googleQuery: string, langRestrict?: "pt"): Promise<MetadataResult[]> {
   const url = new URL("https://www.googleapis.com/books/v1/volumes");
   url.searchParams.set("q", googleQuery);
   url.searchParams.set("maxResults", "10");
   url.searchParams.set("printType", "books");
   url.searchParams.set("projection", "full");
+  if (langRestrict) url.searchParams.set("langRestrict", langRestrict);
 
   const google = await fetchJson(url).catch(() => ({}));
   return arrayOfRecords(recordValue(google).items).map((entry) => {
@@ -157,7 +169,7 @@ async function searchGoogleBooks(googleQuery: string): Promise<MetadataResult[]>
       id: `google-${volumeId || title}-${googleQuery}`,
       provider: "Google Books",
       title,
-      subtitle: [authors, publishedDate?.slice(0, 4)].filter(Boolean).join(" / "),
+      subtitle: [authors, publishedDate?.slice(0, 4), langRestrict === "pt" ? "PT" : undefined].filter(Boolean).join(" / "),
       year: yearFromDate(publishedDate),
       coverUrl,
       patch: cleanPatch({
@@ -175,7 +187,7 @@ async function searchGoogleBooks(googleQuery: string): Promise<MetadataResult[]>
   });
 }
 
-async function searchOpenLibraryBooks(query: string, mode: "q" | "title"): Promise<MetadataResult[]> {
+async function searchOpenLibraryBooks(query: string, mode: "q" | "title" | "isbn"): Promise<MetadataResult[]> {
   const openLibraryUrl = new URL("https://openlibrary.org/search.json");
   openLibraryUrl.searchParams.set(mode, query);
   openLibraryUrl.searchParams.set("limit", "10");
@@ -261,6 +273,7 @@ async function searchTmdbMovies(query: string, apiKey: string, language: "pt-BR"
   tmdbUrl.searchParams.set("api_key", apiKey);
   tmdbUrl.searchParams.set("query", query);
   tmdbUrl.searchParams.set("language", language);
+  tmdbUrl.searchParams.set("region", "BR");
   tmdbUrl.searchParams.set("include_adult", "false");
 
   const tmdb = await fetchJson(tmdbUrl).catch(() => ({}));
@@ -338,39 +351,49 @@ async function searchSeries(query: string) {
   const tmdbKey = Deno.env.get("TMDB_API_KEY");
 
   if (tmdbKey) {
-    const tmdbUrl = new URL("https://api.themoviedb.org/3/search/tv");
-    tmdbUrl.searchParams.set("api_key", tmdbKey);
-    tmdbUrl.searchParams.set("query", query);
-    tmdbUrl.searchParams.set("language", "pt-BR");
-
-    const tmdb = await fetchJson(tmdbUrl).catch(() => ({}));
-    results.push(...arrayOfRecords(tmdb.results).slice(0, 8).map((show) => {
-      const title = stringValue(show.name);
-      const firstAirDate = stringValue(show.first_air_date);
-      const posterPath = stringValue(show.poster_path);
-      const id = stringValue(show.id);
-      const coverUrl = posterPath ? `https://image.tmdb.org/t/p/w500${posterPath}` : "";
-
-      return {
-        id: `tmdb-series-${id || title}`,
-        provider: "TMDB",
-        title,
-        subtitle: [firstAirDate?.slice(0, 4), stringValue(show.original_name)].filter(Boolean).join(" / "),
-        year: yearFromDate(firstAirDate),
-        coverUrl,
-        patch: cleanPatch({
-          category: "series",
-          title,
-          year: yearFromDate(firstAirDate),
-          coverUrl,
-          comments: stringValue(show.overview),
-        }),
-        links: id ? [link("TMDB", `https://www.themoviedb.org/tv/${id}`)] : [],
-      };
-    }));
+    const tmdbResults = await Promise.all(queryVariants(query).flatMap((variant) => [
+      searchTmdbSeries(variant, tmdbKey, "pt-BR"),
+      searchTmdbSeries(variant, tmdbKey, "en-US"),
+    ]));
+    results.push(...tmdbResults.flat());
   }
 
   return results;
+}
+
+async function searchTmdbSeries(query: string, apiKey: string, language: "pt-BR" | "en-US"): Promise<MetadataResult[]> {
+  const tmdbUrl = new URL("https://api.themoviedb.org/3/search/tv");
+  tmdbUrl.searchParams.set("api_key", apiKey);
+  tmdbUrl.searchParams.set("query", query);
+  tmdbUrl.searchParams.set("language", language);
+  tmdbUrl.searchParams.set("include_adult", "false");
+
+  const tmdb = await fetchJson(tmdbUrl).catch(() => ({}));
+  return arrayOfRecords(recordValue(tmdb).results).slice(0, 8).map((show) => {
+    const title = stringValue(show.name);
+    const firstAirDate = stringValue(show.first_air_date);
+    const posterPath = stringValue(show.poster_path);
+    const backdropPath = stringValue(show.backdrop_path);
+    const id = stringValue(show.id);
+    const coverUrl = tmdbImageUrl(posterPath, "w500") || tmdbImageUrl(backdropPath, "w780");
+
+    return {
+      id: `tmdb-series-${id || title}-${language}`,
+      provider: "TMDB",
+      title,
+      subtitle: [firstAirDate?.slice(0, 4), stringValue(show.original_name), language === "en-US" ? "resultado em ingles" : "pt-BR"].filter(Boolean).join(" / "),
+      year: yearFromDate(firstAirDate),
+      coverUrl,
+      patch: cleanPatch({
+        category: "series",
+        title,
+        year: yearFromDate(firstAirDate),
+        coverUrl,
+        comments: stringValue(show.overview),
+      }),
+      links: id ? [link("TMDB", `https://www.themoviedb.org/tv/${id}`)] : [],
+    };
+  });
 }
 
 async function fetchJson(url: URL): Promise<Record<string, unknown> | unknown[]> {
@@ -437,6 +460,11 @@ function bestIsbn(value: unknown) {
   const isbn13 = identifiers.find((identifier) => stringValue(identifier.type) === "ISBN_13");
   const isbn10 = identifiers.find((identifier) => stringValue(identifier.type) === "ISBN_10");
   return stringValue((isbn13 ?? isbn10 ?? identifiers[0])?.identifier);
+}
+
+function normalizeIsbn(value: string) {
+  const cleaned = value.replace(/[^0-9Xx]/g, "").toUpperCase();
+  return cleaned.length === 10 || cleaned.length === 13 ? cleaned : "";
 }
 
 function openLibraryCoverByIsbn(isbn: string) {

@@ -52,15 +52,17 @@ export function exportData(data: AppData) {
 }
 
 export function parseImportedData(text: string): AppData {
-  const parsed = JSON.parse(text) as AppData;
-  if (!Array.isArray(parsed.items) || !parsed.statuses) {
+  const parsed = JSON.parse(text) as AppData | { data?: AppData };
+  const source = "data" in parsed && parsed.data ? parsed.data : parsed as AppData;
+
+  if (!Array.isArray(source.items) || !source.statuses) {
     throw new Error("Arquivo JSON invalido para a Gaveteira.");
   }
 
   return {
-    version: parsed.version ?? 1,
-    items: withoutLegacyDemoItems(parsed.items),
-    statuses: { ...defaultStatuses, ...parsed.statuses },
-    settings: { ...DEFAULT_SETTINGS, ...(parsed.settings ?? {}), apiKeys: parsed.settings?.apiKeys ?? {}, cloud: parsed.settings?.cloud ?? {} },
+    version: source.version ?? 1,
+    items: withoutLegacyDemoItems(source.items),
+    statuses: { ...defaultStatuses, ...source.statuses },
+    settings: { ...DEFAULT_SETTINGS, ...(source.settings ?? {}), apiKeys: source.settings?.apiKeys ?? {}, cloud: source.settings?.cloud ?? {} },
   };
 }

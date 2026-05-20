@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { AppSettings, CloudSession, CulturalItem, FamilyItem, Friendship, SocialProfile } from "../types";
 import { categoryLabels, defaultStatuses } from "../data/catalog";
-import { fetchFriendships, fetchSocialItems, upsertMyItem } from "../services/supabaseCloud";
+import { fetchFriendships, fetchMyProfile, fetchSocialItems, upsertMyItem } from "../services/supabaseCloud";
 import { getGenres, getRating, getTitle, isCompleted, isInProgress, isWishlist, uid } from "../utils/itemHelpers";
 import { AuthGate } from "./AuthGate";
 import { ItemDetails } from "./ItemDetails";
@@ -110,12 +110,16 @@ export function SocialFeedView({
     }
 
     try {
-      const [nextFriendships, nextItems] = await Promise.all([
+      const [nextFriendships, nextItems, freshProfile] = await Promise.all([
         fetchFriendships(settings, session),
         fetchSocialItems(settings, session),
+        fetchMyProfile(settings, session),
       ]);
       setFriendships(nextFriendships);
       setSocialItems(nextItems);
+      if (JSON.stringify(freshProfile) !== JSON.stringify(session.profile)) {
+        onAuthenticated({ ...session, profile: freshProfile });
+      }
       if (!silent) setMessage("Feed atualizado.");
     } catch (error) {
       if (!silent) {
@@ -347,6 +351,7 @@ interface FeedEvent {
 
 function buildSocialFeed(entries: FamilyItem[], viewerId: string): FeedEvent[] {
   return [...entries]
+    .filter((entry) => entry.item.visibility !== "private")
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
     .map((entry) => {
       const actor = entry.ownerId === viewerId ? "Você" : entry.ownerName;
@@ -403,7 +408,7 @@ function buildDiaryFeed(entries: FamilyItem[], viewerId: string): FeedEvent[] {
 }
 
 function buildSocialComparisons(groups: OwnerGroup[], viewerId: string) {
-  const entries = groups.flatMap((group) => group.entries);
+  const entries = groups.flatMap((group) => group.entries).filter((entry) => entry.item.visibility !== "private");
   const byWork = groupComparableEntries(entries);
   const commonItems = byWork
     .filter(([, workEntries]) => new Set(workEntries.map((entry) => entry.ownerId)).size > 1)
