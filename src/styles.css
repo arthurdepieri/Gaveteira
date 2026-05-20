@@ -1055,6 +1055,23 @@ button.danger {
   font-weight: 900;
 }
 
+.diary-marker-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 2px;
+}
+
+.diary-marker-row span {
+  padding: 3px 7px;
+  color: var(--green);
+  border: 1px solid rgba(52, 107, 93, 0.22);
+  background: rgba(52, 107, 93, 0.08);
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
 .cover {
   overflow: hidden;
   display: grid;
@@ -1351,7 +1368,7 @@ button.danger {
 
 .diary-row {
   display: grid;
-  grid-template-columns: 140px 160px 1fr auto;
+  grid-template-columns: 130px 150px 170px 1fr auto;
   gap: 8px;
   align-items: start;
 }
@@ -1989,6 +2006,7 @@ button.danger {
 }
 
 .social-feed-event small {
+  display: block;
   color: var(--muted);
 }
 
@@ -2042,14 +2060,15 @@ button.danger {
   background: var(--blue);
 }
 
-.reaction-row {
+.feed-action-row {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   margin-top: 8px;
 }
 
-.reaction-row button {
+.feed-action-row button,
+.feed-action-row span {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -2063,10 +2082,21 @@ button.danger {
   font-weight: 800;
 }
 
-.reaction-row button.active {
+.feed-action-row span {
+  color: var(--green);
+  border-color: rgba(52, 107, 93, 0.22);
+  background: rgba(52, 107, 93, 0.08);
+}
+
+.feed-action-row button:hover,
+.feed-action-row button:focus-visible {
   color: #fffaf1;
   border-color: var(--green);
   background: var(--green);
+}
+
+.feed-action-row button:disabled svg {
+  animation: spin 0.9s linear infinite;
 }
 
 .social-recommendation-card {
@@ -2708,6 +2738,10 @@ button.danger {
   border-radius: 999px;
 }
 
+.timeline-entry-diary::before {
+  background: var(--green);
+}
+
 .timeline-entry span {
   display: block;
   color: var(--muted);
@@ -2742,6 +2776,19 @@ button.danger {
 
 .diary-note-card strong {
   color: var(--wood-dark);
+}
+
+.diary-note-card em {
+  display: inline-block;
+  margin: 0 0 0 8px;
+  color: var(--green);
+  font-style: normal;
+  font-weight: 900;
+}
+
+.diary-note-highlight {
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px rgba(52, 107, 93, 0.14), 0 10px 20px rgba(64, 43, 25, 0.08);
 }
 
 .archive-block-heading {
@@ -2811,7 +2858,7 @@ button.danger {
 
 .diary-focus-meta {
   display: grid;
-  grid-template-columns: 150px 180px auto;
+  grid-template-columns: 138px 150px 170px auto;
   gap: 8px;
   align-items: center;
 }
@@ -2819,6 +2866,37 @@ button.danger {
 .diary-focus-entry textarea {
   min-height: 150px;
   resize: vertical;
+}
+
+.diary-prompt-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.diary-prompt-row span {
+  padding: 6px 9px;
+  color: #5d4426;
+  border: 1px solid #dec79b;
+  background: rgba(255, 244, 218, 0.76);
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.diary-summary-assist {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid rgba(52, 107, 93, 0.24);
+  background: rgba(52, 107, 93, 0.08);
+  border-radius: 8px;
+}
+
+.diary-summary-assist p {
+  margin: 0;
+  color: var(--muted);
 }
 
 .file-button input {

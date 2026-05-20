@@ -6,6 +6,7 @@ import { getGenre, getTitle, getYear } from "../utils/itemHelpers";
 export function ItemCard({ item, onOpen }: { item: CulturalItem; onOpen: () => void }) {
   const gameTime = item.category === "games" ? item.timePlayed?.trim() || "--:--" : "";
   const progress = getProgressLabel(item);
+  const diaryBadges = getDiaryBadges(item);
 
   return (
     <button className="item-card" onClick={onOpen}>
@@ -24,6 +25,11 @@ export function ItemCard({ item, onOpen }: { item: CulturalItem; onOpen: () => v
               <span key={tag}>{tag}</span>
             ))}
           </div>
+          {diaryBadges.length ? (
+            <div className="diary-marker-row">
+              {diaryBadges.map((badge) => <span key={badge}>{badge}</span>)}
+            </div>
+          ) : null}
         </div>
         <div className="item-card-meta">
           <Stars value={item.rating} />
@@ -32,6 +38,30 @@ export function ItemCard({ item, onOpen }: { item: CulturalItem; onOpen: () => v
       </div>
     </button>
   );
+}
+
+function getDiaryBadges(item: CulturalItem) {
+  const entries = item.diary.filter((entry) => entry.text.trim());
+  if (!entries.length) return [];
+
+  const latest = entries
+    .slice()
+    .sort((a, b) => new Date(b.date || "").getTime() - new Date(a.date || "").getTime())[0];
+  const typeBadges = [...new Set(entries.map((entry) => entry.type ?? "Impressão"))]
+    .slice(0, 3)
+    .map((type) => `possui ${type.toLowerCase()}`);
+
+  return [
+    `${entries.length} ${entries.length === 1 ? "nota" : "notas"}`,
+    latest?.date ? `última impressão: ${formatShortDate(latest.date)}` : "",
+    ...typeBadges,
+  ].filter(Boolean);
+}
+
+function formatShortDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
 }
 
 function getProgressLabel(item: CulturalItem) {

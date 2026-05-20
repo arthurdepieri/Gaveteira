@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.6.0-beta - Diario Vivo - 2026-05-19
+
+Versao beta focada em transformar o diario em uma parte central da Gaveteira.
+
+### Destaques
+
+- Diario como acao rapida na ficha, com botao sempre visivel.
+- Tipos de entrada para o diario: Impressao, Citacao, Teoria, Progresso, Memoria, Revisita e Opiniao final.
+- Prompts leves de escrita para reduzir a tela em branco.
+- Privacidade clara por entrada: privado ou visivel para amigos.
+- Preferencia de privacidade persistente: ao mudar para visivel, as proximas entradas seguem essa escolha.
+- Entradas de diario aparecem junto do historico, criando uma linha do tempo mais viva do consumo.
+- Cards agora mostram marcadores de diario, como quantidade de notas, ultima impressao e tipos registrados.
+- Feed ganhou um Canto do diario separado para entradas publicas.
+- Entradas publicas do diario abrem a ficha focada na nota correspondente.
+- Resumo final assistido: itens concluidos com varias notas podem virar opiniao final.
+
+### Observacoes
+
+- O diario continua privado por padrao.
+- O pacote de release desta versao fica em `releases/Gaveteira-0.6.0-beta.zip`.
+
 ## 0.5.0-beta - 2026-05-19
 
 Versao beta focada em tornar a Gaveteira mais social, clara e agradavel no uso diario.

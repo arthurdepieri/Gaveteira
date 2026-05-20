@@ -333,6 +333,8 @@ function App() {
         <SocialFeedView
           settings={effectiveSettings}
           session={cloudSession}
+          localItems={data.items}
+          onMergeItems={mergeItems}
           onAuthenticated={authenticated}
           onUpdateSettings={updateSettings}
         />

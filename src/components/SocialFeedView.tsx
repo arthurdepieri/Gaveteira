@@ -1,10 +1,10 @@
-import { Cloud, Eye, GitCompare, Heart, MessageSquare, RefreshCw, ShieldCheck, Sparkles, ThumbsUp, TrendingUp, Users, X } from "lucide-react";
+import { BookmarkPlus, CheckCircle2, Cloud, Eye, GitCompare, Heart, Loader2, MessageSquare, RefreshCw, ShieldCheck, Sparkles, TrendingUp, Users, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { AppSettings, CloudSession, CulturalItem, FamilyItem, Friendship, SocialProfile } from "../types";
-import { categoryLabels } from "../data/catalog";
-import { fetchFriendships, fetchSocialItems } from "../services/supabaseCloud";
-import { getGenres, getRating, getTitle, isCompleted, isInProgress, isWishlist } from "../utils/itemHelpers";
+import { categoryLabels, defaultStatuses } from "../data/catalog";
+import { fetchFriendships, fetchSocialItems, upsertMyItem } from "../services/supabaseCloud";
+import { getGenres, getRating, getTitle, isCompleted, isInProgress, isWishlist, uid } from "../utils/itemHelpers";
 import { AuthGate } from "./AuthGate";
 import { ItemDetails } from "./ItemDetails";
 
@@ -20,19 +20,24 @@ const SOCIAL_REFRESH_INTERVAL_MS = 30_000;
 export function SocialFeedView({
   settings,
   session,
+  localItems,
+  onMergeItems,
   onAuthenticated,
   onUpdateSettings,
 }: {
   settings: AppSettings;
   session: CloudSession | null;
+  localItems: CulturalItem[];
+  onMergeItems: (items: CulturalItem[]) => void;
   onAuthenticated: (session: CloudSession) => void;
   onUpdateSettings: (settings: AppSettings) => void;
 }) {
   const [socialItems, setSocialItems] = useState<FamilyItem[]>([]);
   const [friendships, setFriendships] = useState<Friendship[]>([]);
-  const [feedReactions, setFeedReactions] = useState<Record<string, string>>({});
+  const [savingEventId, setSavingEventId] = useState("");
   const [feedScope, setFeedScope] = useState<"friends" | "mine">("friends");
   const [activeEntry, setActiveEntry] = useState<FamilyItem | null>(null);
+  const [activeDiaryId, setActiveDiaryId] = useState<string | undefined>();
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -72,12 +77,20 @@ export function SocialFeedView({
 
   const socialFeed = useMemo(() => {
     const viewerId = session?.user.id ?? "";
-    return [...buildSocialFeed(socialItems, viewerId), ...buildDiaryFeed(socialItems, viewerId)]
+    return buildSocialFeed(socialItems, viewerId)
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   }, [session?.user.id, socialItems]);
+  const diaryFeed = useMemo(() => buildDiaryFeed(socialItems, session?.user.id ?? "").slice(0, 8), [session?.user.id, socialItems]);
   const friendFeed = socialFeed.filter((event) => event.entry.ownerId !== session?.user.id);
   const myFeed = socialFeed.filter((event) => event.entry.ownerId === session?.user.id);
   const visibleFeed = (feedScope === "friends" ? friendFeed : myFeed).slice(0, 12);
+  const savedWorkKeys = useMemo(() => {
+    const viewerId = session?.user.id ?? "";
+    const cloudItems = socialItems
+      .filter((entry) => entry.ownerId === viewerId)
+      .map((entry) => entry.item);
+    return new Set([...localItems, ...cloudItems].map(comparableKey).filter(Boolean));
+  }, [localItems, session?.user.id, socialItems]);
   const socialComparisons = useMemo(() => buildSocialComparisons(groups, session?.user.id ?? ""), [groups, session?.user.id]);
 
   useEffect(() => {
@@ -110,6 +123,32 @@ export function SocialFeedView({
       }
     } finally {
       if (!silent) setLoading(false);
+    }
+  }
+
+  async function saveFromFeed(event: FeedEvent) {
+    if (!session || event.entry.ownerId === session.user.id || savedWorkKeys.has(comparableKey(event.entry.item))) return;
+
+    const item = createWishlistCopy(event.entry.item);
+    setSavingEventId(event.id);
+    setMessage("");
+
+    try {
+      await upsertMyItem(settings, session, item);
+      onMergeItems([item]);
+      setSocialItems((current) => [{
+        id: item.id,
+        ownerId: session.user.id,
+        ownerName: session.profile?.displayName || session.user.email || "Você",
+        familyCode: session.profile?.familyCode || settings.cloud?.familyCode?.trim() || "social",
+        item,
+        updatedAt: item.updatedAt,
+      }, ...current]);
+      setMessage(`${getTitle(item) || "Ficha"} entrou na sua wishlist.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Não foi possível guardar essa ficha agora.");
+    } finally {
+      setSavingEventId("");
     }
   }
 
@@ -157,7 +196,7 @@ export function SocialFeedView({
             <MessageSquare size={20} />
             <h2>Feed</h2>
           </div>
-          <span className="soft-label">sem comentários por enquanto</span>
+          <span className="soft-label">ações úteis, sem placar</span>
         </div>
         <div className="feed-scope-tabs" aria-label="Filtrar feed">
           <button
@@ -177,32 +216,39 @@ export function SocialFeedView({
         </div>
         <div className="social-feed-list">
           {visibleFeed.length ? visibleFeed.map((event) => (
-            <article key={event.id} className="social-feed-event">
-              <div className={`feed-event-icon feed-event-${event.kind}`}>
-                {event.kind === "finished" ? <ShieldCheck size={16} /> : event.kind === "favorite" ? <Heart size={16} /> : event.kind === "opinion" || event.kind === "diary" ? <MessageSquare size={16} /> : event.kind === "abandoned" ? <X size={16} /> : <Sparkles size={16} />}
-              </div>
-              <div>
-                <button type="button" className="feed-open-button" onClick={() => setActiveEntry(event.entry)}>
-                  <p>{event.text}</p>
-                  <small>{event.detail}</small>
-                  <span>Abrir ficha</span>
-                </button>
-                <div className="reaction-row" aria-label="Reações">
-                  {["curti", "também quero", "já vi"].map((reaction) => (
-                    <button
-                      key={reaction}
-                      type="button"
-                      className={feedReactions[event.id] === reaction ? "active" : ""}
-                      onClick={() => setFeedReactions((current) => ({ ...current, [event.id]: current[event.id] === reaction ? "" : reaction }))}
-                    >
-                      <ThumbsUp size={13} />
-                      {reaction}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </article>
+            <FeedEventCard
+              key={event.id}
+              event={event}
+              saved={savedWorkKeys.has(comparableKey(event.entry.item))}
+              saving={savingEventId === event.id}
+              viewerId={session.user.id}
+              onOpen={() => openFeedEvent(event)}
+              onSave={() => saveFromFeed(event)}
+            />
           )) : <p className="empty">{feedScope === "friends" ? "Quando seus amigos atualizarem fichas, o movimento aparece aqui." : "Suas próximas alterações aparecem aqui como um histórico leve."}</p>}
+        </div>
+      </section>
+
+      <section className="setting-panel social-diary-corner">
+        <div className="section-heading split">
+          <div className="section-heading">
+            <MessageSquare size={20} />
+            <h2>Canto do diário</h2>
+          </div>
+          <span className="soft-label">notas públicas</span>
+        </div>
+        <div className="social-feed-list">
+          {diaryFeed.length ? diaryFeed.map((event) => (
+            <FeedEventCard
+              key={event.id}
+              event={event}
+              saved={savedWorkKeys.has(comparableKey(event.entry.item))}
+              saving={savingEventId === event.id}
+              viewerId={session.user.id}
+              onOpen={() => openFeedEvent(event)}
+              onSave={() => saveFromFeed(event)}
+            />
+          )) : <p className="empty">Quando alguém publicar uma entrada de diário, ela aparece aqui separada do restante do feed.</p>}
         </div>
       </section>
 
@@ -221,8 +267,58 @@ export function SocialFeedView({
         </div>
       </section>
 
-      {activeEntry ? <ItemDetails item={activeEntry.item} ownerName={activeEntry.ownerName} onClose={() => setActiveEntry(null)} /> : null}
+      {activeEntry ? <ItemDetails item={activeEntry.item} ownerName={activeEntry.ownerName} focusDiaryId={activeDiaryId} onClose={() => { setActiveEntry(null); setActiveDiaryId(undefined); }} /> : null}
     </main>
+  );
+
+  function openFeedEvent(event: FeedEvent) {
+    setActiveEntry(event.entry);
+    setActiveDiaryId(event.diaryId);
+  }
+}
+
+function FeedEventCard({
+  event,
+  saved,
+  saving,
+  viewerId,
+  onOpen,
+  onSave,
+}: {
+  event: FeedEvent;
+  saved: boolean;
+  saving: boolean;
+  viewerId: string;
+  onOpen: () => void;
+  onSave: () => void;
+}) {
+  const ownEvent = event.entry.ownerId === viewerId;
+
+  return (
+    <article className="social-feed-event">
+      <div className={`feed-event-icon feed-event-${event.kind}`}>
+        {event.kind === "finished" ? <ShieldCheck size={16} /> : event.kind === "favorite" ? <Heart size={16} /> : event.kind === "opinion" || event.kind === "diary" ? <MessageSquare size={16} /> : event.kind === "abandoned" ? <X size={16} /> : <Sparkles size={16} />}
+      </div>
+      <div>
+        <button type="button" className="feed-open-button" onClick={onOpen}>
+          <p>{event.text}</p>
+          <small>{event.detail}</small>
+          <span>Abrir ficha</span>
+        </button>
+        <div className="feed-action-row">
+          {ownEvent ? (
+            <span><CheckCircle2 size={13} /> Sua ficha</span>
+          ) : saved ? (
+            <span><CheckCircle2 size={13} /> Na sua gaveteira</span>
+          ) : (
+            <button type="button" onClick={onSave} disabled={saving}>
+              {saving ? <Loader2 size={13} /> : <BookmarkPlus size={13} />}
+              Quero na minha gaveteira
+            </button>
+          )}
+        </div>
+      </div>
+    </article>
   );
 }
 
@@ -246,6 +342,7 @@ interface FeedEvent {
   text: string;
   detail: string;
   updatedAt: string;
+  diaryId?: string;
 }
 
 function buildSocialFeed(entries: FamilyItem[], viewerId: string): FeedEvent[] {
@@ -298,8 +395,9 @@ function buildDiaryFeed(entries: FamilyItem[], viewerId: string): FeedEvent[] {
         kind: "diary" as FeedKind,
         entry,
         text: `${actor} escreveu no diário de ${title}.`,
-        detail: diary.text.length > 110 ? `${diary.text.slice(0, 110)}...` : diary.text,
+        detail: `${diary.type ?? "Impressão"} / ${diary.text.length > 110 ? `${diary.text.slice(0, 110)}...` : diary.text}`,
         updatedAt: diary.date || entry.updatedAt,
+        diaryId: diary.id,
       }));
   });
 }
@@ -361,13 +459,91 @@ function groupComparableEntries(entries: FamilyItem[]) {
 }
 
 function comparableKey(item: CulturalItem) {
-  const title = getTitle(item)
+  const title = getTitle(item);
+  if (!title) return "";
+
+  const normalizedTitle = title
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
-  return title ? `${item.category}:${title}` : "";
+  return normalizedTitle ? `${item.category}:${normalizedTitle}` : "";
+}
+
+function createWishlistCopy(source: CulturalItem): CulturalItem {
+  const now = new Date().toISOString();
+  const base = {
+    id: uid(`feed-${source.category}`),
+    category: source.category,
+    status: defaultStatuses[source.category][0],
+    visibility: "private" as const,
+    tags: [...source.tags],
+    coverUrl: source.coverUrl,
+    links: [],
+    timeline: [],
+    diary: [],
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  if (source.category === "games") {
+    return {
+      ...base,
+      category: "games",
+      name: source.name,
+      platform: source.platform || "",
+      developer: source.developer,
+      publisher: source.publisher,
+      releaseYear: source.releaseYear,
+      genre: source.genre,
+    };
+  }
+
+  if (source.category === "books") {
+    return {
+      ...base,
+      category: "books",
+      title: source.title,
+      author: source.author,
+      pages: source.pages,
+      format: source.format,
+      publisher: source.publisher,
+      publicationYear: source.publicationYear,
+      genre: source.genre,
+    };
+  }
+
+  if (source.category === "albums") {
+    return {
+      ...base,
+      category: "albums",
+      name: source.name,
+      artist: source.artist,
+      releaseYear: source.releaseYear,
+      genre: source.genre,
+    };
+  }
+
+  if (source.category === "movies") {
+    return {
+      ...base,
+      category: "movies",
+      title: source.title,
+      year: source.year,
+      director: source.director,
+      runtimeMinutes: source.runtimeMinutes,
+      genre: source.genre,
+    };
+  }
+
+  return {
+    ...base,
+    category: "series",
+    title: source.title,
+    year: source.year,
+    genre: source.genre,
+  };
 }
 
 function ownerNames(entries: FamilyItem[], viewerId: string) {

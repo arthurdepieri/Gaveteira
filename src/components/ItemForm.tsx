@@ -9,6 +9,14 @@ import { RatingInput } from "./Rating";
 import { TagInput } from "./TagInput";
 
 type MutableItem = CulturalItem & Record<string, unknown>;
+const DIARY_VISIBILITY_KEY = "gaveteira-diary-default-visibility:v1";
+const diaryTypes: NonNullable<DiaryEntry["type"]>[] = ["Impressão", "Citação", "Teoria", "Progresso", "Memória", "Revisita", "Opinião final"];
+const diaryPrompts = [
+  "O que te chamou atenção hoje?",
+  "Você continuaria ou pausaria?",
+  "Uma cena, frase ou música que ficou.",
+  "O que mudou desde a última entrada?",
+];
 
 export function createBlankItem(category: Category, status: string): CulturalItem {
   const base = {
@@ -447,21 +455,39 @@ function TimelineEditor({ events, onChange }: { events: TimelineEvent[]; onChang
 }
 
 function DiaryEditor({ entries, onChange }: { entries: DiaryEntry[]; onChange: (entries: DiaryEntry[]) => void }) {
-  const update = (id: string, patch: Partial<DiaryEntry>) => onChange(entries.map((entry) => entry.id === id ? { ...entry, ...patch } : entry));
+  const [defaultVisibility, setDefaultVisibility] = useState<DiaryEntry["visibility"]>(() => loadDiaryVisibility());
+  const update = (id: string, patch: Partial<DiaryEntry>) => {
+    if (patch.visibility) {
+      localStorage.setItem(DIARY_VISIBILITY_KEY, patch.visibility);
+      setDefaultVisibility(patch.visibility);
+    }
+    onChange(entries.map((entry) => entry.id === id ? { ...entry, ...patch } : entry));
+  };
   return (
     <div className="repeat-list">
+      <div className="diary-prompt-row" aria-label="Sugestões de escrita">
+        {diaryPrompts.map((prompt) => <span key={prompt}>{prompt}</span>)}
+      </div>
       {entries.map((entry) => (
         <div className="diary-row" key={entry.id}>
           <input type="date" value={entry.date} onChange={(e) => update(entry.id, { date: e.target.value })} />
+          <select value={entry.type ?? "Impressão"} onChange={(e) => update(entry.id, { type: e.target.value as DiaryEntry["type"] })}>
+            {diaryTypes.map((type) => <option key={type}>{type}</option>)}
+          </select>
           <select value={entry.visibility ?? "private"} onChange={(e) => update(entry.id, { visibility: e.target.value as DiaryEntry["visibility"] })}>
             <option value="private">Privado</option>
-            <option value="friends">Público no feed</option>
+            <option value="friends">Visível para amigos</option>
           </select>
-          <textarea value={entry.text} onChange={(e) => update(entry.id, { text: e.target.value })} placeholder="ImpressÃ£o, memÃ³ria, anotaÃ§Ã£o solta..." />
+          <textarea value={entry.text} onChange={(e) => update(entry.id, { text: e.target.value })} placeholder={diaryPrompts[0]} />
           <button type="button" className="icon-button" onClick={() => onChange(entries.filter((item) => item.id !== entry.id))}><X size={16} /></button>
         </div>
       ))}
-      <button type="button" className="ghost" onClick={() => onChange([...entries, { id: uid("diary"), date: new Date().toISOString().slice(0, 10), text: "", visibility: "private" }])}>Nova entrada</button>
+      <button type="button" className="ghost" onClick={() => onChange([...entries, { id: uid("diary"), date: new Date().toISOString().slice(0, 10), text: "", visibility: defaultVisibility, type: "Impressão" }])}>Nova entrada</button>
     </div>
   );
+}
+
+function loadDiaryVisibility(): DiaryEntry["visibility"] {
+  const saved = localStorage.getItem(DIARY_VISIBILITY_KEY);
+  return saved === "friends" ? "friends" : "private";
 }

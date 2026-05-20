@@ -164,6 +164,30 @@ export async function syncMyItems(settings: AppSettings, session: CloudSession, 
   });
 }
 
+export async function upsertMyItem(settings: AppSettings, session: CloudSession, item: CulturalItem) {
+  if (isLegacyDemoItem(item.id)) return;
+
+  const familyCode = session.profile?.familyCode || settings.cloud?.familyCode?.trim() || "social";
+  await upsertProfile(settings, session, {
+    ...session.profile,
+    displayName: session.profile?.displayName || session.user.email?.split("@")[0] || "Pessoa da Gaveteira",
+    email: session.user.email,
+    familyCode,
+  });
+
+  await restRequest(settings, session, "/rest/v1/cultural_items?on_conflict=id,owner_id", {
+    method: "POST",
+    headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+    body: JSON.stringify({
+      id: item.id,
+      owner_id: session.user.id,
+      family_code: familyCode,
+      item,
+      updated_at: item.updatedAt,
+    }),
+  });
+}
+
 async function deleteMyItemsExcept(settings: AppSettings, session: CloudSession, itemIds: string[]) {
   const filters = [`owner_id=eq.${encodeURIComponent(session.user.id)}`];
 

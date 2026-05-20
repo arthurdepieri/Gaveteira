@@ -16,6 +16,7 @@ export interface DiaryEntry {
   date: string;
   text: string;
   visibility?: "private" | "friends";
+  type?: "Impressão" | "Citação" | "Teoria" | "Progresso" | "Memória" | "Revisita" | "Opinião final";
 }
 
 export interface ExternalLink {
