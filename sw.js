@@ -1,5 +1,12 @@
-const CACHE_VERSION = "gaveteira-pwa-v1";
-const APP_SHELL = ["/", "/index.html", "/manifest.webmanifest", "/gaveteira-icon.svg"];
+const CACHE_VERSION = "gaveteira-pwa-v2";
+const APP_SHELL = [
+  "/",
+  "/index.html",
+  "/manifest.webmanifest",
+  "/gaveteira-icon.svg",
+  "/icons/icon-192.png",
+  "/icons/icon-512.png",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
