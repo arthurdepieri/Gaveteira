@@ -482,7 +482,7 @@ function createWishlistCopy(source: CulturalItem): CulturalItem {
     id: uid(`feed-${source.category}`),
     category: source.category,
     status: defaultStatuses[source.category][0],
-    visibility: "private" as const,
+    visibility: "friends" as const,
     tags: [...source.tags],
     coverUrl: source.coverUrl,
     links: [],

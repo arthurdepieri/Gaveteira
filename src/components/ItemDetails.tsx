@@ -1,6 +1,6 @@
 import { BookOpenText, Edit3, ExternalLink, ImageIcon, Lock, Megaphone, Plus, Search, Sparkles, X } from "lucide-react";
 import { useState } from "react";
-import { AppSettings, CloudSession, CulturalItem, DiaryEntry } from "../types";
+import { AppSettings, CloudSession, CulturalItem, DiaryEntry, SocialVisibility } from "../types";
 import { categoryLabels } from "../data/catalog";
 import { getItemVisibility, getItemVisibilityLabel, getTitle, getYear, isCompleted, uid } from "../utils/itemHelpers";
 import { MetadataResult, searchMetadata } from "../services/metadata";
@@ -54,6 +54,10 @@ export function ItemDetails({
 
   function updateDiary(diary: DiaryEntry[]) {
     onUpdateItem?.({ ...item, diary, updatedAt: new Date().toISOString() } as CulturalItem);
+  }
+
+  function updateVisibility(visibility: SocialVisibility) {
+    onUpdateItem?.({ ...item, visibility, updatedAt: new Date().toISOString() } as CulturalItem);
   }
 
   return (
@@ -118,11 +122,22 @@ export function ItemDetails({
               </span>
             </div>
             {!ownerName ? (
-              <p className={`privacy-note privacy-note-${itemVisibility}`}>
-                {itemVisibility === "private"
-                  ? "Esta ficha está privada e não aparece para amigos, no Feed ou nas comparações sociais."
-                  : "Esta ficha está visível para amigos. Entradas privadas do diário continuam ocultas."}
-              </p>
+              <div className={`privacy-note privacy-note-${itemVisibility}`}>
+                <p>
+                  {itemVisibility === "private"
+                    ? "Esta ficha está privada e não aparece para amigos, no Feed ou nas comparações sociais."
+                    : "Esta ficha está visível para amigos. Entradas privadas do diário continuam ocultas."}
+                </p>
+                {onUpdateItem ? (
+                  <label className="detail-privacy-control">
+                    <span>Privacidade da ficha</span>
+                    <select value={itemVisibility === "private" ? "private" : "friends"} onChange={(event) => updateVisibility(event.target.value as SocialVisibility)}>
+                      <option value="friends">Visível para amigos</option>
+                      <option value="private">Privado</option>
+                    </select>
+                  </label>
+                ) : null}
+              </div>
             ) : null}
             <div className="detail-rating-line">
               <Stars value={item.rating} />

@@ -2,83 +2,83 @@
 
 ## 0.6.2-beta - Polimento de uso - 2026-05-21
 
-Versao beta focada em deixar a Gaveteira mais confortavel, clara e tranquilizadora no uso diario.
+Versão beta focada em deixar a Gaveteira mais confortável, clara e tranquilizadora no uso diário.
 
 ### Destaques
 
-- Home reorganizada com hierarquia mais clara: continuar, movimento recente, sugestoes e gavetas.
-- Ficha do item refinada para celular, com aba Resumo, atalhos para Diario e Historico e seções vazias menos ruidosas.
-- Estados vazios e microtextos revisados para reforçar a linguagem de arquivo pessoal, gavetas, fichas e diario.
-- Cartao de sincronizacao mais tranquilizador, com ultimo envio bem-sucedido e area para ver pendencias da nuvem.
-- Melhorias em mensagens de erro para reduzir termos tecnicos e deixar claro quando fichas seguem salvas localmente.
-- Ajustes em textos de Feed, Amigos, Estatisticas, login, busca de capas e backup.
+- Home reorganizada com hierarquia mais clara: continuar, movimento recente, sugestões e gavetas.
+- Ficha do item refinada para celular, com aba Resumo, atalhos para Diário e Histórico e seções vazias menos ruidosas.
+- Estados vazios e microtextos revisados para reforçar a linguagem de arquivo pessoal, gavetas, fichas e diário.
+- Cartão de sincronização mais tranquilizador, com último envio bem-sucedido e área para ver pendências da nuvem.
+- Melhorias em mensagens de erro para reduzir termos técnicos e deixar claro quando fichas seguem salvas localmente.
+- Ajustes em textos de Feed, Amigos, Estatísticas, login, busca de capas e backup.
 
-### Observacoes
+### Observações
 
-- Esta versao consolida polimentos feitos depois da 0.6.1, sem mudar o eixo principal do app.
-- O pacote de release desta versao fica em `releases/Gaveteira-0.6.2-beta.zip`.
+- Esta versão consolida polimentos feitos depois da 0.6.1, sem mudar o eixo principal do app.
+- O pacote de release desta versão fica em `releases/Gaveteira-0.6.2-beta.zip`.
 
-## 0.6.0-beta - Diario Vivo - 2026-05-19
+## 0.6.0-beta - Diário Vivo - 2026-05-19
 
-Versao beta focada em transformar o diario em uma parte central da Gaveteira.
+Versão beta focada em transformar o diário em uma parte central da Gaveteira.
 
 ### Destaques
 
-- Diario como acao rapida na ficha, com botao sempre visivel.
-- Tipos de entrada para o diario: Impressao, Citacao, Teoria, Progresso, Memoria, Revisita e Opiniao final.
+- Diário como ação rápida na ficha, com botão sempre visível.
+- Tipos de entrada para o diário: Impressão, Citação, Teoria, Progresso, Memória, Revisita e Opinião final.
 - Prompts leves de escrita para reduzir a tela em branco.
-- Privacidade clara por entrada: privado ou visivel para amigos.
-- Preferencia de privacidade persistente: ao mudar para visivel, as proximas entradas seguem essa escolha.
-- Entradas de diario aparecem junto do historico, criando uma linha do tempo mais viva do consumo.
-- Cards agora mostram marcadores de diario, como quantidade de notas, ultima impressao e tipos registrados.
-- Feed ganhou um Canto do diario separado para entradas publicas.
-- Entradas publicas do diario abrem a ficha focada na nota correspondente.
-- Resumo final assistido: itens concluidos com varias notas podem virar opiniao final.
+- Privacidade clara por entrada: privado ou visível para amigos.
+- Preferência de privacidade persistente: ao mudar para visível, as próximas entradas seguem essa escolha.
+- Entradas de diário aparecem junto do histórico, criando uma linha do tempo mais viva do consumo.
+- Cards agora mostram marcadores de diário, como quantidade de notas, última impressão e tipos registrados.
+- Feed ganhou um Canto do diário separado para entradas públicas.
+- Entradas públicas do diário abrem a ficha focada na nota correspondente.
+- Resumo final assistido: itens concluídos com várias notas podem virar opinião final.
 
-### Observacoes
+### Observações
 
-- O diario continua privado por padrao.
-- O pacote de release desta versao fica em `releases/Gaveteira-0.6.0-beta.zip`.
+- O diário continua privado por padrão.
+- O pacote de release desta versão fica em `releases/Gaveteira-0.6.0-beta.zip`.
 
 ## 0.5.0-beta - 2026-05-19
 
-Versao beta focada em tornar a Gaveteira mais social, clara e agradavel no uso diario.
+Versão beta focada em tornar a Gaveteira mais social, clara e agradável no uso diário.
 
 ### Destaques
 
-- Dashboard inicial transformado em painel da vida cultural, com ultimas adicoes, favoritos recentes, sugestoes e atividade dos amigos.
-- Onboarding mais guiado para novas contas, com perfil, gavetas favoritas, primeiro item e sincronizacao.
-- Estados vazios melhores nas gavetas, com chamadas especificas para adicionar o primeiro item.
-- Diario com mais destaque na ficha e entradas privadas ou visiveis para amigos.
-- Feed social refinado com movimento proprio e movimento dos amigos, abrindo a ficha relacionada.
-- Perfis e amigos mais pessoais, com paginas separadas no menu social.
-- Estados de sincronizacao mais claros: salvo localmente, pendente, enviando, enviado, falhou, sem conexao e sessao expirada.
-- Busca automatica de capas e metadados melhorada, principalmente para livros e filmes.
-- Fichas vazias criadas por engano agora sao removidas ao fechar.
-- Renomeacao de Albuns para Discos.
+- Dashboard inicial transformado em painel da vida cultural, com últimas adições, favoritos recentes, sugestões e atividade dos amigos.
+- Onboarding mais guiado para novas contas, com perfil, gavetas favoritas, primeiro item e sincronização.
+- Estados vazios melhores nas gavetas, com chamadas específicas para adicionar o primeiro item.
+- Diário com mais destaque na ficha e entradas privadas ou visíveis para amigos.
+- Feed social refinado com movimento próprio e movimento dos amigos, abrindo a ficha relacionada.
+- Perfis e amigos mais pessoais, com páginas separadas no menu social.
+- Estados de sincronização mais claros: salvo localmente, pendente, enviando, enviado, falhou, sem conexão e sessão expirada.
+- Busca automática de capas e metadados melhorada, principalmente para livros e filmes.
+- Fichas vazias criadas por engano agora são removidas ao fechar.
+- Renomeação de Álbuns para Discos.
 
-### Observacoes
+### Observações
 
-- A funcao Supabase `metadata-search` tambem foi preparada para melhorar busca de livros e filmes na versao online.
-- O pacote de release desta versao fica em `releases/Gaveteira-0.5.0-beta.zip`.
+- A função Supabase `metadata-search` também foi preparada para melhorar busca de livros e filmes na versão online.
+- O pacote de release desta versão fica em `releases/Gaveteira-0.5.0-beta.zip`.
 
 ## 0.4.0-beta - 2026-05-18
 
-Versao beta marcada para consolidar a Gaveteira como app pessoal/social instalavel.
+Versão beta marcada para consolidar a Gaveteira como app pessoal/social instalável.
 
 ### Destaques
 
-- PWA instalavel no celular, com manifest, icones e service worker.
-- Experiencia mobile refinada com navegacao inferior, gavetas em painel e cards mais compactos.
+- PWA instalável no celular, com manifest, ícones e service worker.
+- Experiência mobile refinada com navegação inferior, gavetas em painel e cards mais compactos.
 - Perfis sociais separados em Meu perfil e Amigos.
 - Feed social leve com atividades suas e dos amigos.
-- Comparacoes sociais e acesso a perfis de amigos.
-- Auto-salvamento online com estados de sincronizacao, pendencia, erro e sessao expirada.
-- Tela inicial mais viva, com ultimas adicoes, favoritos recentes e sugestoes.
+- Comparações sociais e acesso a perfis de amigos.
+- Auto-salvamento online com estados de sincronização, pendência, erro e sessão expirada.
+- Tela inicial mais viva, com últimas adições, favoritos recentes e sugestões.
 - Melhorias de ficha pessoal, carimbo visual e editor de perfil.
-- Remocao dos exemplos iniciais para novas contas.
+- Remoção dos exemplos iniciais para novas contas.
 
-### Observacoes
+### Observações
 
-- A Gaveteira ainda e beta: sincronizacao, instalacao PWA e fluxo social devem ser testados em celulares reais.
-- O pacote de release desta versao fica em `releases/Gaveteira-0.4.0-beta.zip`.
+- A Gaveteira ainda é beta: sincronização, instalação PWA e fluxo social devem ser testados em celulares reais.
+- O pacote de release desta versão fica em `releases/Gaveteira-0.4.0-beta.zip`.

@@ -153,7 +153,7 @@ export function SettingsView({
         <div>
           <p className="eyebrow">Preferências locais</p>
           <h1>Configurações</h1>
-          <p>Status, backup JSON e chaves para buscas automaticas futuras.</p>
+          <p>Status, backup JSON e chaves para buscas automáticas futuras.</p>
         </div>
       </section>
 
