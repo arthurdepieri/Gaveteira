@@ -29,6 +29,24 @@ body {
     linear-gradient(#f7f1e6, #efe5d5);
 }
 
+.startup-splash {
+  display: grid;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+  padding: clamp(20px, 7vw, 72px);
+  background:
+    radial-gradient(circle at center, rgba(255, 250, 241, 0.98), rgba(247, 241, 230, 0.94) 58%, #efe5d5 100%);
+}
+
+.startup-splash img {
+  display: block;
+  width: min(78vw, 620px);
+  max-height: 82vh;
+  object-fit: contain;
+  filter: drop-shadow(0 22px 44px rgba(47, 35, 24, 0.12));
+}
+
 button, input, select, textarea {
   font: inherit;
 }

@@ -95,6 +95,7 @@ function App() {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [standaloneMode, setStandaloneMode] = useState(() => isStandaloneApp());
+  const [showStartupSplash, setShowStartupSplash] = useState(true);
   const syncInFlightRef = useRef(false);
   const syncQueuedRef = useRef(false);
   const lastSyncedKeyRef = useRef("");
@@ -116,6 +117,11 @@ function App() {
     dataRef.current = data;
     saveData(data);
   }, [data]);
+
+  useEffect(() => {
+    const timerId = window.setTimeout(() => setShowStartupSplash(false), 1500);
+    return () => window.clearTimeout(timerId);
+  }, []);
 
   useEffect(() => {
     if (isStandaloneApp() || localStorage.getItem(INSTALL_DISMISSED_KEY) === "true") return;
@@ -653,6 +659,14 @@ function App() {
       pendingDeletes: counts.deletes,
       failedItems: counts.failed,
     });
+  }
+
+  if (showStartupSplash) {
+    return (
+      <main className="startup-splash" aria-label="Abrindo Gaveteira">
+        <img src="/gaveteira-splash.png" alt="Gaveteira" />
+      </main>
+    );
   }
 
   return (
