@@ -1,9 +1,12 @@
-const CACHE_VERSION = "gaveteira-pwa-v2";
+const CACHE_VERSION = "gaveteira-pwa-v5";
 const APP_SHELL = [
   "/",
   "/index.html",
   "/manifest.webmanifest",
-  "/gaveteira-icon.svg",
+  "/gaveteira-splash.png",
+  "/icons/favicon-16.png",
+  "/icons/favicon-32.png",
+  "/icons/apple-touch-icon.png",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
 ];
