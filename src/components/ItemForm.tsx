@@ -181,11 +181,11 @@ function MetadataLookup({
       setResults(visibleResults);
       if (!visibleResults.length) {
         setError(nextMode === "cover"
-          ? "Nenhuma capa encontrada. Tente um tÃ­tulo mais especÃ­fico ou cole uma URL manualmente."
-          : "Nenhum resultado encontrado. Tente um nome mais especÃ­fico ou cadastre manualmente.");
+          ? "Não encontrei uma capa boa para essa ficha. Tente título, autor, ano ou ISBN, ou cole uma URL manualmente."
+          : "Não encontrei dados confiáveis para essa ficha. Tente um nome mais específico ou preencha manualmente.");
       }
     } catch (searchError) {
-      setError(searchError instanceof Error ? searchError.message : "NÃ£o foi possÃ­vel buscar metadados agora.");
+      setError(searchError instanceof Error ? searchError.message : "Não consegui buscar dados agora. A ficha continua editável manualmente.");
     } finally {
       setLoading(false);
     }
@@ -202,7 +202,7 @@ function MetadataLookup({
       <div className="metadata-search">
         <label className="search-field">
           <Search size={16} />
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={item.category === "books" ? "Digite título, autor ou ISBN" : "Digite o nome e busque metadados"} />
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={item.category === "books" ? "Digite título, autor ou ISBN" : "Digite o nome para procurar a ficha"} />
         </label>
         <button type="button" className="primary" onClick={() => runSearch("data")} disabled={loading}>
           <Sparkles size={16} />

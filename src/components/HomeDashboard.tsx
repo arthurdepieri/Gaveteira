@@ -76,7 +76,7 @@ export function HomeDashboard({
         const nextItems = await fetchSocialItems(settings, currentSession);
         if (!cancelled) setSocialItems(nextItems);
       } catch (error) {
-        if (!cancelled) setSocialError(error instanceof Error ? error.message : "Não foi possível carregar a atividade dos amigos.");
+        if (!cancelled) setSocialError(error instanceof Error ? error.message : "Não consegui abrir o movimento dos amigos.");
       }
     }
 
@@ -98,7 +98,7 @@ export function HomeDashboard({
     try {
       setSocialItems(await fetchSocialItems(settings, session));
     } catch (error) {
-      setSocialError(error instanceof Error ? error.message : "Não foi possível carregar a atividade dos amigos.");
+      setSocialError(error instanceof Error ? error.message : "Não consegui abrir o movimento dos amigos.");
     } finally {
       setSocialLoading(false);
     }
@@ -112,7 +112,7 @@ export function HomeDashboard({
           <h1>Gaveteira</h1>
           <p>Uma mesa de controle local para o que você jogou, leu, ouviu, assistiu, largou e ainda quer descobrir.</p>
         </div>
-        <div className="hero-counters" aria-label="Resumo rapido">
+        <div className="hero-counters" aria-label="Resumo rápido">
           <strong>{items.length}</strong>
           <span>itens catalogados</span>
         </div>
@@ -185,46 +185,55 @@ export function HomeDashboard({
         </section>
       ) : null}
 
-      <section className="drawer-grid" aria-label="Gaveteira">
-        {(Object.keys(categoryLabels) as Category[]).map((category) => {
-          const Icon = icons[category];
-          return (
-            <button className={`drawer drawer-${category}`} key={category} onClick={() => onOpenCategory(category)}>
-              <span className="drawer-handle">
-                <Icon size={18} />
-              </span>
+      <section className="section home-continue-panel">
+        <div className="section-heading split">
+          <div className="section-heading">
+            <Archive size={20} />
+            <h2>Continue de onde parou</h2>
+          </div>
+          <button type="button" className="ghost compact" onClick={() => onOpenCategory("progress")}>Ver tudo</button>
+        </div>
+        {stats.inProgress.length ? (
+          <div className="continue-grid">
+            <button className="continue-featured" onClick={() => onOpenItem(stats.inProgress[0])}>
+              <Cover item={stats.inProgress[0]} />
               <span>
-                <strong>{categoryLabels[category]}</strong>
-                <small>{stats.categoryTotals[category]} itens</small>
+                <small>{categoryLabels[stats.inProgress[0].category]} / {stats.inProgress[0].status}</small>
+                <strong>{getTitle(stats.inProgress[0])}</strong>
+                <em>{continueDetail(stats.inProgress[0])}</em>
+                <Stars value={stats.inProgress[0].rating} />
               </span>
             </button>
-          );
-        })}
-        <button className="drawer drawer-wishlist" onClick={() => onOpenCategory("wishlist")}>
-          <span className="drawer-handle">
-            <Library size={18} />
-          </span>
-          <span>
-            <strong>Wishlist</strong>
-            <small>{stats.wishlist.length} desejos guardados</small>
-          </span>
-        </button>
-        <button className="drawer drawer-progress" onClick={() => onOpenCategory("progress")}>
-          <span className="drawer-handle">
-            <ListChecks size={18} />
-          </span>
-          <span>
-            <strong>Em andamento</strong>
-            <small>{stats.inProgress.length} abertos agora</small>
-          </span>
-        </button>
+            <div className="continue-list">
+              {stats.inProgress.slice(1, 5).map((item) => (
+                <button key={item.id} className="shelf-item" onClick={() => onOpenItem(item)}>
+                  <Cover item={item} compact />
+                  <span>
+                    <strong>{getTitle(item)}</strong>
+                    <small>{categoryLabels[item.category]} / {continueDetail(item)}</small>
+                  </span>
+                  <Stars value={item.rating} />
+                </button>
+              ))}
+              {stats.inProgress.length === 1 ? <p className="empty">Só uma ficha aberta na mesa por enquanto.</p> : null}
+            </div>
+          </div>
+        ) : (
+          <div className="home-empty-action">
+            <p>Nenhuma ficha aberta agora. Escolha algo para abrir uma nova trilha cultural.</p>
+            <div className="button-row">
+              <button type="button" className="primary" onClick={() => onOpenCategory("wishlist")}>Abrir wishlist</button>
+              <button type="button" className="ghost" onClick={() => onAddItem("games")}>Abrir nova ficha</button>
+            </div>
+          </div>
+        )}
       </section>
 
       <section className="section home-life-panel" aria-label="Painel da vida cultural">
         <div className="section-heading split">
           <div className="section-heading">
             <Sparkles size={20} />
-            <h2>Painel da vida cultural</h2>
+            <h2>Movimento recente</h2>
           </div>
           <span className="soft-label">{connectedToFamily ? "local + amigos" : "local"}</span>
         </div>
@@ -233,7 +242,7 @@ export function HomeDashboard({
           title="Últimas adições"
           icon={Clock3}
           items={latestItems}
-          empty="Nada novo por aqui ainda."
+          empty="Nenhuma ficha nova na mesa ainda."
           onOpenItem={onOpenItem}
           metaFor={(item) => [categoryLabels[item.category], item.status].join(" / ")}
         />
@@ -241,7 +250,7 @@ export function HomeDashboard({
           title="Favoritos recentes"
           icon={Heart}
           items={recentFavorites}
-          empty="Suas notas altas vão aparecer aqui."
+          empty="Suas fichas mais queridas vão aparecer aqui."
           onOpenItem={onOpenItem}
           metaFor={(item) => [categoryLabels[item.category], item.rating ? `${item.rating}/5` : ""].filter(Boolean).join(" / ")}
         />
@@ -280,30 +289,51 @@ export function HomeDashboard({
             ))}
           </div>
         ) : (
-          <p className="empty">Quando houver wishlist, notas ou itens em andamento, a Gaveteira sugere o proximo passo.</p>
+          <p className="empty">Quando houver wishlist, notas ou fichas abertas, a Gaveteira separa algumas sugestões para você.</p>
         )}
       </section>
 
-      <section className="section">
-        <div className="section-heading">
-          <Archive size={20} />
-          <h2>Em andamento</h2>
+      <section className="section home-drawers-panel" aria-label="Gaveteira">
+        <div className="section-heading split">
+          <div className="section-heading">
+            <Library size={20} />
+            <h2>Gavetas</h2>
+          </div>
+          <span className="soft-label">{items.length} fichas</span>
         </div>
-        <div className="shelf-list">
-          {stats.inProgress.length ? (
-            stats.inProgress.map((item) => (
-              <button key={item.id} className="shelf-item" onClick={() => onOpenItem(item)}>
-                <Cover item={item} compact />
-                <span>
-                  <strong>{getTitle(item)}</strong>
-                  <small>{item.status}</small>
+        <div className="drawer-grid">
+          {(Object.keys(categoryLabels) as Category[]).map((category) => {
+            const Icon = icons[category];
+            return (
+              <button className={`drawer drawer-${category}`} key={category} onClick={() => onOpenCategory(category)}>
+                <span className="drawer-handle">
+                  <Icon size={18} />
                 </span>
-                <Stars value={item.rating} />
+                <span>
+                  <strong>{categoryLabels[category]}</strong>
+                  <small>{stats.categoryTotals[category]} itens</small>
+                </span>
               </button>
-            ))
-          ) : (
-            <p className="empty">Nada em andamento. Sua gaveta respirou fundo.</p>
-          )}
+            );
+          })}
+          <button className="drawer drawer-wishlist" onClick={() => onOpenCategory("wishlist")}>
+            <span className="drawer-handle">
+              <Library size={18} />
+            </span>
+            <span>
+              <strong>Wishlist</strong>
+              <small>{stats.wishlist.length} desejos guardados</small>
+            </span>
+          </button>
+          <button className="drawer drawer-progress" onClick={() => onOpenCategory("progress")}>
+            <span className="drawer-handle">
+              <ListChecks size={18} />
+            </span>
+            <span>
+              <strong>Em andamento</strong>
+              <small>{stats.inProgress.length} abertos agora</small>
+            </span>
+          </button>
         </div>
       </section>
     </main>
@@ -354,7 +384,7 @@ function buildOnboardingChecklist({
       action: (_addItem: (category: Category) => void, openFamily: () => void) => openFamily(),
     },
     {
-      label: "Adicionar primeiro item",
+      label: "Arquivar primeira ficha",
       done: items.length > 0,
       action: (addItem: (category: Category) => void) => addItem("games"),
     },
@@ -447,7 +477,7 @@ function FriendActivityShelf({
       </div>
       {!connected ? (
         <div className="home-social-empty">
-          <p>Conecte a Gaveteira para ver um resumo discreto da sua rede.</p>
+          <p>Conecte a Gaveteira para ver, sem barulho, o movimento dos seus amigos.</p>
           <button type="button" className="primary" onClick={onOpenFamily}>Abrir Amigos</button>
         </div>
       ) : error ? (
@@ -472,7 +502,7 @@ function FriendActivityShelf({
         <p className="home-social-hint">Movimento completo, diário público e comparações ficam no Feed.</p>
         </>
       ) : (
-        <p className="empty">{loading ? "Carregando atividade..." : "Quando seus amigos movimentarem fichas, aparece aqui."}</p>
+        <p className="empty">{loading ? "Abrindo o arquivo social..." : "Quando seus amigos movimentarem fichas, esse canto ganha vida."}</p>
       )}
     </section>
   );
@@ -709,6 +739,10 @@ function progressLabel(item: CulturalItem) {
   }
 
   return "";
+}
+
+function continueDetail(item: CulturalItem) {
+  return progressLabel(item) || item.status || categoryLabels[item.category];
 }
 
 function progressScore(item: CulturalItem) {

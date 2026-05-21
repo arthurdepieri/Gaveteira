@@ -22,7 +22,7 @@ export function ItemCard({ item, onOpen }: { item: CulturalItem; onOpen: () => v
             {getItemVisibilityLabel(item)}
           </span>
           <h3>{getTitle(item)}</h3>
-          <p>{getGenre(item) || "Sem genero"}</p>
+          <p>{getGenre(item) || "Gênero não arquivado"}</p>
           {item.category === "games" ? <p className="item-card-playtime">Tempo jogado: {gameTime}</p> : null}
           <div className="tag-row">
             {item.tags.slice(0, 3).map((tag) => (

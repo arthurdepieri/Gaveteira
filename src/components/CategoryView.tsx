@@ -39,7 +39,7 @@ const emptyStateByCategory: Record<Category, { title: string; text: string; acti
     icon: Disc3,
   },
   movies: {
-    title: "Sua gaveta de filmes ainda não tem poster.",
+    title: "Sua gaveta de filmes ainda não tem pôster.",
     text: "Comece por um filme recente, um favorito ou algo que você quer assistir depois.",
     action: "Adicionar primeiro filme",
     icon: Film,
@@ -146,7 +146,7 @@ export function CategoryView({
           {genres.map((genre) => <option key={genre} value={genre}>{genre}</option>)}
         </select>
         <select value={filters.minRating} onChange={(event) => onFiltersChange({ ...filters, minRating: event.target.value })}>
-          <option value="">Nota minima</option>
+          <option value="">Nota mínima</option>
           {[0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map((rating) => <option key={rating} value={rating}>{rating}+</option>)}
         </select>
         <select value={filters.visibility} onChange={(event) => onFiltersChange({ ...filters, visibility: event.target.value })}>
@@ -191,8 +191,8 @@ function EmptyCollectionState({
       <article className="empty-state-card">
         <span className="empty-state-icon"><Search size={22} /></span>
         <div>
-          <h2>Nada apareceu com esses filtros.</h2>
-          <p>Limpe os filtros para voltar a ver as fichas desta gaveta.</p>
+          <h2>Nenhuma ficha apareceu com esses filtros.</h2>
+          <p>Afrouxe a busca para reencontrar o que já está arquivado nesta gaveta.</p>
         </div>
         <button type="button" className="ghost" onClick={onClearFilters}>Limpar filtros</button>
       </article>
@@ -220,8 +220,8 @@ function EmptyCollectionState({
       <article className="empty-state-card">
         <span className="empty-state-icon"><ListChecks size={22} /></span>
         <div>
-          <h2>Nada em andamento agora.</h2>
-          <p>Abra uma ficha para registrar o que você está jogando, lendo, ouvindo, vendo ou acompanhando.</p>
+          <h2>Nenhuma ficha aberta agora.</h2>
+          <p>Quando algo estiver em consumo, ele aparece aqui como uma pilha de fichas na mesa.</p>
         </div>
         <div className="empty-state-actions">
           <button type="button" className="primary" onClick={() => onAdd("games")}><Plus size={16} /> Começar por jogo</button>

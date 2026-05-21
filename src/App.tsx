@@ -201,8 +201,8 @@ function App() {
         }
         setSyncStatus({
           kind: "synced",
-          message: safeCloudItems.length ? "Conta carregada." : "Conta pronta.",
-          detail: safeCloudItems.length ? "Itens da nuvem foram mesclados neste navegador." : "As próximas alterações serão sincronizadas automaticamente.",
+          message: safeCloudItems.length ? "Arquivo da nuvem carregado." : "Conta pronta.",
+          detail: safeCloudItems.length ? "As fichas da nuvem foram mescladas neste navegador." : "As próximas fichas serão sincronizadas automaticamente.",
           savedAt: new Date().toISOString(),
         });
         setLastSyncedAt(new Date().toISOString());
@@ -217,7 +217,7 @@ function App() {
 
         setSyncStatus({
           kind: typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "error",
-          message: "Não foi possível carregar a nuvem.",
+          message: "Não consegui abrir o arquivo da nuvem.",
           detail: error instanceof Error ? error.message : "Tente novamente em instantes.",
         });
         setBootstrappedCloudScope("");
@@ -235,7 +235,7 @@ function App() {
     if (lastSyncedKeyRef.current !== syncPayloadKey && syncStatus.kind !== "syncing") {
       setSyncStatus({
         kind: isOnline ? "pending" : "offline",
-        message: isOnline ? "Alterações aguardando sincronização." : "Sem conexão.",
+        message: isOnline ? "Fichas aguardando sincronização." : "Sem conexão.",
         detail: isOnline ? "Vou enviar automaticamente em alguns instantes." : "Elas ficam salvas aqui e serão reenviadas quando a internet voltar.",
         savedAt: lastSyncedAt ?? undefined,
         pendingItems: queueCounts.upserts,
@@ -263,7 +263,7 @@ function App() {
         setSyncStatus({
           kind: "offline",
           message: "Sem conexão.",
-          detail: "Suas alterações continuam salvas neste navegador e serão reenviadas quando a conexão voltar.",
+          detail: "Suas fichas continuam salvas neste navegador e serão reenviadas quando a conexão voltar.",
           savedAt: lastSyncedAt ?? undefined,
           pendingItems: getSyncQueueCounts(syncQueueRef.current).upserts,
           pendingDeletes: getSyncQueueCounts(syncQueueRef.current).deletes,
@@ -546,7 +546,7 @@ function App() {
       setSyncStatus({
         kind: "offline",
         message: "Sem conexão.",
-        detail: "Suas alterações ficaram salvas aqui e serão reenviadas quando a internet voltar.",
+        detail: "Suas fichas ficaram salvas aqui e serão reenviadas quando a internet voltar.",
         savedAt: lastSyncedAt ?? undefined,
         pendingItems: counts.upserts,
         pendingDeletes: counts.deletes,
@@ -565,8 +565,8 @@ function App() {
     const pendingDeletes = queueToSync.filter((entry) => entry.action === "delete");
     setSyncStatus({
       kind: "syncing",
-      message: "Sincronizando...",
-      detail: pendingDeletes.length ? "Enviando alterações e removendo itens apagados da nuvem." : "Enviando as últimas alterações para a nuvem.",
+      message: "Enviando fichas para a nuvem...",
+      detail: pendingDeletes.length ? "Enviando alterações e retirando fichas apagadas da nuvem." : "Enviando as últimas fichas para a nuvem.",
       savedAt: lastSyncedAt ?? undefined,
       pendingItems: counts.upserts,
       pendingDeletes: counts.deletes,
@@ -599,7 +599,7 @@ function App() {
         const remainingCounts = getSyncQueueCounts(remainingQueue);
         setSyncStatus({
           kind: "error",
-          message: "Algumas alterações não foram enviadas.",
+          message: "Algumas fichas não foram enviadas.",
           detail: "A fila foi preservada. Você pode reenviar apenas o que falhou.",
           savedAt: lastSyncedAt ?? undefined,
           pendingItems: remainingCounts.upserts,
@@ -613,7 +613,7 @@ function App() {
       setSyncStatus({
         kind: "synced",
         message: "Tudo sincronizado.",
-        detail: "Suas alterações já estão na nuvem.",
+        detail: "Suas fichas já estão na nuvem.",
         savedAt: syncedAt,
       });
     } catch (error) {
@@ -623,7 +623,7 @@ function App() {
         const counts = getSyncQueueCounts(syncQueueRef.current);
         setSyncStatus({
           kind: typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "error",
-          message: typeof navigator !== "undefined" && !navigator.onLine ? "Sem conexão." : "Falha ao enviar.",
+          message: typeof navigator !== "undefined" && !navigator.onLine ? "Sem conexão." : "Não consegui enviar agora.",
           detail: error instanceof Error ? `${error.message} Vou tentar de novo automaticamente.` : "Vou tentar de novo automaticamente.",
           savedAt: lastSyncedAt ?? undefined,
           pendingItems: counts.upserts,
@@ -647,7 +647,7 @@ function App() {
     setSyncStatus({
       kind: "expired",
       message: "Sessão expirada.",
-      detail: error instanceof Error ? error.message : "Entre novamente para continuar sincronizando. Seus itens locais foram preservados.",
+      detail: error instanceof Error ? error.message : "Entre novamente para continuar sincronizando. Suas fichas locais foram preservadas.",
       savedAt: lastSyncedAt ?? undefined,
       pendingItems: counts.upserts,
       pendingDeletes: counts.deletes,
@@ -886,6 +886,7 @@ function SyncStatusCard({
   onRetryEntry: (entryId: string) => void;
   compact?: boolean;
 }) {
+  const [queueOpen, setQueueOpen] = useState(false);
   const Icon = status.kind === "synced" ? CheckCircle2
     : status.kind === "syncing" || status.kind === "loading" ? Loader2
       : status.kind === "offline" ? WifiOff
@@ -894,6 +895,10 @@ function SyncStatusCard({
             : AlertTriangle;
   const action = syncAction(status.kind);
   const meta = syncMeta(status);
+  const hasQueue = queue.length > 0;
+  const failedCount = queue.filter((entry) => entry.status === "failed").length;
+  const shouldOpenQueue = hasQueue && (queueOpen || (!compact && (status.kind === "error" || failedCount > 0)));
+  const canToggleQueue = hasQueue && (compact || status.kind === "pending" || status.kind === "offline" || status.kind === "expired" || status.kind === "error" || failedCount > 0);
 
   return (
     <section className={`sync-card sync-card-${status.kind}${compact ? " sync-card-compact" : ""}`} aria-live="polite">
@@ -909,8 +914,17 @@ function SyncStatusCard({
             {meta.map((entry) => <small key={entry}>{entry}</small>)}
           </div>
         ) : null}
-        {!compact && queue.length ? (
+        {canToggleQueue ? (
+          <button type="button" className="sync-queue-toggle" onClick={() => setQueueOpen((current) => !current)}>
+            {shouldOpenQueue ? "Ocultar pendências" : `Ver pendências (${queue.length})`}
+          </button>
+        ) : null}
+        {shouldOpenQueue ? (
           <div className="sync-queue-list">
+            <div className="sync-queue-heading">
+              <strong>Pendências da nuvem</strong>
+              <small>{failedCount ? `${failedCount} ${failedCount === 1 ? "ficha precisa" : "fichas precisam"} de reenvio.` : "A Gaveteira está cuidando da fila."}</small>
+            </div>
             {queue.slice(0, 5).map((entry) => (
               <div className={`sync-queue-item sync-queue-item-${entry.status}`} key={entry.id}>
                 <div>
@@ -942,23 +956,23 @@ function syncLabel(kind: SyncKind) {
   const labels: Record<SyncKind, string> = {
     local: "Salvo localmente",
     loading: "Carregando nuvem",
-    pending: "Pendente",
+    pending: "Na fila",
     syncing: "Enviando",
     synced: "Enviado",
     offline: "Sem conexão",
     expired: "Sessão expirada",
-    error: "Falhou",
+    error: "Precisa de atenção",
   };
 
   return labels[kind];
 }
 
 function syncCompactMessage(status: SyncStatus) {
-  if (status.kind === "pending") return "Alterações na fila.";
+  if (status.kind === "pending") return "Fichas na fila.";
   if (status.kind === "syncing") return "Enviando para a nuvem...";
   if (status.kind === "offline") return "Sem conexão. Tudo ficou salvo.";
   if (status.kind === "expired") return "Sessão expirada. Entre de novo.";
-  if (status.kind === "error") return "Falha ao enviar. Tentarei de novo.";
+  if (status.kind === "error") return "Alguma ficha não subiu. Tentarei de novo.";
   return status.message;
 }
 
@@ -975,7 +989,7 @@ function syncMeta(status: SyncStatus) {
   const meta: string[] = [];
 
   if (status.savedAt) {
-    meta.push(`Último envio: ${formatSyncTime(status.savedAt)}`);
+    meta.push(`Último envio bem-sucedido às ${formatSyncTime(status.savedAt)}`);
   }
 
   if (status.kind === "pending" || status.kind === "syncing" || status.kind === "offline" || status.kind === "error" || status.kind === "expired") {
@@ -1002,7 +1016,7 @@ function syncQueueStatusLabel(status: SyncQueueStatus) {
   const labels: Record<SyncQueueStatus, string> = {
     pending: "Na fila",
     syncing: "Enviando",
-    failed: "Falhou",
+    failed: "Não enviado",
   };
 
   return labels[status];

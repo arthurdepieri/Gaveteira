@@ -36,17 +36,19 @@ export function ItemDetails({
   onClose: () => void;
 }) {
   const sections = detailSections(item);
+  const visibleSections = sections.filter((section) => section.fields.length);
   const year = getYear(item);
-  const [activeMobileSection, setActiveMobileSection] = useState(sections[0]?.title ?? "Histórico");
+  const [activeMobileSection, setActiveMobileSection] = useState(focusDiaryId ? "Diário" : "Resumo");
   const [diaryOpen, setDiaryOpen] = useState(Boolean(focusDiaryId));
   const [coverSearchOpen, setCoverSearchOpen] = useState(false);
-  const mobileSections = [...sections.map((section) => section.title), "Histórico", "Diário"];
+  const mobileSections = ["Resumo", ...visibleSections.map((section) => section.title), "Histórico", "Diário"];
   const canEditDiary = Boolean(onUpdateItem);
   const canChangeCover = Boolean(settings && onUpdateItem);
   const visibleDiary = ownerName && !canEditDiary
     ? item.diary.filter((entry) => entry.visibility === "friends")
     : item.diary;
   const timelineEntries = buildStoryTimeline(item, visibleDiary);
+  const summaryFields = buildDetailSummaryFields(item, visibleDiary, timelineEntries);
   const finalSummary = buildFinalSummarySuggestion(item);
   const itemVisibility = getItemVisibility(item);
 
@@ -124,7 +126,30 @@ export function ItemDetails({
             ) : null}
             <div className="detail-rating-line">
               <Stars value={item.rating} />
-              <strong>{item.rating ? `${item.rating}/5` : "Sem nota"}</strong>
+              <strong>{item.rating ? `${item.rating}/5` : "Sem nota arquivada"}</strong>
+            </div>
+            <div className="detail-quick-actions" aria-label="Atalhos da ficha">
+              <button type="button" className="ghost compact" onClick={() => setActiveMobileSection("Histórico")}>
+                Histórico
+                <span>{timelineEntries.length}</span>
+              </button>
+              <button type="button" className="ghost compact" onClick={() => setActiveMobileSection("Diário")}>
+                Diário
+                <span>{visibleDiary.filter((entry) => entry.text.trim()).length}</span>
+              </button>
+              {canEditDiary ? (
+                <button
+                  type="button"
+                  className="primary compact"
+                  onClick={() => {
+                    setActiveMobileSection("Diário");
+                    setDiaryOpen(true);
+                  }}
+                >
+                  <BookOpenText size={15} />
+                  Escrever
+                </button>
+              ) : null}
             </div>
             {item.tags.length ? (
               <div className="tag-row">
@@ -157,20 +182,33 @@ export function ItemDetails({
           ))}
         </nav>
 
+        <section className={`archive-block detail-summary-panel detail-mobile-panel ${activeMobileSection === "Resumo" ? "active" : ""}`}>
+          <div className="archive-block-heading">
+            <h3>Resumo</h3>
+            <span>{categoryLabels[item.category]}</span>
+          </div>
+          <div className="detail-summary-grid">
+            {summaryFields.map(([label, value]) => (
+              <div key={label} className="detail-summary-tile">
+                <span>{label}</span>
+                <strong>{value}</strong>
+              </div>
+            ))}
+          </div>
+        </section>
+
         <section className="detail-section-grid">
-          {sections.map((section) => (
+          {visibleSections.map((section) => (
             <section key={section.title} className={`archive-block detail-mobile-panel ${activeMobileSection === section.title ? "active" : ""}`}>
               <h3>{section.title}</h3>
-              {section.fields.length ? (
-                <div className="detail-grid">
-                  {section.fields.map(([label, value]) => (
-                    <div key={label} className="detail-field">
-                      <span>{label}</span>
-                      <strong>{value}</strong>
-                    </div>
-                  ))}
-                </div>
-              ) : <p className="empty">Sem dados registrados.</p>}
+              <div className="detail-grid">
+                {section.fields.map(([label, value]) => (
+                  <div key={label} className="detail-field">
+                    <span>{label}</span>
+                    <strong>{value}</strong>
+                  </div>
+                ))}
+              </div>
             </section>
           ))}
         </section>
@@ -181,13 +219,13 @@ export function ItemDetails({
             <div className="timeline-list">
               {timelineEntries.map((event) => (
                 <div className={`timeline-entry ${event.kind === "diary" ? "timeline-entry-diary" : ""}`} key={event.id}>
-                  <span>{event.date || "Sem data"}</span>
+                  <span>{event.date || "Data não registrada"}</span>
                   <strong>{event.label}</strong>
                   {event.text ? <p>{event.text}</p> : null}
                 </div>
               ))}
             </div>
-          ) : <p className="empty">Nenhum evento registrado ainda.</p>}
+          ) : <p className="empty">O histórico desta ficha ainda está em branco.</p>}
         </section>
 
         <section className={`archive-block detail-mobile-panel ${activeMobileSection === "Diário" ? "active" : ""}`}>
@@ -204,7 +242,7 @@ export function ItemDetails({
             <div className="diary-note-grid">
               {visibleDiary.map((entry) => (
                 <article key={entry.id} className={`diary-note-card diary-note-${entry.visibility === "friends" ? "friends" : "private"} ${focusDiaryId === entry.id ? "diary-note-highlight" : ""}`}>
-                  <strong>{entry.date || "Sem data"}</strong>
+                  <strong>{entry.date || "Data não registrada"}</strong>
                   <em>{entry.type ?? "Impressão"}</em>
                   <span className="diary-visibility-badge">
                     {entry.visibility === "friends" ? <Megaphone size={13} /> : <Lock size={13} />}
@@ -214,7 +252,7 @@ export function ItemDetails({
                 </article>
               ))}
             </div>
-          ) : <p className="empty">{ownerName ? "Nenhuma entrada pública de diário ainda." : "Nenhuma entrada de diário ainda."}</p>}
+          ) : <p className="empty">{ownerName ? "Nenhuma página pública de diário por aqui." : "O diário desta ficha ainda está esperando a primeira nota."}</p>}
           {finalSummary && canEditDiary ? (
             <div className="diary-summary-assist">
               <strong>{finalSummary.title}</strong>
@@ -299,7 +337,7 @@ function DiaryFocusPanel({
             <textarea value={entry.text} onChange={(event) => update(entry.id, { text: event.target.value })} placeholder={diaryPrompts[0]} />
           </article>
         ))}
-        {!entries.length ? <p className="empty">Comece uma entrada para registrar esse momento.</p> : null}
+        {!entries.length ? <p className="empty">Abra a primeira página para guardar uma impressão, citação ou memória.</p> : null}
       </div>
       <button type="button" className="primary" onClick={addEntry}>
         <Plus size={16} />
@@ -337,10 +375,10 @@ function CoverSearchPanel({
       const covers = found.filter((result) => result.coverUrl);
       setResults(covers);
       if (!covers.length) {
-        setError("Nenhuma capa encontrada. Tente um título mais específico ou use o formulário completo.");
+        setError("Não encontrei uma capa boa para essa ficha. Tente título, autor, ano ou ISBN.");
       }
     } catch (searchError) {
-      setError(searchError instanceof Error ? searchError.message : "Não foi possível buscar capas agora.");
+      setError(searchError instanceof Error ? searchError.message : "Não consegui procurar capas agora. A ficha continua editável manualmente.");
     } finally {
       setLoading(false);
     }
@@ -437,6 +475,44 @@ function applyFinalSummary(item: CulturalItem, summary: string): CulturalItem {
   if (item.category === "albums") return { ...item, comments: summary, updatedAt };
   if (item.category === "movies" || item.category === "series") return { ...item, comments: summary, updatedAt };
   return { ...item, notes: summary, updatedAt };
+}
+
+function buildDetailSummaryFields(item: CulturalItem, diary: DiaryEntry[], timelineEntries: ReturnType<typeof buildStoryTimeline>): Array<[string, string]> {
+  const diaryCount = diary.filter((entry) => entry.text.trim()).length;
+  return visibleFields([
+    ["Status", item.status],
+    ["Nota", item.rating ? `${item.rating}/5` : "Sem nota arquivada"],
+    ["Ano", getYear(item)],
+    ["Gênero", item.genre],
+    ["Progresso", getProgressSnapshot(item)],
+    ["Diário", diaryCount ? `${diaryCount} ${diaryCount === 1 ? "entrada" : "entradas"}` : "Nenhuma nota"],
+    ["Histórico", timelineEntries.length ? `${timelineEntries.length} ${timelineEntries.length === 1 ? "evento" : "eventos"}` : "Ainda em branco"],
+    ["Visibilidade", getItemVisibilityLabel(item)],
+  ]);
+}
+
+function getProgressSnapshot(item: CulturalItem) {
+  if (item.category === "games") {
+    return item.timePlayed || item.completionType || item.platform || "";
+  }
+
+  if (item.category === "books") {
+    if (item.currentPage && item.pages) return `${item.currentPage}/${item.pages} páginas`;
+    if (item.currentPage) return `Página ${item.currentPage}`;
+    if (item.pages) return `${item.pages} páginas`;
+    return item.format || "";
+  }
+
+  if (item.category === "albums") {
+    if (item.listenCount) return `${item.listenCount} ${Number(item.listenCount) === 1 ? "escuta" : "escutas"}`;
+    return item.listenMode || item.listenedDate || "";
+  }
+
+  if (item.category === "movies") {
+    return item.runtimeMinutes ? `${item.runtimeMinutes} min` : item.endDate || item.startDate || "";
+  }
+
+  return [item.currentSeason ? `T${item.currentSeason}` : "", item.currentEpisode ? `E${item.currentEpisode}` : ""].filter(Boolean).join(" / ") || item.trackingStatus || "";
 }
 
 function detailSections(item: CulturalItem): Array<{ title: string; fields: Array<[string, string]> }> {

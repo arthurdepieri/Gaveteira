@@ -18,7 +18,7 @@ export function StatsView({ items }: { items: CulturalItem[] }) {
         <div>
           <p className="eyebrow">Leituras da gaveteira</p>
           <h1>Estatísticas</h1>
-          <p>Um retrato rapido do que você concluiu, largou, favoritou e acumulou para depois.</p>
+          <p>Um retrato rápido do que você concluiu, largou, favoritou e guardou para depois.</p>
         </div>
         <BarChart3 size={36} />
       </section>
@@ -35,8 +35,8 @@ export function StatsView({ items }: { items: CulturalItem[] }) {
       </section>
 
       <section className="stats-layout">
-        <Panel title="Concluidos por ano" data={stats.completedByYear} />
-        <Panel title="Concluidos por mes" data={stats.completedByMonth} />
+        <Panel title="Concluídos por ano" data={stats.completedByYear} />
+        <Panel title="Concluídos por mês" data={stats.completedByMonth} />
         <Panel title="Tags mais usadas" data={stats.tags} />
       </section>
 
@@ -52,7 +52,7 @@ export function StatsView({ items }: { items: CulturalItem[] }) {
                   <div><i style={{ width: `${Math.max(12, value * 18)}%` }} /></div>
                   <strong>{value}</strong>
                 </div>
-              )) : <p className="empty">Sem gêneros ainda.</p>}
+              )) : <p className="empty">Nenhum gênero arquivado nesta gaveta.</p>}
             </section>
           ))}
         </div>
@@ -71,7 +71,7 @@ export function StatsView({ items }: { items: CulturalItem[] }) {
                 <strong>{entry.total}</strong>
               </header>
               <div className="category-stat-metrics">
-                <span><b>{entry.completed}</b> concluidos</span>
+                <span><b>{entry.completed}</b> concluídos</span>
                 <span><b>{entry.inProgress}</b> em andamento</span>
                 <span><b>{entry.wishlist}</b> na wishlist</span>
                 <span><b>{entry.abandoned}</b> abandonados</span>
@@ -89,7 +89,7 @@ export function StatsView({ items }: { items: CulturalItem[] }) {
                     <small>{getTitle(item)}</small>
                     <Stars value={item.rating} />
                   </div>
-                )) : <small>Sem notas ainda.</small>}
+                )) : <small>Sem notas arquivadas ainda.</small>}
               </div>
             </article>
           ))}
@@ -140,7 +140,7 @@ function Panel({ title, data }: { title: string; data: Record<string, number> })
           <div><i style={{ width: `${Math.max(12, value * 18)}%` }} /></div>
           <strong>{value}</strong>
         </div>
-      )) : <p className="empty">Sem dados ainda.</p>}
+      )) : <p className="empty">Ainda não há fichas suficientes para este retrato.</p>}
     </section>
   );
 }
@@ -151,7 +151,7 @@ function MiniList({ title, entries }: { title: string; entries: Array<[string, n
       <span>{title}</span>
       {entries.length ? entries.map(([label, value]) => (
         <small key={label}>{label} <b>{value}</b></small>
-      )) : <small>Sem dados.</small>}
+      )) : <small>Nada arquivado.</small>}
     </div>
   );
 }

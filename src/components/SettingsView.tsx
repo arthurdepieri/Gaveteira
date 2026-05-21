@@ -86,7 +86,7 @@ export function SettingsView({
       setBackupMessage(`${items.length} fichas baixadas da nuvem para preparar backup ou restauração.`);
       return items;
     } catch (error) {
-      setImportError(error instanceof Error ? error.message : "Não foi possível baixar suas fichas da nuvem.");
+      setImportError(error instanceof Error ? error.message : "Não consegui baixar suas fichas da nuvem.");
       return null;
     } finally {
       setLoadingCloud(false);

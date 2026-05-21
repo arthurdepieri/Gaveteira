@@ -56,7 +56,7 @@ export function parseImportedData(text: string): AppData {
   const source = "data" in parsed && parsed.data ? parsed.data : parsed as AppData;
 
   if (!Array.isArray(source.items) || !source.statuses) {
-    throw new Error("Arquivo JSON invalido para a Gaveteira.");
+    throw new Error("Este JSON não parece ser um backup válido da Gaveteira.");
   }
 
   return {

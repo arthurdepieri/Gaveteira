@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.6.2-beta - Polimento de uso - 2026-05-21
+
+Versao beta focada em deixar a Gaveteira mais confortavel, clara e tranquilizadora no uso diario.
+
+### Destaques
+
+- Home reorganizada com hierarquia mais clara: continuar, movimento recente, sugestoes e gavetas.
+- Ficha do item refinada para celular, com aba Resumo, atalhos para Diario e Historico e seções vazias menos ruidosas.
+- Estados vazios e microtextos revisados para reforçar a linguagem de arquivo pessoal, gavetas, fichas e diario.
+- Cartao de sincronizacao mais tranquilizador, com ultimo envio bem-sucedido e area para ver pendencias da nuvem.
+- Melhorias em mensagens de erro para reduzir termos tecnicos e deixar claro quando fichas seguem salvas localmente.
+- Ajustes em textos de Feed, Amigos, Estatisticas, login, busca de capas e backup.
+
+### Observacoes
+
+- Esta versao consolida polimentos feitos depois da 0.6.1, sem mudar o eixo principal do app.
+- O pacote de release desta versao fica em `releases/Gaveteira-0.6.2-beta.zip`.
+
 ## 0.6.0-beta - Diario Vivo - 2026-05-19
 
 Versao beta focada em transformar o diario em uma parte central da Gaveteira.

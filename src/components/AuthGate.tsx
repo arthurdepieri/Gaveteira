@@ -32,7 +32,7 @@ export function AuthGate({
         : await signIn(settings, email, password);
       onAuthenticated(session);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Não foi possível entrar.");
+      setMessage(error instanceof Error ? error.message : "Não consegui abrir sua conta agora.");
     } finally {
       setLoading(false);
     }
@@ -54,8 +54,8 @@ export function AuthGate({
               <Users size={20} />
               <h2>Social</h2>
             </div>
-            <p>Entre para salvar sua gaveteira na nuvem, criar seu perfil e adicionar amigos por busca, email ou código de convite.</p>
-            <p className="empty">Sem login, tudo continua funcionando no modo local deste navegador.</p>
+            <p>Entre para guardar sua Gaveteira na nuvem, criar seu perfil e adicionar amigos por busca, email ou código de convite.</p>
+            <p className="empty">Sem login, suas fichas continuam guardadas só neste navegador.</p>
           </section>
 
           <section className="setting-panel auth-panel">
@@ -76,14 +76,14 @@ export function AuthGate({
               </label>
               <label className="field">
                 <span>Senha</span>
-                <input value={password} onChange={(event) => setPassword(event.target.value)} type="password" placeholder="minimo 6 caracteres" />
+                <input value={password} onChange={(event) => setPassword(event.target.value)} type="password" placeholder="mínimo 6 caracteres" />
               </label>
             </div>
             <button className="primary" onClick={submitAuth} disabled={loading || !configured}>
               {mode === "signup" ? <UserPlus size={16} /> : <LogIn size={16} />}
               {loading ? "Conectando..." : mode === "signup" ? "Criar e sincronizar" : "Entrar e sincronizar"}
             </button>
-            {!configured ? <p className="form-error">A conexão técnica com o Supabase ainda não foi configurada no app.</p> : null}
+            {!configured ? <p className="form-error">A Gaveteira ainda não recebeu as credenciais da nuvem.</p> : null}
             {message ? <p className="form-error">{message}</p> : null}
           </section>
         </div>

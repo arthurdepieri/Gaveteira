@@ -146,7 +146,7 @@ export function FamilyView({
       setMessage("Sua gaveteira foi enviada para a nuvem.");
       await refreshSocial(true);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Não foi possível enviar seus itens.");
+      setMessage(error instanceof Error ? error.message : "Não consegui enviar suas fichas para a nuvem.");
     } finally {
       setLoading(false);
     }
@@ -164,9 +164,9 @@ export function FamilyView({
     try {
       const items = await fetchMyItems(settings, session);
       onMergeItems(items);
-      setMessage("Itens da sua conta foram mesclados neste navegador.");
+      setMessage("Fichas da sua conta foram mescladas neste navegador.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Não foi possível baixar seus itens.");
+      setMessage(error instanceof Error ? error.message : "Não consegui baixar suas fichas da nuvem.");
     } finally {
       setLoading(false);
     }
@@ -193,7 +193,7 @@ export function FamilyView({
       }
     } catch (error) {
       if (!silent) {
-        setMessage(error instanceof Error ? error.message : "Não foi possível carregar o social.");
+        setMessage(error instanceof Error ? error.message : "Não consegui abrir o arquivo social.");
       }
     } finally {
       if (!silent) {
@@ -220,7 +220,7 @@ export function FamilyView({
       setMessage("Perfil atualizado.");
       setProfileEditing(false);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Não foi possível atualizar seu perfil.");
+      setMessage(error instanceof Error ? error.message : "Não consegui atualizar sua ficha pessoal.");
     } finally {
       setLoading(false);
     }
@@ -235,7 +235,7 @@ export function FamilyView({
       setProfileDraft((current) => ({ ...current, avatarUrl }));
       setMessage("Foto carregada. Salve o perfil para sincronizar.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Não foi possível carregar essa foto.");
+      setMessage(error instanceof Error ? error.message : "Não consegui preparar essa foto para o perfil.");
     }
   }
 
@@ -248,7 +248,7 @@ export function FamilyView({
     try {
       setSearchResults(await searchProfiles(settings, session, searchQuery));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Não foi possível procurar pessoas.");
+      setMessage(error instanceof Error ? error.message : "Não consegui procurar pessoas agora.");
     } finally {
       setLoading(false);
     }
@@ -266,7 +266,7 @@ export function FamilyView({
       setSearchResults((current) => current.filter((entry) => entry.id !== profile.id));
       await refreshSocial(true);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Não foi possível enviar o convite.");
+      setMessage(error instanceof Error ? error.message : "Não consegui enviar o convite.");
     } finally {
       setLoading(false);
     }
@@ -283,7 +283,7 @@ export function FamilyView({
       setMessage(status === "accepted" ? `${friendship.profile.displayName} agora está nos seus amigos.` : "Convite recusado.");
       await refreshSocial(true);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Não foi possível responder ao convite.");
+      setMessage(error instanceof Error ? error.message : "Não consegui responder ao convite.");
     } finally {
       setLoading(false);
     }
@@ -303,7 +303,7 @@ export function FamilyView({
       setSelectedOwnerId("");
       await refreshSocial(true);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Não foi possível remover o amigo.");
+      setMessage(error instanceof Error ? error.message : "Não consegui remover esse amigo.");
     } finally {
       setLoading(false);
     }
@@ -324,7 +324,7 @@ export function FamilyView({
         <section className="setting-panel cloud-toolbar">
           <div>
             <h2>Modo local ativo</h2>
-            <p>{localItems.length} itens salvos neste navegador. Nada será enviado para o Supabase até você entrar.</p>
+            <p>{localItems.length} fichas salvas neste navegador. Nada será enviado para a nuvem até você entrar.</p>
           </div>
         </section>
 
@@ -394,12 +394,12 @@ export function FamilyView({
               </div>
               <h2>{session.profile?.displayName || session.user.email || "Meu perfil"}</h2>
               <p className="profile-handle">@{session.profile?.username || session.profile?.inviteCode || "gaveteira"}</p>
-              <p className="profile-bio">{session.profile?.bio || "Adicione uma bio curta para deixar seu perfil com cara de arquivo pessoal."}</p>
+              <p className="profile-bio">{session.profile?.bio || "Escreva uma bio curta para dar rosto ao seu arquivo pessoal."}</p>
               <div className="profile-chip-row">
                 {(session.profile?.favoriteCategories?.length ? session.profile.favoriteCategories : []).map((category) => (
                   <span key={category}>{categoryLabels[category]}</span>
                 ))}
-                {!session.profile?.favoriteCategories?.length ? <span>Categorias favoritas vazias</span> : null}
+                {!session.profile?.favoriteCategories?.length ? <span>Nenhuma gaveta favorita marcada</span> : null}
               </div>
             </div>
             <div className="profile-showcase-side">
@@ -496,7 +496,7 @@ export function FamilyView({
                 onAction={() => addFriend(profile)}
                 disabled={loading || friendships.some((friendship) => friendship.profile.id === profile.id && friendship.status !== "rejected")}
               />
-            )) : <p className="empty">Busque alguem para enviar convite de amizade.</p>}
+            )) : <p className="empty">Digite email, username, nome ou código para encontrar uma pessoa.</p>}
           </div>
         </section>
       </section>
@@ -513,7 +513,7 @@ export function FamilyView({
                   <button className="ghost compact" onClick={() => respond(friendship, "rejected")} disabled={loading}>Recusar</button>
                 </div>
               </div>
-            )) : <p className="empty">Nenhum convite pendente.</p>}
+            )) : <p className="empty">Nenhum convite na caixa de entrada.</p>}
           </div>
         </section>
 
@@ -522,7 +522,7 @@ export function FamilyView({
           <div className="social-result-list">
             {pendingSent.length ? pendingSent.map((friendship) => (
               <ProfileRowCard key={friendship.id} profile={friendship.profile} actionLabel="Pendente" disabled />
-            )) : <p className="empty">Nenhum convite enviado aguardando resposta.</p>}
+            )) : <p className="empty">Nenhum convite esperando resposta.</p>}
           </div>
         </section>
       </section>
@@ -560,7 +560,7 @@ export function FamilyView({
                         <div>
                           <p className="eyebrow">@{selectedGroup.profile?.username || selectedGroup.profile?.inviteCode || "gaveteira"}</p>
                           <h2>{selectedGroup.ownerId === session.user.id ? "Seu perfil" : selectedGroup.ownerName}</h2>
-                          <p className="member-profile-bio">{selectedGroup.profile?.bio || "Perfil sem bio por enquanto."}</p>
+                          <p className="member-profile-bio">{selectedGroup.profile?.bio || "Este perfil ainda não escreveu uma bio."}</p>
                         </div>
                       </div>
                       <div className="member-profile-actions">
@@ -613,7 +613,7 @@ export function FamilyView({
                               {categoryLabels[card.category]}
                             </span>
                           ))}
-                          {!selectedProfile.categoryCards.some((card) => card.count > 0) ? <p className="empty">Este perfil ainda não tem fichas sincronizadas.</p> : null}
+                          {!selectedProfile.categoryCards.some((card) => card.count > 0) ? <p className="empty">Este perfil ainda não colocou fichas na nuvem.</p> : null}
                         </div>
                       </div>
                     ) : null}
@@ -622,7 +622,7 @@ export function FamilyView({
                       <>
                         <div className="member-profile-metrics">
                           <ProfileMetric label="Média geral" value={selectedProfile.average ? selectedProfile.average.toFixed(1) : "--"} />
-                          <ProfileMetric label="Concluidos" value={selectedProfile.completed} />
+                          <ProfileMetric label="Concluídos" value={selectedProfile.completed} />
                           <ProfileMetric label="Em andamento" value={selectedProfile.inProgress} />
                           <ProfileMetric label="Wishlist" value={selectedProfile.wishlist} />
                           <ProfileMetric label="Catégoria favorita" value={selectedProfile.topCategory} />
@@ -634,7 +634,7 @@ export function FamilyView({
                             <span key={card.category}>
                               <strong>{card.count}</strong>
                               {categoryLabels[card.category]}
-                              <small>{card.average ? `media ${card.average.toFixed(1)}` : "sem nota"}</small>
+                              <small>{card.average ? `média ${card.average.toFixed(1)}` : "sem nota arquivada"}</small>
                             </span>
                           ))}
                         </div>
@@ -660,7 +660,7 @@ export function FamilyView({
                                   <Stars value={entry.item.rating} />
                                 </span>
                               </button>
-                            )) : <p className="empty">Sem favoritos fixados ainda.</p>}
+                            )) : <p className="empty">Nenhum favorito fixado nesta prateleira.</p>}
                           </div>
                         </section>
                       </div>
@@ -679,7 +679,7 @@ export function FamilyView({
                                   <small>{categoryLabels[entry.item.category]} / {entry.item.status}</small>
                                 </span>
                               </button>
-                            )) : <p className="empty">Nada em andamento agora.</p>}
+                            )) : <p className="empty">Nenhuma ficha aberta agora.</p>}
                           </div>
                         </section>
                       </div>
@@ -698,7 +698,7 @@ export function FamilyView({
                                   <small>{categoryLabels[entry.item.category]} / {formatDate(entry.updatedAt)}</small>
                                 </span>
                               </button>
-                            )) : <p className="empty">Nada sincronizado ainda.</p>}
+                            )) : <p className="empty">Nenhuma ficha sincronizada ainda.</p>}
                           </div>
                         </section>
                       </div>
@@ -732,7 +732,7 @@ export function FamilyView({
                               </div>
                             </section>
                           ))}
-                          {!groupedByCategory.length ? <p className="empty">Nenhuma gaveta sincronizada ainda.</p> : null}
+                          {!groupedByCategory.length ? <p className="empty">Nenhuma gaveta enviada para a nuvem ainda.</p> : null}
                         </div>
                       </>
                     ) : null}
@@ -741,7 +741,7 @@ export function FamilyView({
               </div>
             ) : null}
           </>
-        ) : <p className="empty">Adicione amigos para visitar outras gaveteiras.</p>}
+        ) : <p className="empty">Adicione amigos para visitar outros arquivos pessoais.</p>}
       </section>
       ) : null}
       {activeEntry ? (
@@ -803,7 +803,7 @@ function TagCloud({ title, tags }: { title: string; tags: string[] }) {
     <section>
       <h3>{title}</h3>
       <div className="tag-row">
-        {tags.length ? tags.map((tag) => <span key={tag}>{tag}</span>) : <p className="empty">Ainda sem dados.</p>}
+        {tags.length ? tags.map((tag) => <span key={tag}>{tag}</span>) : <p className="empty">Ainda sem marcas recorrentes.</p>}
       </div>
     </section>
   );
@@ -868,7 +868,7 @@ function buildMemberProfile(group: OwnerGroup) {
   const summaryParts = [
     group.profile?.bio,
     favoriteCategories ? `categorias favoritas: ${favoriteCategories}` : "",
-    topGenre ? `genero recorrente: ${topGenre}` : "",
+    topGenre ? `gênero recorrente: ${topGenre}` : "",
     inProgress ? `${inProgress} em andamento` : "",
   ].filter(Boolean);
 
@@ -935,10 +935,10 @@ function fileToAvatarDataUrl(file: File) {
 
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
-    reader.onerror = () => reject(new Error("Não foi possível ler a imagem."));
+    reader.onerror = () => reject(new Error("Não consegui ler a imagem."));
     reader.onload = () => {
       const image = new Image();
-      image.onerror = () => reject(new Error("Não foi possível processar essa imagem."));
+      image.onerror = () => reject(new Error("Não consegui preparar essa imagem."));
       image.onload = () => {
         const size = 512;
         const canvas = document.createElement("canvas");

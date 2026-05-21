@@ -123,7 +123,7 @@ export async function refreshCloudSession(settings: AppSettings, session: CloudS
   });
 
   if (!response.access_token) {
-    throw new Error("Não foi possível renovar a sessão. Entre novamente.");
+    throw new Error("Não consegui renovar a sessão. Entre novamente para reabrir a nuvem.");
   }
 
   session.accessToken = response.access_token;
@@ -446,7 +446,7 @@ async function authRequest(settings: AppSettings, path: string, body: unknown): 
   });
 
   const json = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(errorMessage(json, "Falha na autenticação."));
+  if (!response.ok) throw new Error(errorMessage(json, "Não consegui autenticar sua conta."));
   return json as SupabaseAuthResponse;
 }
 
@@ -462,7 +462,7 @@ async function restRequest<T>(settings: AppSettings, session: CloudSession, path
   }
 
   if (result.response.status === 204) return undefined as T;
-  if (!result.response.ok) throw new Error(errorMessage(result.json, "Falha ao sincronizar com a nuvem."));
+  if (!result.response.ok) throw new Error(errorMessage(result.json, "Não consegui sincronizar com a nuvem."));
   return result.json as T;
 }
 
@@ -494,7 +494,7 @@ async function safeFetch(url: string, init: RequestInit) {
       throw new Error("Sem conexão com a internet. Suas alterações ficaram salvas neste navegador e serão reenviadas quando a conexão voltar.");
     }
 
-    throw new Error("Não foi possível conectar ao Supabase. Verifique se o projeto está ativo, se a Project URL está correta e se a rede não está bloqueando supabase.co.");
+    throw new Error("Não consegui falar com a nuvem. Verifique se o projeto Supabase está ativo, se a Project URL está correta e se a rede não está bloqueando supabase.co.");
   }
 }
 
@@ -624,7 +624,7 @@ function errorMessage(value: unknown, fallback: string) {
   }
 
   if (normalized.includes("failed to fetch")) {
-    return "Não foi possível conectar ao Supabase agora. Suas alterações ficaram pendentes neste navegador.";
+    return "Não consegui falar com a nuvem agora. Suas fichas ficaram pendentes neste navegador.";
   }
 
   if (normalized.includes("email rate limit exceeded")) {

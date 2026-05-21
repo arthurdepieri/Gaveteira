@@ -120,10 +120,10 @@ export function SocialFeedView({
       if (JSON.stringify(freshProfile) !== JSON.stringify(session.profile)) {
         onAuthenticated({ ...session, profile: freshProfile });
       }
-      if (!silent) setMessage("Feed atualizado.");
+      if (!silent) setMessage("Feed conferido. O arquivo social está em dia.");
     } catch (error) {
       if (!silent) {
-        setMessage(error instanceof Error ? error.message : "Não foi possível carregar o feed.");
+        setMessage(error instanceof Error ? error.message : "Não consegui abrir o Feed agora.");
       }
     } finally {
       if (!silent) setLoading(false);
@@ -150,7 +150,7 @@ export function SocialFeedView({
       }, ...current]);
       setMessage(`${getTitle(item) || "Ficha"} entrou na sua wishlist.`);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Não foi possível guardar essa ficha agora.");
+      setMessage(error instanceof Error ? error.message : "Não consegui guardar essa ficha agora.");
     } finally {
       setSavingEventId("");
     }
@@ -200,7 +200,7 @@ export function SocialFeedView({
             <MessageSquare size={20} />
             <h2>Feed</h2>
           </div>
-          <span className="soft-label">ações úteis, sem placar</span>
+            <span className="soft-label">movimento leve, sem placar</span>
         </div>
         <div className="feed-scope-tabs" aria-label="Filtrar feed">
           <button
@@ -229,7 +229,7 @@ export function SocialFeedView({
               onOpen={() => openFeedEvent(event)}
               onSave={() => saveFromFeed(event)}
             />
-          )) : <p className="empty">{feedScope === "friends" ? "Quando seus amigos atualizarem fichas, o movimento aparece aqui." : "Suas próximas alterações aparecem aqui como um histórico leve."}</p>}
+          )) : <p className="empty">{feedScope === "friends" ? "Quando seus amigos mexerem nas gavetas, o movimento aparece aqui." : "Suas próximas fichas e alterações ficam registradas aqui."}</p>}
         </div>
       </section>
 
@@ -252,7 +252,7 @@ export function SocialFeedView({
               onOpen={() => openFeedEvent(event)}
               onSave={() => saveFromFeed(event)}
             />
-          )) : <p className="empty">Quando alguém publicar uma entrada de diário, ela aparece aqui separada do restante do feed.</p>}
+          )) : <p className="empty">Quando alguém tornar uma página de diário pública, ela aparece aqui separada do restante do Feed.</p>}
         </div>
       </section>
 
@@ -331,7 +331,7 @@ function InsightList({ title, icon, items }: { title: string; icon: ReactNode; i
     <section className="comparison-card">
       <h3>{icon}{title}</h3>
       <div className="comparison-list">
-        {items.length ? items.map((item) => <span key={item}>{item}</span>) : <p className="empty">Ainda sem sinais suficientes.</p>}
+        {items.length ? items.map((item) => <span key={item}>{item}</span>) : <p className="empty">Ainda faltam fichas para comparar.</p>}
       </div>
     </section>
   );
