@@ -170,6 +170,11 @@ function App() {
   }, []);
 
   useEffect(() => {
+    if (!standaloneMode) return;
+    lockPortraitOrientation();
+  }, [standaloneMode]);
+
+  useEffect(() => {
     syncQueueRef.current = syncQueue;
     saveSyncQueue(syncQueue);
     savePendingDeletes(syncQueue.filter((entry) => entry.action === "delete").map((entry) => entry.itemId));
@@ -1276,6 +1281,18 @@ function savePendingDeletes(ids: string[]) {
 
 function isStandaloneApp() {
   return window.matchMedia("(display-mode: standalone)").matches || Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
+}
+
+function lockPortraitOrientation() {
+  type OrientationLock = "any" | "natural" | "landscape" | "portrait" | "portrait-primary" | "portrait-secondary" | "landscape-primary" | "landscape-secondary";
+  const orientation = screen.orientation as ScreenOrientation & {
+    lock?: (orientation: OrientationLock) => Promise<void>;
+  };
+
+  if (!orientation?.lock) return;
+  orientation.lock("portrait-primary").catch(() => {
+    // Alguns navegadores só permitem travar orientação em PWA instalado ou tela cheia.
+  });
 }
 
 function isIosSafari() {
