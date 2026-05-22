@@ -59,6 +59,7 @@ export function CategoryView({
   filters,
   onFiltersChange,
   onAdd,
+  onAddAny,
   onOpen,
 }: {
   view: Category | "wishlist" | "progress";
@@ -67,6 +68,7 @@ export function CategoryView({
   filters: Filters;
   onFiltersChange: (filters: Filters) => void;
   onAdd: (category: Category) => void;
+  onAddAny: () => void;
   onOpen: (item: CulturalItem) => void;
 }) {
   const virtual = view === "wishlist" || view === "progress";
@@ -167,6 +169,7 @@ export function CategoryView({
             view={view}
             hasBaseItems={baseItems.length > 0}
             onAdd={onAdd}
+            onAddAny={onAddAny}
             onClearFilters={() => onFiltersChange(emptyFilters)}
           />
         )}
@@ -179,11 +182,13 @@ function EmptyCollectionState({
   view,
   hasBaseItems,
   onAdd,
+  onAddAny,
   onClearFilters,
 }: {
   view: Category | "wishlist" | "progress";
   hasBaseItems: boolean;
   onAdd: (category: Category) => void;
+  onAddAny: () => void;
   onClearFilters: () => void;
 }) {
   if (hasBaseItems) {
@@ -208,8 +213,8 @@ function EmptyCollectionState({
           <p>Crie uma ficha em qualquer gaveta usando um status de desejo: quero jogar, quero ler, quero ouvir ou quero assistir.</p>
         </div>
         <div className="empty-state-actions">
-          <button type="button" className="primary" onClick={() => onAdd("games")}><Plus size={16} /> Criar wishlist</button>
-          <button type="button" className="ghost" onClick={() => onAdd("books")}>Buscar livro</button>
+          <button type="button" className="primary" onClick={onAddAny}><Plus size={16} /> Criar wishlist</button>
+          <button type="button" className="ghost" onClick={onAddAny}>Escolher gaveta</button>
         </div>
       </article>
     );
@@ -224,8 +229,8 @@ function EmptyCollectionState({
           <p>Quando algo estiver em consumo, ele aparece aqui como uma pilha de fichas na mesa.</p>
         </div>
         <div className="empty-state-actions">
-          <button type="button" className="primary" onClick={() => onAdd("games")}><Plus size={16} /> Começar por jogo</button>
-          <button type="button" className="ghost" onClick={() => onAdd("series")}>Adicionar série</button>
+          <button type="button" className="primary" onClick={onAddAny}><Plus size={16} /> Começar uma ficha</button>
+          <button type="button" className="ghost" onClick={onAddAny}>Escolher gaveta</button>
         </div>
       </article>
     );

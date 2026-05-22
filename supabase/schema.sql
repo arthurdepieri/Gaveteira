@@ -14,6 +14,13 @@ alter table public.profiles add column if not exists bio text;
 alter table public.profiles add column if not exists avatar_url text;
 alter table public.profiles add column if not exists favorite_categories text[] not null default '{}'::text[];
 alter table public.profiles add column if not exists invite_code text;
+alter table public.profiles add column if not exists role text not null default 'user';
+
+alter table public.profiles
+drop constraint if exists profiles_role_check;
+
+alter table public.profiles
+add constraint profiles_role_check check (role in ('user', 'admin'));
 
 update public.profiles
 set invite_code = upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 8))
@@ -76,6 +83,21 @@ as $$
   limit 1
 $$;
 
+create or replace function public.is_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.profiles
+    where id = auth.uid()
+      and role = 'admin'
+  )
+$$;
+
 drop policy if exists "profiles_select_family" on public.profiles;
 drop policy if exists "profiles_select_authenticated" on public.profiles;
 create policy "profiles_select_authenticated"
@@ -97,6 +119,7 @@ on public.cultural_items for select
 to authenticated
 using (
   owner_id = auth.uid()
+  or public.is_admin()
   or (
     coalesce(item->>'visibility', 'friends') <> 'private'
     and exists (
@@ -122,7 +145,7 @@ drop policy if exists "friend_requests_select_own" on public.friend_requests;
 create policy "friend_requests_select_own"
 on public.friend_requests for select
 to authenticated
-using (requester_id = auth.uid() or addressee_id = auth.uid());
+using (requester_id = auth.uid() or addressee_id = auth.uid() or public.is_admin());
 
 drop policy if exists "friend_requests_insert_self" on public.friend_requests;
 create policy "friend_requests_insert_self"
@@ -151,5 +174,8 @@ grant select, insert, update on public.profiles to authenticated;
 grant select, insert, update, delete on public.cultural_items to authenticated;
 grant select, insert, update, delete on public.friend_requests to authenticated;
 grant execute on function public.current_family_code() to authenticated;
+grant execute on function public.is_admin() to authenticated;
+
+revoke insert (role), update (role) on public.profiles from authenticated;
 
 notify pgrst, 'reload schema';

@@ -1,6 +1,7 @@
 export type Category = "games" | "books" | "albums" | "movies" | "series";
 export type ViewKey = Category | "home" | "wishlist" | "progress" | "feed" | "stats" | "family" | "settings";
 export type SocialVisibility = "private" | "friends" | "group" | "public";
+export type ProfileRole = "user" | "admin";
 
 export type Rating = 0.5 | 1 | 1.5 | 2 | 2.5 | 3 | 3.5 | 4 | 4.5 | 5;
 
@@ -154,6 +155,7 @@ export interface SocialProfile {
   favoriteCategories?: Category[];
   inviteCode?: string;
   familyCode?: string;
+  role?: ProfileRole;
 }
 
 export interface CloudSession {
@@ -187,6 +189,18 @@ export interface Friendship {
   updatedAt: string;
   profile: SocialProfile;
   direction: "sent" | "received" | "friend";
+}
+
+export interface AdminProfileSummary {
+  profile: SocialProfile;
+  itemCount: number;
+  lastActivity?: string;
+}
+
+export interface AdminOverview {
+  profiles: AdminProfileSummary[];
+  totalProfiles: number;
+  totalItems: number;
 }
 
 export interface AppData {

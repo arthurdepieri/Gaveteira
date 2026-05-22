@@ -1,8 +1,8 @@
-import { CalendarDays, Cloud, Edit3, Heart, LogOut, RefreshCw, Search, Sparkles, Trash2, UploadCloud, UserCheck, UserPlus, Users, X } from "lucide-react";
+import { CalendarDays, Cloud, Edit3, Heart, LogOut, RefreshCw, Search, ShieldCheck, Sparkles, Trash2, UploadCloud, UserCheck, UserPlus, Users, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { AppSettings, Category, CloudSession, CulturalItem, FamilyItem, Friendship, SocialProfile } from "../types";
+import { AdminOverview, AppSettings, Category, CloudSession, CulturalItem, FamilyItem, Friendship, SocialProfile } from "../types";
 import { categoryLabels } from "../data/catalog";
-import { deleteFriendship, fetchFriendships, fetchMyItems, fetchMyProfile, fetchSocialItems, respondFriendRequest, searchProfiles, sendFriendRequest, syncMyItems, updateMyProfile } from "../services/supabaseCloud";
+import { deleteFriendship, fetchAdminOverview, fetchFriendships, fetchMyItems, fetchMyProfile, fetchSocialItems, respondFriendRequest, searchProfiles, sendFriendRequest, syncMyItems, updateMyProfile } from "../services/supabaseCloud";
 import { getGenres, getRating, getTitle, getYear, isCompleted, isInProgress, isWishlist } from "../utils/itemHelpers";
 import { Cover } from "./Cover";
 import { Stars } from "./Rating";
@@ -36,8 +36,8 @@ export function FamilyView({
   onLogout: () => void;
   onAuthenticated: (session: CloudSession) => void;
   onUpdateSettings: (settings: AppSettings) => void;
-  socialTab: "profile" | "friends";
-  onSocialTabChange: (tab: "profile" | "friends") => void;
+  socialTab: "profile" | "friends" | "admin";
+  onSocialTabChange: (tab: "profile" | "friends" | "admin") => void;
 }) {
   const [socialItems, setSocialItems] = useState<FamilyItem[]>([]);
   const [friendships, setFriendships] = useState<Friendship[]>([]);
@@ -51,10 +51,13 @@ export function FamilyView({
   const [searchResults, setSearchResults] = useState<SocialProfile[]>([]);
   const [profileDraft, setProfileDraft] = useState(() => profileToDraft(session?.profile));
   const [profileEditing, setProfileEditing] = useState(false);
+  const [adminOverview, setAdminOverview] = useState<AdminOverview | null>(null);
+  const [adminError, setAdminError] = useState("");
 
   const acceptedFriends = friendships.filter((friendship) => friendship.status === "accepted");
   const pendingReceived = friendships.filter((friendship) => friendship.status === "pending" && friendship.direction === "received");
   const pendingSent = friendships.filter((friendship) => friendship.status === "pending" && friendship.direction === "sent");
+  const isAdmin = session?.profile?.role === "admin";
 
   const groups = useMemo<OwnerGroup[]>(() => {
     if (!session) return [];
@@ -132,6 +135,11 @@ export function FamilyView({
     return () => window.clearInterval(intervalId);
   }, [session?.user.id]);
 
+  useEffect(() => {
+    if (!session || socialTab !== "admin" || !isAdmin) return;
+    refreshAdmin();
+  }, [session?.user.id, socialTab, isAdmin]);
+
   async function uploadLocal() {
     if (!session) {
       setMessage("Entre para enviar seus itens para a nuvem.");
@@ -199,6 +207,21 @@ export function FamilyView({
       if (!silent) {
         setLoading(false);
       }
+    }
+  }
+
+  async function refreshAdmin() {
+    if (!session || !isAdmin) return;
+
+    setLoading(true);
+    setAdminError("");
+    try {
+      const overview = await fetchAdminOverview(settings, session);
+      setAdminOverview(overview);
+    } catch (error) {
+      setAdminError(error instanceof Error ? error.message : "Não consegui abrir o painel administrativo.");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -337,15 +360,17 @@ export function FamilyView({
     <main className="page">
       <section className="list-header">
         <div>
-          <p className="eyebrow">{socialTab === "profile" ? "Perfil social" : "Rede social"}</p>
-          <h1>{socialTab === "profile" ? "Meu perfil" : "Amigos"}</h1>
+          <p className="eyebrow">{socialTab === "profile" ? "Perfil social" : socialTab === "admin" ? "Administração" : "Rede social"}</p>
+          <h1>{socialTab === "profile" ? "Meu perfil" : socialTab === "admin" ? "Admin" : "Amigos"}</h1>
           <p>
             {socialTab === "profile"
               ? "Sua ficha pessoal, resumo cultural e favoritos dentro da Gaveteira."
+              : socialTab === "admin"
+                ? "Uma área discreta para conferir perfis e preparar ferramentas administrativas."
               : "Procure pessoas, aceite convites e abra a gaveteira dos seus amigos."}
           </p>
         </div>
-        {socialTab === "profile" ? <UserCheck size={38} /> : <Users size={38} />}
+        {socialTab === "profile" ? <UserCheck size={38} /> : socialTab === "admin" ? <ShieldCheck size={38} /> : <Users size={38} />}
       </section>
 
       <nav className="social-mobile-switch" aria-label="Alternar área social">
@@ -357,6 +382,12 @@ export function FamilyView({
           <Users size={17} />
           Amigos
         </button>
+        {isAdmin ? (
+          <button type="button" className={socialTab === "admin" ? "active" : ""} onClick={() => onSocialTabChange("admin")}>
+            <ShieldCheck size={17} />
+            Admin
+          </button>
+        ) : null}
       </nav>
 
       <section className="setting-panel cloud-toolbar">
@@ -527,6 +558,42 @@ export function FamilyView({
         </section>
       </section>
       </>
+      ) : null}
+
+      {socialTab === "admin" && isAdmin ? (
+        <section className="setting-panel admin-panel">
+          <div className="section-heading split">
+            <div className="section-heading">
+              <ShieldCheck size={20} />
+              <h2>Painel de administrador</h2>
+            </div>
+            <button className="ghost compact" type="button" onClick={refreshAdmin} disabled={loading}>
+              <RefreshCw size={15} />
+              Atualizar
+            </button>
+          </div>
+          <p className="admin-note">
+            Esta primeira versão é somente leitura. Ela confirma que sua conta foi reconhecida como admin sem liberar ações perigosas ainda.
+          </p>
+          {adminError ? <p className="form-error">{adminError}</p> : null}
+          <div className="admin-metrics">
+            <ProfileMetric label="Perfis cadastrados" value={adminOverview?.totalProfiles ?? "--"} />
+            <ProfileMetric label="Fichas acessíveis" value={adminOverview?.totalItems ?? "--"} />
+            <ProfileMetric label="Seu papel" value="admin" />
+          </div>
+          <div className="admin-user-list">
+            <h3>Perfis</h3>
+            {adminOverview?.profiles.length ? adminOverview.profiles.map((entry) => (
+              <div key={entry.profile.id} className="admin-user-row">
+                <PersonIdentity profile={entry.profile} />
+                <span>{entry.itemCount} fichas</span>
+                <small>{entry.profile.role === "admin" ? "admin" : "user"}</small>
+              </div>
+            )) : (
+              <p className="empty">{loading ? "Carregando perfis..." : "Nenhum perfil carregado ainda."}</p>
+            )}
+          </div>
+        </section>
       ) : null}
 
       {socialTab === "friends" ? (

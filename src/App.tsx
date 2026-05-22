@@ -90,8 +90,9 @@ function App() {
   const [syncRetryTick, setSyncRetryTick] = useState(0);
   const [isOnline, setIsOnline] = useState(() => typeof navigator === "undefined" ? true : navigator.onLine);
   const [syncQueue, setSyncQueue] = useState<SyncQueueEntry[]>(() => loadSyncQueue(loadPendingDeletes()));
-  const [socialSection, setSocialSection] = useState<"profile" | "friends">("profile");
+  const [socialSection, setSocialSection] = useState<"profile" | "friends" | "admin">("profile");
   const [mobileDrawersOpen, setMobileDrawersOpen] = useState(false);
+  const [addPickerOpen, setAddPickerOpen] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [standaloneMode, setStandaloneMode] = useState(() => isStandaloneApp());
@@ -321,6 +322,20 @@ function App() {
     setActiveItemMode("edit");
   }
 
+  function requestAddItem(category?: Category) {
+    if (category) {
+      addItem(category);
+      return;
+    }
+
+    setAddPickerOpen(true);
+  }
+
+  function chooseAddItem(category: Category) {
+    setAddPickerOpen(false);
+    addItem(category);
+  }
+
   function deleteItem(id: string, enqueue = true) {
     const item = dataRef.current.items.find((entry) => entry.id === id);
     setData((current) => ({ ...current, items: current.items.filter((item) => item.id !== id) }));
@@ -373,7 +388,7 @@ function App() {
           session={cloudSession}
           onOpenCategory={(next) => selectView(next)}
           onOpenItem={openItemDetails}
-          onAddItem={addItem}
+          onAddItem={requestAddItem}
           onOpenFamily={() => selectView("family")}
           onOpenFeed={() => selectView("feed")}
           connectedToFamily={Boolean(cloudSession)}
@@ -431,6 +446,7 @@ function App() {
         filters={filters}
         onFiltersChange={setFilters}
         onAdd={addItem}
+        onAddAny={() => setAddPickerOpen(true)}
         onOpen={openItemDetails}
       />
     );
@@ -446,7 +462,10 @@ function App() {
     setMobileDrawersOpen(false);
   }
 
-  function selectSocial(nextSection: "profile" | "friends") {
+  function selectSocial(nextSection: "profile" | "friends" | "admin") {
+    if (nextSection === "admin" && cloudSession?.profile?.role !== "admin") {
+      nextSection = "profile";
+    }
     setSocialSection(nextSection);
     selectView("family");
   }
@@ -488,6 +507,16 @@ function App() {
   }
 
   function logout() {
+    const clearedData = { ...dataRef.current, items: [] };
+    dataRef.current = clearedData;
+    saveData(clearedData);
+    setData(clearedData);
+    syncQueueRef.current = [];
+    saveSyncQueue([]);
+    savePendingDeletes([]);
+    lastSyncedKeyRef.current = "";
+    setSyncQueue([]);
+    setLastSyncedAt(null);
     setCloudSession(null);
     setBootstrappedCloudScope("");
     selectView("home");
@@ -496,7 +525,7 @@ function App() {
     setSyncStatus({
       kind: "local",
       message: "Sessão encerrada.",
-      detail: "A Gaveteira continua funcionando localmente neste navegador.",
+      detail: "As fichas locais desta conta foram retiradas deste navegador.",
     });
   }
 
@@ -727,6 +756,12 @@ function App() {
                 <UserPlus size={18} />
                 <span>Amigos</span>
               </button>
+              {cloudSession?.profile?.role === "admin" ? (
+                <button className={view === "family" && socialSection === "admin" ? "active" : ""} onClick={() => selectSocial("admin")}>
+                  <UserCheck size={18} />
+                  <span>Admin</span>
+                </button>
+              ) : null}
             </div>
           </div>
           {secondaryNavItems.map((item) => {
@@ -812,6 +847,12 @@ function App() {
           onDismiss={dismissInstallPrompt}
         />
       ) : null}
+      {addPickerOpen ? (
+        <CategoryChoiceModal
+          onChoose={chooseAddItem}
+          onClose={() => setAddPickerOpen(false)}
+        />
+      ) : null}
       {activeItem && activeItemMode === "details" ? (
         <ItemDetails
           item={activeItem}
@@ -833,6 +874,45 @@ function App() {
           onClose={closeItemForm}
         />
       ) : null}
+    </div>
+  );
+}
+
+function CategoryChoiceModal({
+  onChoose,
+  onClose,
+}: {
+  onChoose: (category: Category) => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="modal-backdrop" role="presentation" onClick={onClose}>
+      <section className="modal category-choice-modal" role="dialog" aria-modal="true" aria-label="Escolher tipo de ficha" onClick={(event) => event.stopPropagation()}>
+        <header className="modal-header">
+          <div>
+            <p className="eyebrow">Nova ficha</p>
+            <h2>Escolha uma gaveta</h2>
+            <p>Você pode começar por qualquer tipo de consumo cultural.</p>
+          </div>
+          <button type="button" className="icon-button" onClick={onClose} aria-label="Fechar seletor de gaveta">
+            <X size={18} />
+          </button>
+        </header>
+        <div className="category-choice-grid">
+          {drawerItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button key={item.key} type="button" className={`category-choice-card drawer-${item.key}`} onClick={() => onChoose(item.key)}>
+                <span className="drawer-handle">
+                  <Icon size={20} />
+                </span>
+                <strong>{item.label}</strong>
+                <small>Criar ficha</small>
+              </button>
+            );
+          })}
+        </div>
+      </section>
     </div>
   );
 }

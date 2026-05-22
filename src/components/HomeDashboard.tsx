@@ -37,7 +37,7 @@ export function HomeDashboard({
   session: CloudSession | null;
   onOpenCategory: (category: Category | "wishlist" | "progress") => void;
   onOpenItem: (item: CulturalItem) => void;
-  onAddItem: (category: Category) => void;
+  onAddItem: (category?: Category) => void;
   onOpenFamily: () => void;
   onOpenFeed: () => void;
   connectedToFamily: boolean;
@@ -223,7 +223,7 @@ export function HomeDashboard({
             <p>Nenhuma ficha aberta agora. Escolha algo para abrir uma nova trilha cultural.</p>
             <div className="button-row">
               <button type="button" className="primary" onClick={() => onOpenCategory("wishlist")}>Abrir wishlist</button>
-              <button type="button" className="ghost" onClick={() => onAddItem("games")}>Abrir nova ficha</button>
+              <button type="button" className="ghost" onClick={() => onAddItem()}>Abrir nova ficha</button>
             </div>
           </div>
         )}
@@ -353,7 +353,7 @@ type OnboardingStep = {
   label: string;
   done: boolean;
   action: (
-    addItem: (category: Category) => void,
+    addItem: (category?: Category) => void,
     openFamily: () => void,
     openCategory: (category: Category | "wishlist" | "progress") => void,
   ) => void;
@@ -376,22 +376,22 @@ function buildOnboardingChecklist({
     {
       label: "Criar perfil",
       done: profileReady,
-      action: (_addItem: (category: Category) => void, openFamily: () => void) => openFamily(),
+      action: (_addItem: (category?: Category) => void, openFamily: () => void) => openFamily(),
     },
     {
       label: "Escolher gavetas favoritas",
       done: favoriteDrawersReady,
-      action: (_addItem: (category: Category) => void, openFamily: () => void) => openFamily(),
+      action: (_addItem: (category?: Category) => void, openFamily: () => void) => openFamily(),
     },
     {
       label: "Arquivar primeira ficha",
       done: items.length > 0,
-      action: (addItem: (category: Category) => void) => addItem("games"),
+      action: (addItem: (category?: Category) => void) => addItem(),
     },
     {
       label: connectedToFamily ? "Sincronização conectada" : syncSkipped ? "Sincronização pulada" : "Conectar ou pular sincronização",
       done: connectedToFamily || syncSkipped,
-      action: (_addItem: (category: Category) => void, openFamily: () => void) => openFamily(),
+      action: (_addItem: (category?: Category) => void, openFamily: () => void) => openFamily(),
     },
   ];
 }

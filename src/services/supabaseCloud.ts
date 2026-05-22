@@ -1,9 +1,10 @@
-import { AppSettings, Category, CloudSession, CulturalItem, FamilyItem, Friendship, FriendshipStatus, SocialProfile } from "../types";
+import { AdminOverview, AppSettings, Category, CloudSession, CulturalItem, FamilyItem, Friendship, FriendshipStatus, SocialProfile } from "../types";
 import { isLegacyDemoItem } from "../utils/legacyDemoItems";
 
 const SESSION_KEY = "gaveteira-cloud-session:v1";
 const TOKEN_REFRESH_MARGIN_MS = 60_000;
-const PROFILE_SELECT = "id,display_name,email,username,bio,avatar_url,favorite_categories,invite_code,family_code";
+const PROFILE_SELECT = "id,display_name,email,username,bio,avatar_url,favorite_categories,invite_code,family_code,role";
+const PROFILE_SELECT_WITHOUT_ROLE = "id,display_name,email,username,bio,avatar_url,favorite_categories,invite_code,family_code";
 const LEGACY_PROFILE_SELECT = "id,display_name,family_code";
 
 interface SupabaseAuthResponse {
@@ -28,6 +29,7 @@ interface ProfileRow {
   favorite_categories?: Category[] | null;
   invite_code?: string | null;
   family_code?: string | null;
+  role?: string | null;
 }
 
 interface ItemRow {
@@ -48,6 +50,11 @@ interface FriendshipRow {
   status: FriendshipStatus;
   created_at: string;
   updated_at: string;
+}
+
+interface AdminItemOwnerRow {
+  owner_id: string;
+  updated_at?: string | null;
 }
 
 export function isCloudConfigured(settings: AppSettings) {
@@ -260,9 +267,18 @@ export async function searchProfiles(settings: AppSettings, session: CloudSessio
 
   const safeQuery = normalized.replace(/[(),]/g, " ").trim();
   const filter = encodeURIComponent(`display_name.ilike.*${safeQuery}*,username.ilike.*${safeQuery}*,email.ilike.*${safeQuery}*,invite_code.eq.${safeQuery.toUpperCase()}`);
-  const rows = await restRequest<ProfileRow[]>(settings, session, `/rest/v1/profiles?select=id,display_name,email,username,bio,avatar_url,favorite_categories,invite_code,family_code&or=(${filter})&limit=8`, {
-    method: "GET",
-  });
+  let rows: ProfileRow[];
+
+  try {
+    rows = await restRequest<ProfileRow[]>(settings, session, `/rest/v1/profiles?select=${PROFILE_SELECT}&or=(${filter})&limit=8`, {
+      method: "GET",
+    });
+  } catch (error) {
+    if (!isMissingProfileSocialColumns(error)) throw error;
+    rows = await restRequest<ProfileRow[]>(settings, session, `/rest/v1/profiles?select=${PROFILE_SELECT_WITHOUT_ROLE}&or=(${filter})&limit=8`, {
+      method: "GET",
+    });
+  }
 
   return rows
     .filter((row) => row.id !== session.user.id)
@@ -335,6 +351,44 @@ export async function deleteFriendship(settings: AppSettings, session: CloudSess
     method: "DELETE",
     headers: { Prefer: "return=minimal" },
   });
+}
+
+export async function fetchAdminOverview(settings: AppSettings, session: CloudSession): Promise<AdminOverview> {
+  if (session.profile?.role !== "admin") {
+    throw new Error("Sua conta não tem permissões de administrador.");
+  }
+
+  const profileRows = await restRequest<ProfileRow[]>(settings, session, `/rest/v1/profiles?select=${PROFILE_SELECT}&order=display_name.asc`, {
+    method: "GET",
+  });
+  const itemRows = await restRequest<AdminItemOwnerRow[]>(settings, session, "/rest/v1/cultural_items?select=owner_id,updated_at&order=updated_at.desc", {
+    method: "GET",
+  });
+
+  const statsByOwner = itemRows.reduce<Record<string, { itemCount: number; lastActivity?: string }>>((acc, row) => {
+    const stats = acc[row.owner_id] ?? { itemCount: 0 };
+    stats.itemCount += 1;
+    if (row.updated_at && (!stats.lastActivity || new Date(row.updated_at).getTime() > new Date(stats.lastActivity).getTime())) {
+      stats.lastActivity = row.updated_at;
+    }
+    acc[row.owner_id] = stats;
+    return acc;
+  }, {});
+
+  const profiles = profileRows.map((row) => {
+    const stats = statsByOwner[row.id] ?? { itemCount: 0 };
+    return {
+      profile: profileFromRow(row),
+      itemCount: stats.itemCount,
+      lastActivity: stats.lastActivity,
+    };
+  });
+
+  return {
+    profiles,
+    totalProfiles: profiles.length,
+    totalItems: itemRows.length,
+  };
 }
 
 async function fetchProfiles(settings: AppSettings, session: CloudSession, ownerIds: string[]): Promise<Record<string, ProfileRow>> {
@@ -579,6 +633,7 @@ function profileFromRow(row: ProfileRow, email?: string): SocialProfile {
     favoriteCategories: row.favorite_categories || [],
     inviteCode: row.invite_code || undefined,
     familyCode: row.family_code || undefined,
+    role: row.role === "admin" ? "admin" : "user",
   };
 }
 
@@ -601,7 +656,7 @@ function isMissingProfileSocialColumns(error: unknown) {
   const message = error instanceof Error ? error.message : String(error ?? "");
   const normalized = message.toLowerCase();
   const mentionsProfilesCache = normalized.includes("profiles") && normalized.includes("schema cache");
-  const mentionsSocialColumn = ["email", "username", "bio", "avatar_url", "favorite_categories", "invite_code"]
+  const mentionsSocialColumn = ["email", "username", "bio", "avatar_url", "favorite_categories", "invite_code", "role"]
     .some((column) => normalized.includes(column));
 
   return normalized.includes("column profiles.email does not exist")
@@ -610,6 +665,7 @@ function isMissingProfileSocialColumns(error: unknown) {
     || normalized.includes("column profiles.avatar_url does not exist")
     || normalized.includes("column profiles.favorite_categories does not exist")
     || normalized.includes("column profiles.invite_code does not exist")
+    || normalized.includes("column profiles.role does not exist")
     || (mentionsProfilesCache && mentionsSocialColumn)
     || normalized.includes("atualização social da tabela profiles");
 }
