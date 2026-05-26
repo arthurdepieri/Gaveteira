@@ -1,4 +1,4 @@
-import { BookOpen, Disc3, Film, Gamepad2, Library, ListChecks, Plus, Search, Sparkles, Tv } from "lucide-react";
+import { BookOpen, Disc3, FileText, Film, Gamepad2, Library, ListChecks, Plus, Search, Sparkles, Tv } from "lucide-react";
 import type { ElementType } from "react";
 import { Category, CulturalItem } from "../types";
 import { categoryLabels } from "../data/catalog";
@@ -60,6 +60,7 @@ export function CategoryView({
   onFiltersChange,
   onAdd,
   onAddAny,
+  onAddBookFromPdf,
   onOpen,
 }: {
   view: Category | "wishlist" | "progress";
@@ -69,6 +70,7 @@ export function CategoryView({
   onFiltersChange: (filters: Filters) => void;
   onAdd: (category: Category) => void;
   onAddAny: () => void;
+  onAddBookFromPdf: () => void;
   onOpen: (item: CulturalItem) => void;
 }) {
   const virtual = view === "wishlist" || view === "progress";
@@ -123,10 +125,18 @@ export function CategoryView({
           <p>{filtered.length} de {baseItems.length} itens visíveis</p>
         </div>
         {category ? (
-          <button className="primary" onClick={() => onAdd(category)}>
-            <Plus size={18} />
-            Adicionar
-          </button>
+          <div className="list-header-actions">
+            {category === "books" ? (
+              <button className="secondary" onClick={onAddBookFromPdf}>
+                <FileText size={18} />
+                PDF
+              </button>
+            ) : null}
+            <button className="primary" onClick={() => onAdd(category)}>
+              <Plus size={18} />
+              Adicionar
+            </button>
+          </div>
         ) : null}
       </section>
 
@@ -170,6 +180,7 @@ export function CategoryView({
             hasBaseItems={baseItems.length > 0}
             onAdd={onAdd}
             onAddAny={onAddAny}
+            onAddBookFromPdf={onAddBookFromPdf}
             onClearFilters={() => onFiltersChange(emptyFilters)}
           />
         )}
@@ -183,12 +194,14 @@ function EmptyCollectionState({
   hasBaseItems,
   onAdd,
   onAddAny,
+  onAddBookFromPdf,
   onClearFilters,
 }: {
   view: Category | "wishlist" | "progress";
   hasBaseItems: boolean;
   onAdd: (category: Category) => void;
   onAddAny: () => void;
+  onAddBookFromPdf: () => void;
   onClearFilters: () => void;
 }) {
   if (hasBaseItems) {
@@ -245,10 +258,18 @@ function EmptyCollectionState({
         <h2>{state.title}</h2>
         <p>{state.text}</p>
       </div>
-      <button type="button" className="primary" onClick={() => onAdd(view)}>
-        <Sparkles size={16} />
-        {state.action}
-      </button>
+      <div className="empty-state-actions">
+        {view === "books" ? (
+          <button type="button" className="secondary" onClick={onAddBookFromPdf}>
+            <FileText size={16} />
+            Adicionar PDF
+          </button>
+        ) : null}
+        <button type="button" className="primary" onClick={() => onAdd(view)}>
+          <Sparkles size={16} />
+          {state.action}
+        </button>
+      </div>
     </article>
   );
 }

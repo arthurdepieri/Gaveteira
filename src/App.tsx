@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ElementType } from "react";
-import { AlertTriangle, Archive, BarChart3, BookOpen, CheckCircle2, ChevronDown, CloudOff, Disc3, Download, Film, Gamepad2, Home, Library, ListChecks, Loader2, LogIn, LogOut, MessageSquare, Settings, Share, Tv, UserCheck, UserPlus, Users, WifiOff, X } from "lucide-react";
-import { AppData, AppSettings, Category, CloudSession, CulturalItem, ViewKey } from "./types";
+import { AlertTriangle, Archive, BarChart3, BookOpen, CheckCircle2, ChevronDown, CloudOff, Disc3, Download, FileText, Film, Gamepad2, Home, Library, ListChecks, Loader2, LogIn, LogOut, MessageSquare, Settings, Share, Tv, UserCheck, UserPlus, Users, WifiOff, X } from "lucide-react";
+import { AppData, AppSettings, BookItem, Category, CloudSession, CulturalItem, ViewKey } from "./types";
 import { loadData, saveData } from "./storage/localStore";
 import { categoryLabels } from "./data/catalog";
 import { HomeDashboard } from "./components/HomeDashboard";
@@ -54,6 +54,14 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
 }
 
+interface PdfBookDraft {
+  fileName: string;
+  title: string;
+  useReadingStatus: boolean;
+  useStartDate: boolean;
+  startDate: string;
+}
+
 const navItems: Array<{ key: ViewKey; label: string; icon: ElementType }> = [
   { key: "home", label: "Início", icon: Home },
   { key: "feed", label: "Feed", icon: MessageSquare },
@@ -97,6 +105,8 @@ function App() {
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [standaloneMode, setStandaloneMode] = useState(() => isStandaloneApp());
   const [showStartupSplash, setShowStartupSplash] = useState(true);
+  const [pdfBookDraft, setPdfBookDraft] = useState<PdfBookDraft | null>(null);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
   const syncInFlightRef = useRef(false);
   const syncQueuedRef = useRef(false);
   const lastSyncedKeyRef = useRef("");
@@ -327,6 +337,51 @@ function App() {
     setActiveItemMode("edit");
   }
 
+  function requestPdfBookImport() {
+    pdfInputRef.current?.click();
+  }
+
+  function handlePdfBookSelected(fileList: FileList | null) {
+    const file = fileList?.[0];
+    if (!file) return;
+
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    if (!isPdf) {
+      window.alert("Escolha um arquivo PDF para criar uma ficha de livro.");
+      return;
+    }
+
+    setPdfBookDraft({
+      fileName: file.name,
+      title: titleFromPdfFileName(file.name),
+      useReadingStatus: true,
+      useStartDate: true,
+      startDate: todayInputValue(),
+    });
+  }
+
+  function createBookFromPdf(draft: PdfBookDraft) {
+    const readingStatus = data.statuses.books.find((status) => normalizeText(status) === "lendo") ?? "Lendo";
+    const item: BookItem = {
+      ...(createBlankItem("books", draft.useReadingStatus ? readingStatus : data.statuses.books[0]) as BookItem),
+      title: draft.title.trim() || titleFromPdfFileName(draft.fileName),
+      format: "PDF" as const,
+      startDate: draft.useStartDate ? draft.startDate : undefined,
+      tags: ["PDF"],
+      timeline: draft.useStartDate ? [{
+        id: `event-${Date.now()}`,
+        date: draft.startDate,
+        type: "Comecei" as const,
+        note: `Rascunho criado a partir do arquivo local ${draft.fileName}.`,
+      }] : [],
+    };
+
+    setPdfBookDraft(null);
+    upsertItem(item);
+    setView("books");
+    setActiveItemMode("edit");
+  }
+
   function requestAddItem(category?: Category) {
     if (category) {
       addItem(category);
@@ -452,6 +507,7 @@ function App() {
         onFiltersChange={setFilters}
         onAdd={addItem}
         onAddAny={() => setAddPickerOpen(true)}
+        onAddBookFromPdf={requestPdfBookImport}
         onOpen={openItemDetails}
       />
     );
@@ -852,10 +908,32 @@ function App() {
           onDismiss={dismissInstallPrompt}
         />
       ) : null}
+      <input
+        ref={pdfInputRef}
+        className="sr-only"
+        type="file"
+        accept="application/pdf,.pdf"
+        onChange={(event) => {
+          handlePdfBookSelected(event.target.files);
+          event.target.value = "";
+        }}
+      />
       {addPickerOpen ? (
         <CategoryChoiceModal
           onChoose={chooseAddItem}
+          onChoosePdf={() => {
+            setAddPickerOpen(false);
+            requestPdfBookImport();
+          }}
           onClose={() => setAddPickerOpen(false)}
+        />
+      ) : null}
+      {pdfBookDraft ? (
+        <PdfBookDraftModal
+          draft={pdfBookDraft}
+          onChange={setPdfBookDraft}
+          onCreate={() => createBookFromPdf(pdfBookDraft)}
+          onClose={() => setPdfBookDraft(null)}
         />
       ) : null}
       {activeItem && activeItemMode === "details" ? (
@@ -885,9 +963,11 @@ function App() {
 
 function CategoryChoiceModal({
   onChoose,
+  onChoosePdf,
   onClose,
 }: {
   onChoose: (category: Category) => void;
+  onChoosePdf: () => void;
   onClose: () => void;
 }) {
   return (
@@ -904,6 +984,13 @@ function CategoryChoiceModal({
           </button>
         </header>
         <div className="category-choice-grid">
+          <button type="button" className="category-choice-card category-choice-pdf" onClick={onChoosePdf}>
+            <span className="drawer-handle">
+              <FileText size={20} />
+            </span>
+            <strong>Livro por PDF</strong>
+            <small>Rascunho local</small>
+          </button>
           {drawerItems.map((item) => {
             const Icon = item.icon;
             return (
@@ -917,6 +1004,76 @@ function CategoryChoiceModal({
             );
           })}
         </div>
+      </section>
+    </div>
+  );
+}
+
+function PdfBookDraftModal({
+  draft,
+  onChange,
+  onCreate,
+  onClose,
+}: {
+  draft: PdfBookDraft;
+  onChange: (draft: PdfBookDraft) => void;
+  onCreate: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="modal-backdrop" role="presentation" onClick={onClose}>
+      <section className="modal pdf-book-modal" role="dialog" aria-modal="true" aria-label="Criar livro a partir de PDF" onClick={(event) => event.stopPropagation()}>
+        <header className="modal-header">
+          <div>
+            <p className="eyebrow">Livro por PDF</p>
+            <h2>Criar rascunho local</h2>
+            <p>Uso o nome do arquivo para abrir uma ficha de livro. O PDF não é salvo nem enviado para a nuvem.</p>
+          </div>
+          <button type="button" className="icon-button" onClick={onClose} aria-label="Fechar importação de PDF">
+            <X size={18} />
+          </button>
+        </header>
+
+        <div className="pdf-book-body">
+          <div className="pdf-book-file">
+            <FileText size={22} />
+            <span>
+              <strong>{draft.fileName}</strong>
+              <small>Arquivo selecionado neste navegador</small>
+            </span>
+          </div>
+
+          <label className="field">
+            <span>Título da ficha</span>
+            <input value={draft.title} onChange={(event) => onChange({ ...draft, title: event.target.value })} />
+            <small>Depois você ainda pode usar a busca de metadados para puxar autor, capa, ano, editora e gênero.</small>
+          </label>
+
+          <div className="pdf-book-options">
+            <label>
+              <input type="checkbox" checked={draft.useReadingStatus} onChange={(event) => onChange({ ...draft, useReadingStatus: event.target.checked })} />
+              <span>Marcar status como Lendo</span>
+            </label>
+            <label>
+              <input type="checkbox" checked={draft.useStartDate} onChange={(event) => onChange({ ...draft, useStartDate: event.target.checked })} />
+              <span>Usar data de início</span>
+            </label>
+            {draft.useStartDate ? (
+              <label className="field">
+                <span>Data de início</span>
+                <input type="date" value={draft.startDate} onChange={(event) => onChange({ ...draft, startDate: event.target.value })} />
+              </label>
+            ) : null}
+          </div>
+        </div>
+
+        <footer className="modal-footer">
+          <button type="button" className="ghost" onClick={onClose}>Cancelar</button>
+          <button type="button" className="primary" onClick={onCreate}>
+            <BookOpen size={16} />
+            Criar ficha de livro
+          </button>
+        </footer>
       </section>
     </div>
   );
@@ -1277,6 +1434,29 @@ function savePendingDeletes(ids: string[]) {
   }
 
   localStorage.setItem(PENDING_DELETES_KEY, JSON.stringify(ids));
+}
+
+function titleFromPdfFileName(fileName: string) {
+  return fileName
+    .replace(/\.pdf$/i, "")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s*\([^)]*\)\s*$/g, "")
+    .replace(/\s*\[[^\]]*\]\s*$/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (letter) => letter.toLocaleUpperCase("pt-BR"));
+}
+
+function todayInputValue() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function normalizeText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .trim();
 }
 
 function isStandaloneApp() {

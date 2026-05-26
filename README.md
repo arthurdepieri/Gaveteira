@@ -1,39 +1,41 @@
 # Gaveteira
 
-App web local para organizar consumo cultural como uma gaveteira pessoal: jogos, livros, álbuns, filmes, séries, wishlist e itens em andamento.
+Gaveteira é um app web/PWA para organizar consumo cultural como um arquivo pessoal: jogos, livros, discos, filmes, séries, wishlist, itens em andamento, diário, perfil social e amigos.
 
-## O que está pronto nesta primeira versão
+O projeto roda localmente no navegador, pode ser instalado no celular como PWA e também pode sincronizar dados com Supabase quando as credenciais da nuvem estiverem configuradas.
 
-- Tela inicial com gaveteira visual, contadores e itens em andamento.
-- Listagens por categoria, Wishlist e Em andamento.
-- Filtros por ano, status, gênero, nota mínima e busca por nome/tag.
-- Cadastro e edição manual com campos específicos para jogos, livros, álbuns, filmes e séries.
-- Status personalizáveis por categoria.
-- Tags, links externos, capas/posters por URL e avaliação de 0.5 a 5 estrelas.
-- Diário e histórico por item.
-- Estatísticas: concluídos, andamento, wishlist, notas médias, gêneros, tags, ranking e concluídos por ano/mês.
-- Busca automática de metadados dentro do formulário, com aplicação manual do resultado escolhido.
-- Persistência local via `localStorage`.
-- Exportação e importação de backup JSON.
-- Área de configuração para chaves de API, preparada para IGDB, Steam, RAWG, Google Books, Open Library, Spotify, MusicBrainz, Last.fm e TMDB.
-- Modo familiar com Supabase: login, sincronização e gaveteiras separadas por perfil.
-- PWA instalável no celular, com manifest, ícones e cache básico do app.
+## Recursos principais
 
-## Como rodar
+- Gavetas para jogos, livros, discos, filmes e séries, com filtros, busca, tags, notas e capas.
+- Fichas próprias por categoria, com campos específicos de progresso, avaliação, links, histórico e diário.
+- Diário vivo com tipos de entrada, privacidade, prompts de escrita e publicações no Feed quando a entrada for visível.
+- Tela inicial com continuar, últimas adições, favoritos recentes, sugestões e atividade dos amigos.
+- Perfis, amigos, convites, Feed social e visualização de fichas públicas.
+- Sincronização local/nuvem com fila, pendências, reenvio e avisos de sessão expirada.
+- Backup e portabilidade com exportação/importação JSON, prévia de restauração e deduplicação.
+- PWA instalável no celular, com manifest, ícones, service worker e orientação em modo retrato.
+- Busca automática de metadados e capas por fontes públicas e por Edge Function do Supabase quando configurada.
+
+## Como rodar localmente
 
 Requisitos:
 
 - Node.js 20 ou superior.
-- npm, pnpm ou outro gerenciador compatível.
+- npm.
 
-Instalação com npm:
+Instale as dependências:
 
 ```bash
 npm install
+```
+
+Abra em modo desenvolvimento:
+
+```bash
 npm run dev
 ```
 
-Depois abra a URL exibida pelo Vite, normalmente:
+Depois acesse a URL exibida pelo Vite, normalmente:
 
 ```text
 http://127.0.0.1:5173
@@ -43,47 +45,58 @@ Build de produção:
 
 ```bash
 npm run build
+```
+
+Prévia do build:
+
+```bash
 npm run preview
 ```
 
 ## Instalar no celular
 
-Depois de publicar ou rodar o preview em HTTPS/localhost:
+Depois de publicar a Gaveteira em HTTPS ou rodar localmente em ambiente permitido pelo navegador:
 
-- Android/Chrome: abra a Gaveteira e toque no aviso `Instalar Gaveteira`, ou use o menu do navegador > `Instalar app`.
+- Android/Chrome: use o aviso `Instalar Gaveteira` ou o menu do navegador > `Instalar app`.
 - iPhone/Safari: toque em compartilhar e depois em `Adicionar à Tela de Início`.
 
-O PWA usa `public/manifest.webmanifest`, `public/sw.js` e os ícones em `public/icons`.
+Os arquivos do PWA ficam em:
 
-## Dados locais
+- `public/manifest.webmanifest`
+- `public/sw.js`
+- `public/icons`
 
-Os dados são salvos no `localStorage` do navegador, na chave:
+## Configuração da nuvem
 
-```text
-gaveteira-da-vida:v1
+A Gaveteira funciona localmente mesmo sem nuvem. Para login, amigos, Feed social e sincronização entre dispositivos, configure o Supabase.
+
+1. Crie um projeto no Supabase.
+2. Rode o SQL de `supabase/schema.sql` no SQL Editor.
+3. Copie o Project URL e a anon public key.
+4. Preencha `src/config/sharedCloud.ts`:
+
+```ts
+export const sharedCloudSettings = {
+  supabaseUrl: "https://seu-projeto.supabase.co",
+  supabaseAnonKey: "sua-anon-key",
+};
 ```
 
-Use `Configurações > Exportar JSON` para backup e `Importar JSON` para restaurar.
+As fichas de cada usuário ficam vinculadas ao próprio login. Ao sair da conta, o app limpa os dados locais da sessão anterior para evitar que uma conta veja a gaveta da outra no mesmo navegador.
 
-## Busca automática
+## Busca automática e capas
 
-Ao criar ou editar uma ficha, use a área `Completar automaticamente`. Digite o nome, clique em `Buscar dados` e escolha um resultado. O app tenta preencher capa, ano, gênero, links e campos específicos sem alterar status, nota, diário ou histórico.
+Ao criar ou editar uma ficha, use `Completar automaticamente` para buscar dados e capas.
 
-Provedores usados nesta versão:
+Fontes usadas:
 
-- Jogos: RAWG com chave configurada, Steam quando disponível e Wikidata como fallback.
-- Livros: Google Books e Open Library.
-- Discos: MusicBrainz e Cover Art Archive.
-- Filmes: TMDB com chave configurada, iTunes quando disponível e Wikidata como fallback.
-- Séries: TMDB com chave configurada e TVMaze como fallback.
+- Jogos: RAWG, Steam e Wikidata.
+- Livros: Google Books e Open Library, com suporte a busca por ISBN.
+- Discos: MusicBrainz, Cover Art Archive e Last.fm quando configurado.
+- Filmes: TMDB, OMDb, iTunes e Wikidata.
+- Séries: TMDB e TVMaze.
 
-### Chaves de busca
-
-As chaves de busca automática ficam somente no navegador de cada pessoa, em `Configurações > Chaves de APIs`.
-
-Se outra pessoa da família quiser usar RAWG, TMDB, OMDb ou outra API com chave, passe a chave individualmente para essa pessoa preencher no próprio navegador.
-
-Também existe uma opção mais segura com Supabase Edge Functions: salve suas chaves como secrets no Supabase e faça deploy da função `metadata-search`.
+As chaves de API podem ficar no navegador de cada pessoa em `Configurações > Chaves de APIs`. Para uma opção mais segura, salve as chaves como secrets no Supabase e faça deploy da Edge Function `metadata-search`.
 
 ```bash
 supabase secrets set RAWG_API_KEY=sua_rawg
@@ -93,45 +106,36 @@ supabase secrets set LASTFM_API_KEY=sua_lastfm
 supabase functions deploy metadata-search
 ```
 
-Com essa função deployada, usuários logados usam RAWG/TMDB/OMDb/Last.fm sem ver as chaves no navegador. Se a função não estiver disponível, o app usa as fontes locais e as chaves configuradas no próprio navegador.
+## Fluxo de release local
 
-## Modo familiar
+Antes de gerar um pacote beta, crie uma seção correspondente no `CHANGELOG.md`:
 
-Com o modo familiar ativo, a Gaveteira abre primeiro na tela de login. Para compartilhar com primos, crie um projeto no Supabase e rode o SQL de `supabase/schema.sql` no SQL Editor.
+```md
+## 0.6.3-beta - Nome da versão - 2026-05-22
 
-Cada login salva os próprios itens na tabela `cultural_items` usando o `owner_id` do usuário. A aba `Família` mostra as gaveteiras separadas por pessoa, então você pode abrir a lista de cada primo sem misturar tudo na sua conta.
+Resumo curto da versão.
 
-Depois copie:
+### Destaques
 
-- Project URL
-- anon public key
-
-No arquivo `src/config/sharedCloud.ts`, preencha:
-
-```ts
-export const sharedCloudSettings = {
-  supabaseUrl: "https://seu-projeto.supabase.co",
-  supabaseAnonKey: "sua-anon-key",
-};
+- Mudança importante.
+- Outra mudança importante.
 ```
 
-No app, cada pessoa informa apenas o `Código da família` na tela de login.
+Depois rode:
 
-Use o mesmo código da família em todos os computadores, por exemplo:
-
-```text
-primos-2026
+```bash
+npm run release -- 0.6.3-beta
 ```
 
-Depois abra a Gaveteira, informe um código de família, crie uma conta e use a aba `Família`:
+Esse comando:
 
-- `Enviar meus itens` para subir sua gaveteira.
-- `Atualizar família` para ver o feed do grupo.
-- `Baixar minha conta` para mesclar no navegador os itens salvos na sua conta.
+- compila a Gaveteira com `npm run build`;
+- cria `releases/Gaveteira-0.6.3-beta.zip`;
+- extrai as notas da seção `0.6.3-beta` do `CHANGELOG.md`;
+- atualiza `releases/manifest.json` com versão, data, título, notas e caminho do zip.
 
-## Próximos passos sugeridos
+Os zips em `releases/` são artefatos locais e ficam fora do Git. O `manifest.json` pode ser versionado como índice leve das versões empacotadas.
 
-- Trocar `localStorage` por IndexedDB quando o volume de imagens/anexos crescer.
-- Implementar clientes reais de metadados em `src/services/metadata.ts`.
-- Adicionar upload local de capas, além de URLs.
-- Criar modo de recomendação para decidir o próximo item com base em nota, gênero, status e tempo disponível.
+## Roadmap
+
+Os próximos recursos planejados ficam em [ROADMAP.md](./ROADMAP.md).

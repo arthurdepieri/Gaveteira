@@ -20,6 +20,18 @@
 
 * { box-sizing: border-box; }
 
+.sr-only {
+  position: absolute;
+  overflow: hidden;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  border: 0;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
 body {
   margin: 0;
   min-width: 320px;
@@ -644,6 +656,13 @@ button:disabled {
   max-width: 720px;
   margin: 12px 0 0;
   color: var(--muted);
+}
+
+.list-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 .eyebrow {
@@ -1540,7 +1559,7 @@ button.danger {
 
 .category-choice-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -1575,6 +1594,85 @@ button.danger {
 .category-choice-card small {
   color: rgba(255, 247, 233, 0.72);
   font-weight: 800;
+}
+
+.category-choice-pdf {
+  color: #fffaf1;
+  background: linear-gradient(145deg, #315f84, #233d58);
+}
+
+.pdf-book-modal {
+  width: min(680px, 100%);
+  display: grid;
+  gap: 18px;
+}
+
+.pdf-book-modal .modal-header {
+  align-items: flex-start;
+}
+
+.pdf-book-modal .modal-header h2 {
+  margin: 0;
+  font-size: 1.7rem;
+}
+
+.pdf-book-modal .modal-header p:last-child {
+  max-width: 560px;
+  margin: 7px 0 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.pdf-book-body {
+  display: grid;
+  gap: 16px;
+}
+
+.pdf-book-file {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  color: #21384f;
+  border: 1px solid #b9c9d6;
+  background: #f3f8fb;
+  border-radius: 8px;
+}
+
+.pdf-book-file span,
+.pdf-book-file strong,
+.pdf-book-file small {
+  display: block;
+}
+
+.pdf-book-file small {
+  margin-top: 2px;
+  color: #5f7280;
+}
+
+.pdf-book-options {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px dashed var(--line);
+  background:
+    linear-gradient(90deg, rgba(134, 95, 62, 0.05) 1px, transparent 1px) 0 0 / 18px 18px,
+    #fffdf8;
+  border-radius: 8px;
+}
+
+.pdf-book-options > label:not(.field) {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--wood-dark);
+  font-weight: 800;
+}
+
+.pdf-book-options input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--green);
 }
 
 .family-switch-body {
@@ -3895,6 +3993,10 @@ button.danger {
     max-width: 100%;
   }
 
+  .list-header-actions {
+    justify-content: flex-start;
+  }
+
   .hero-counters {
     justify-self: start;
     min-width: 104px;
@@ -4284,6 +4386,14 @@ button.danger {
 
   .category-choice-card small {
     justify-self: end;
+  }
+
+  .pdf-book-modal {
+    gap: 14px;
+  }
+
+  .pdf-book-file {
+    align-items: flex-start;
   }
 
   .form-mobile-section {

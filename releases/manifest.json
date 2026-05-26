@@ -1,0 +1,12 @@
+{
+  "latest": "0.6.2-beta",
+  "releases": [
+    {
+      "version": "0.6.2-beta",
+      "date": "2026-05-21",
+      "title": "Polimento de uso",
+      "notes": "Versão beta focada em deixar a Gaveteira mais confortável, clara e tranquilizadora no uso diário.\n\n### Destaques\n\n- Home reorganizada com hierarquia mais clara: continuar, movimento recente, sugestões e gavetas.\n- Ficha do item refinada para celular, com aba Resumo, atalhos para Diário e Histórico e seções vazias menos ruidosas.\n- Estados vazios e microtextos revisados para reforçar a linguagem de arquivo pessoal, gavetas, fichas e diário.\n- Cartão de sincronização mais tranquilizador, com último envio bem-sucedido e área para ver pendências da nuvem.\n- Melhorias em mensagens de erro para reduzir termos técnicos e deixar claro quando fichas seguem salvas localmente.\n- Ajustes em textos de Feed, Amigos, Estatísticas, login, busca de capas e backup.\n\n### Observações\n\n- Esta versão consolida polimentos feitos depois da 0.6.1, sem mudar o eixo principal do app.\n- O pacote de release desta versão fica em `releases/Gaveteira-0.6.2-beta.zip`.",
+      "archivePath": "releases/Gaveteira-0.6.2-beta.zip"
+    }
+  ]
+}
