@@ -76,13 +76,20 @@ body,
 }
 
 .startup-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
   display: grid;
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
   padding: clamp(20px, 7vw, 72px);
+  color-scheme: light;
   background:
     radial-gradient(circle at center, rgba(255, 250, 241, 0.98), rgba(247, 241, 230, 0.94) 58%, #efe5d5 100%);
+  opacity: 0;
+  animation: startup-splash-in 520ms ease-out forwards;
+  transition: opacity 560ms ease, transform 560ms ease, filter 560ms ease;
 }
 
 .startup-splash img {
@@ -91,6 +98,51 @@ body,
   max-height: 82vh;
   object-fit: contain;
   filter: drop-shadow(0 22px 44px rgba(47, 35, 24, 0.12));
+  opacity: 0;
+  transform: translateY(8px) scale(0.985);
+  animation: startup-splash-logo-in 700ms 120ms ease-out forwards;
+  transition: opacity 560ms ease, transform 560ms ease;
+}
+
+.startup-splash.leaving {
+  opacity: 0;
+  transform: scale(1.012);
+  filter: blur(2px);
+}
+
+.startup-splash.leaving img {
+  opacity: 0;
+  transform: translateY(-4px) scale(1.015);
+}
+
+@keyframes startup-splash-in {
+  from {
+    opacity: 0;
+    transform: scale(0.992);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes startup-splash-logo-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .startup-splash,
+  .startup-splash img {
+    animation-duration: 1ms;
+    transition-duration: 1ms;
+  }
 }
 
 button, input, select, textarea {
@@ -1827,10 +1879,6 @@ button.danger {
 :root[data-theme="dark"] .sidebar nav button.active {
   color: #211d18;
   background: #f1dcae;
-}
-
-:root[data-theme="dark"] .startup-splash {
-  background: radial-gradient(circle at center, #211a15 0, #15110e 64%, #0e0b09 100%);
 }
 
 :root[data-theme="dark"] .quick-add-grid button,

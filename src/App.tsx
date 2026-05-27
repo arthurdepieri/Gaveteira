@@ -112,6 +112,7 @@ function App() {
   const [pwaUpdateNotice, setPwaUpdateNotice] = useState<PwaUpdateNotice | null>(null);
   const [standaloneMode, setStandaloneMode] = useState(() => isStandaloneApp());
   const [showStartupSplash, setShowStartupSplash] = useState(true);
+  const [startupSplashLeaving, setStartupSplashLeaving] = useState(false);
   const [pdfBookDraft, setPdfBookDraft] = useState<PdfBookDraft | null>(null);
   const [systemPrefersDark, setSystemPrefersDark] = useState(() => typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches);
   const pdfInputRef = useRef<HTMLInputElement>(null);
@@ -176,8 +177,13 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const timerId = window.setTimeout(() => setShowStartupSplash(false), 1500);
-    return () => window.clearTimeout(timerId);
+    const leaveTimerId = window.setTimeout(() => setStartupSplashLeaving(true), 1150);
+    const hideTimerId = window.setTimeout(() => setShowStartupSplash(false), 1750);
+
+    return () => {
+      window.clearTimeout(leaveTimerId);
+      window.clearTimeout(hideTimerId);
+    };
   }, []);
 
   useEffect(() => {
@@ -830,7 +836,7 @@ function App() {
 
   if (showStartupSplash) {
     return (
-      <main className="startup-splash" aria-label="Abrindo Gaveteira">
+      <main className={`startup-splash${startupSplashLeaving ? " leaving" : ""}`} aria-label="Abrindo Gaveteira">
         <img src="/gaveteira-splash.png" alt="Gaveteira" />
       </main>
     );
