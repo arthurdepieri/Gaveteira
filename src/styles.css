@@ -5678,3 +5678,131 @@ button.danger {
     grid-template-columns: 1fr;
   }
 }
+
+/* Final dark-mode overrides for mobile surfaces declared inside media queries. */
+:root[data-theme="dark"] .modal-header,
+:root[data-theme="dark"] .modal-footer,
+:root[data-theme="dark"] .social-mobile-switch,
+:root[data-theme="dark"] .mobile-drawer-list button,
+:root[data-theme="dark"] .admin-user-row,
+:root[data-theme="dark"] .admin-user-row > span,
+:root[data-theme="dark"] .admin-user-row > small {
+  color: var(--ink);
+  border-color: var(--line);
+  background:
+    linear-gradient(90deg, rgba(213, 166, 83, 0.035) 1px, transparent 1px) 0 0 / 18px 18px,
+    #241d17;
+}
+
+:root[data-theme="dark"] .modal-header {
+  box-shadow: 0 12px 22px rgba(0, 0, 0, 0.16);
+}
+
+:root[data-theme="dark"] .modal-footer {
+  box-shadow: 0 -14px 26px rgba(0, 0, 0, 0.28);
+}
+
+:root[data-theme="dark"] .modal-header p,
+:root[data-theme="dark"] .modal-header small,
+:root[data-theme="dark"] .social-mobile-switch button,
+:root[data-theme="dark"] .mobile-drawer-list button,
+:root[data-theme="dark"] .admin-user-row .social-person-identity small {
+  color: var(--muted);
+}
+
+:root[data-theme="dark"] .modal-header h2,
+:root[data-theme="dark"] .admin-user-list h3,
+:root[data-theme="dark"] .admin-user-row .social-person-identity strong {
+  color: #fff3df;
+}
+
+:root[data-theme="dark"] .modal-header .eyebrow,
+:root[data-theme="dark"] .mobile-drawer-panel .eyebrow,
+:root[data-theme="dark"] .admin-user-row > span,
+:root[data-theme="dark"] .admin-user-row > small {
+  color: #f1d7aa;
+}
+
+:root[data-theme="dark"] .social-mobile-switch button.active,
+:root[data-theme="dark"] .mobile-drawer-list button.active {
+  color: #fffaf1;
+  border-color: var(--green);
+  background: var(--green);
+}
+
+:root[data-theme="dark"] .mobile-drawer-list button strong {
+  color: inherit;
+}
+
+:root[data-theme="dark"] .mobile-drawer-handle {
+  background: #bca37a;
+}
+
+:root[data-theme="dark"] .mobile-drawer-backdrop {
+  background: rgba(7, 5, 4, 0.62);
+}
+
+:root[data-theme="dark"] .detail-mobile-tabs,
+:root[data-theme="dark"] .form-mobile-section,
+:root[data-theme="dark"] .mobile-field-group,
+:root[data-theme="dark"] .status-box,
+:root[data-theme="dark"] .metadata-header,
+:root[data-theme="dark"] .metadata-search,
+:root[data-theme="dark"] .status-box .repeat-row {
+  color: var(--ink);
+  border-color: var(--line);
+  background:
+    linear-gradient(90deg, rgba(213, 166, 83, 0.035) 1px, transparent 1px) 0 0 / 18px 18px,
+    #241d17;
+}
+
+:root[data-theme="dark"] .detail-mobile-tabs {
+  border-bottom: 1px solid var(--line);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.22);
+}
+
+:root[data-theme="dark"] .detail-mobile-tabs button {
+  color: #f1d7aa;
+  border-color: #6b5436;
+  background: #211812;
+}
+
+:root[data-theme="dark"] .detail-mobile-tabs button.active {
+  color: #fffaf1;
+  border-color: var(--green);
+  background: var(--green);
+}
+
+:root[data-theme="dark"] .status-box h3,
+:root[data-theme="dark"] .form-mobile-section > summary,
+:root[data-theme="dark"] .mobile-field-group > summary,
+:root[data-theme="dark"] .metadata-header strong {
+  color: #fff3df;
+}
+
+:root[data-theme="dark"] .form-mobile-section > summary,
+:root[data-theme="dark"] .mobile-field-group > summary {
+  border-bottom: 1px solid var(--line);
+  background: #2b2118;
+}
+
+:root[data-theme="dark"] .form-mobile-section > summary::after {
+  color: var(--brass);
+}
+
+:root[data-theme="dark"] .metadata-header small,
+:root[data-theme="dark"] .metadata-result small {
+  color: var(--muted);
+}
+
+:root[data-theme="dark"] .provider-pending {
+  color: #f1b5a9 !important;
+  border-color: rgba(199, 99, 88, 0.42) !important;
+  background: rgba(199, 99, 88, 0.14) !important;
+}
+
+:root[data-theme="dark"] .provider-ok {
+  color: #aee1d0 !important;
+  border-color: rgba(79, 146, 127, 0.48) !important;
+  background: rgba(79, 146, 127, 0.16) !important;
+}
