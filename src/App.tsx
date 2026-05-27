@@ -259,7 +259,23 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!standaloneMode) return;
+    function requestPortraitLock() {
+      lockPortraitOrientation();
+    }
+
+    requestPortraitLock();
+    window.addEventListener("orientationchange", requestPortraitLock);
+    document.addEventListener("visibilitychange", requestPortraitLock);
+    document.addEventListener("fullscreenchange", requestPortraitLock);
+
+    return () => {
+      window.removeEventListener("orientationchange", requestPortraitLock);
+      document.removeEventListener("visibilitychange", requestPortraitLock);
+      document.removeEventListener("fullscreenchange", requestPortraitLock);
+    };
+  }, []);
+
+  useEffect(() => {
     lockPortraitOrientation();
   }, [standaloneMode]);
 
@@ -1593,12 +1609,12 @@ function isStandaloneApp() {
 
 function lockPortraitOrientation() {
   type OrientationLock = "any" | "natural" | "landscape" | "portrait" | "portrait-primary" | "portrait-secondary" | "landscape-primary" | "landscape-secondary";
-  const orientation = screen.orientation as ScreenOrientation & {
+  const orientation = globalThis.screen?.orientation as ScreenOrientation & {
     lock?: (orientation: OrientationLock) => Promise<void>;
   };
 
   if (!orientation?.lock) return;
-  orientation.lock("portrait-primary").catch(() => {
+  orientation.lock("portrait").catch(() => {
     // Alguns navegadores só permitem travar orientação em PWA instalado ou tela cheia.
   });
 }
