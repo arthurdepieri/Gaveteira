@@ -52,6 +52,17 @@ create table if not exists public.friend_requests (
   check (requester_id <> addressee_id)
 );
 
+create table if not exists public.curated_recommendations (
+  id text primary key,
+  item_id text not null,
+  owner_id uuid not null references auth.users(id) on delete cascade,
+  curator_id uuid not null references auth.users(id) on delete cascade,
+  note text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (item_id, owner_id)
+);
+
 create unique index if not exists profiles_username_unique
 on public.profiles (lower(username))
 where username is not null and username <> '';
@@ -66,9 +77,16 @@ on public.friend_requests (
 )
 where status <> 'rejected';
 
+create index if not exists curated_recommendations_owner_idx
+on public.curated_recommendations (owner_id, item_id);
+
+create index if not exists curated_recommendations_created_idx
+on public.curated_recommendations (created_at desc);
+
 alter table public.profiles enable row level security;
 alter table public.cultural_items enable row level security;
 alter table public.friend_requests enable row level security;
+alter table public.curated_recommendations enable row level security;
 
 create or replace function public.current_family_code()
 returns text
@@ -132,6 +150,15 @@ using (
         )
     )
   )
+  or (
+    coalesce(item->>'visibility', 'friends') <> 'private'
+    and exists (
+      select 1
+      from public.curated_recommendations cr
+      where cr.item_id = cultural_items.id
+        and cr.owner_id = cultural_items.owner_id
+    )
+  )
 );
 
 drop policy if exists "items_write_self" on public.cultural_items;
@@ -166,6 +193,31 @@ on public.friend_requests for delete
 to authenticated
 using (requester_id = auth.uid() or addressee_id = auth.uid());
 
+drop policy if exists "curated_recommendations_select_authenticated" on public.curated_recommendations;
+create policy "curated_recommendations_select_authenticated"
+on public.curated_recommendations for select
+to authenticated
+using (true);
+
+drop policy if exists "curated_recommendations_insert_admin" on public.curated_recommendations;
+create policy "curated_recommendations_insert_admin"
+on public.curated_recommendations for insert
+to authenticated
+with check (public.is_admin() and curator_id = auth.uid());
+
+drop policy if exists "curated_recommendations_update_admin" on public.curated_recommendations;
+create policy "curated_recommendations_update_admin"
+on public.curated_recommendations for update
+to authenticated
+using (public.is_admin())
+with check (public.is_admin());
+
+drop policy if exists "curated_recommendations_delete_admin" on public.curated_recommendations;
+create policy "curated_recommendations_delete_admin"
+on public.curated_recommendations for delete
+to authenticated
+using (public.is_admin());
+
 create index if not exists cultural_items_family_updated_idx
 on public.cultural_items (family_code, updated_at desc);
 
@@ -173,6 +225,7 @@ grant usage on schema public to authenticated;
 grant select, insert, update on public.profiles to authenticated;
 grant select, insert, update, delete on public.cultural_items to authenticated;
 grant select, insert, update, delete on public.friend_requests to authenticated;
+grant select, insert, update, delete on public.curated_recommendations to authenticated;
 grant execute on function public.current_family_code() to authenticated;
 grant execute on function public.is_admin() to authenticated;
 

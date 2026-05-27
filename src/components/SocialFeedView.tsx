@@ -1,12 +1,14 @@
-import { BookmarkPlus, CheckCircle2, Cloud, Eye, GitCompare, Heart, Loader2, MessageSquare, RefreshCw, ShieldCheck, Sparkles, TrendingUp, Users, X } from "lucide-react";
+import { Award, BookmarkPlus, CheckCircle2, Cloud, Eye, GitCompare, Heart, Loader2, MessageSquare, RefreshCw, ShieldCheck, Sparkles, TrendingUp, Users, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { AppSettings, CloudSession, CulturalItem, FamilyItem, Friendship, SocialProfile } from "../types";
+import { AppSettings, CloudSession, CulturalItem, CuratedRecommendation, FamilyItem, Friendship, SocialProfile } from "../types";
 import { categoryLabels, defaultStatuses } from "../data/catalog";
-import { fetchFriendships, fetchMyProfile, fetchSocialItems, upsertMyItem } from "../services/supabaseCloud";
+import { fetchCuratedRecommendations, fetchFriendships, fetchMyProfile, fetchSocialItems, upsertMyItem } from "../services/supabaseCloud";
 import { getGenres, getRating, getTitle, isCompleted, isInProgress, isWishlist, uid } from "../utils/itemHelpers";
 import { AuthGate } from "./AuthGate";
+import { Cover } from "./Cover";
 import { ItemDetails } from "./ItemDetails";
+import { Stars } from "./Rating";
 
 interface OwnerGroup {
   ownerId: string;
@@ -33,6 +35,7 @@ export function SocialFeedView({
   onUpdateSettings: (settings: AppSettings) => void;
 }) {
   const [socialItems, setSocialItems] = useState<FamilyItem[]>([]);
+  const [curatedRecommendations, setCuratedRecommendations] = useState<CuratedRecommendation[]>([]);
   const [friendships, setFriendships] = useState<Friendship[]>([]);
   const [savingEventId, setSavingEventId] = useState("");
   const [feedScope, setFeedScope] = useState<"friends" | "mine">("friends");
@@ -110,13 +113,15 @@ export function SocialFeedView({
     }
 
     try {
-      const [nextFriendships, nextItems, freshProfile] = await Promise.all([
+      const [nextFriendships, nextItems, recommendations, freshProfile] = await Promise.all([
         fetchFriendships(settings, session),
         fetchSocialItems(settings, session),
+        fetchCuratedRecommendations(settings, session),
         fetchMyProfile(settings, session),
       ]);
       setFriendships(nextFriendships);
       setSocialItems(nextItems);
+      setCuratedRecommendations(recommendations);
       if (JSON.stringify(freshProfile) !== JSON.stringify(session.profile)) {
         onAuthenticated({ ...session, profile: freshProfile });
       }
@@ -192,6 +197,30 @@ export function SocialFeedView({
           <button className="ghost" onClick={() => refreshFeed()} disabled={loading}><RefreshCw size={16} /> Atualizar feed</button>
         </div>
         {message ? <p className="form-note">{message}</p> : null}
+      </section>
+
+      <section className="setting-panel social-curation-panel">
+        <div className="section-heading split">
+          <div className="section-heading">
+            <Award size={20} />
+            <h2>Curadoria</h2>
+          </div>
+          <span className="soft-label">recomendações destacadas</span>
+        </div>
+        <div className="curation-feed-grid">
+          {curatedRecommendations.length ? curatedRecommendations.slice(0, 8).map((recommendation) => (
+            <button key={recommendation.recommendationId} type="button" className="curation-feed-card" onClick={() => openCuratedRecommendation(recommendation)}>
+              <Cover item={recommendation.item} compact />
+              <span>
+                <small>Ficha de {recommendation.ownerName}</small>
+                <strong>{getTitle(recommendation.item)}</strong>
+                <em>{categoryLabels[recommendation.item.category]} / curadoria de {recommendation.curatorName}</em>
+                {recommendation.note ? <p>{recommendation.note}</p> : null}
+                <Stars value={recommendation.item.rating} />
+              </span>
+            </button>
+          )) : <p className="empty">Quando um admin reconhecer uma ficha, ela aparece aqui como recomendação da Gaveteira.</p>}
+        </div>
       </section>
 
       <section className="setting-panel social-feed-panel">
@@ -278,6 +307,11 @@ export function SocialFeedView({
   function openFeedEvent(event: FeedEvent) {
     setActiveEntry(event.entry);
     setActiveDiaryId(event.diaryId);
+  }
+
+  function openCuratedRecommendation(recommendation: CuratedRecommendation) {
+    setActiveEntry(recommendation);
+    setActiveDiaryId(undefined);
   }
 }
 

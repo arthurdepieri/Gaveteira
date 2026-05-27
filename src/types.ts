@@ -126,6 +126,7 @@ export interface SeriesItem extends SharedFields {
 export type CulturalItem = GameItem | BookItem | AlbumItem | MovieItem | SeriesItem;
 
 export interface AppSettings {
+  theme?: "light" | "dark" | "system";
   apiKeys: {
     igdb?: string;
     steam?: string;
@@ -176,6 +177,15 @@ export interface FamilyItem {
   familyCode: string;
   item: CulturalItem;
   updatedAt: string;
+}
+
+export interface CuratedRecommendation extends FamilyItem {
+  recommendationId: string;
+  itemId: string;
+  curatorId: string;
+  curatorName: string;
+  note?: string;
+  createdAt: string;
 }
 
 export type FriendshipStatus = "pending" | "accepted" | "rejected";

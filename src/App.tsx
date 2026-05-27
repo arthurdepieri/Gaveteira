@@ -106,6 +106,7 @@ function App() {
   const [standaloneMode, setStandaloneMode] = useState(() => isStandaloneApp());
   const [showStartupSplash, setShowStartupSplash] = useState(true);
   const [pdfBookDraft, setPdfBookDraft] = useState<PdfBookDraft | null>(null);
+  const [systemPrefersDark, setSystemPrefersDark] = useState(() => typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches);
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const syncInFlightRef = useRef(false);
   const syncQueuedRef = useRef(false);
@@ -124,11 +125,27 @@ function App() {
     queue: syncQueue.map((entry) => [entry.id, entry.action, entry.status, entry.updatedAt, entry.attempts]),
   }), [cloudSession?.user.id, syncQueue]);
   const queueCounts = useMemo(() => getSyncQueueCounts(syncQueue), [syncQueue]);
+  const activeTheme = useMemo(() => resolveTheme(effectiveSettings.theme, systemPrefersDark), [effectiveSettings.theme, systemPrefersDark]);
 
   useEffect(() => {
     dataRef.current = data;
     saveData(data);
   }, [data]);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = activeTheme;
+    document.documentElement.style.colorScheme = activeTheme;
+  }, [activeTheme]);
+
+  useEffect(() => {
+    const themeQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const updateSystemTheme = () => setSystemPrefersDark(themeQuery.matches);
+
+    updateSystemTheme();
+    themeQuery.addEventListener("change", updateSystemTheme);
+
+    return () => themeQuery.removeEventListener("change", updateSystemTheme);
+  }, []);
 
   useEffect(() => {
     const timerId = window.setTimeout(() => setShowStartupSplash(false), 1500);
@@ -1475,6 +1492,11 @@ function normalizeText(value: string) {
     .replace(/\p{Diacritic}/gu, "")
     .toLowerCase()
     .trim();
+}
+
+function resolveTheme(theme: AppSettings["theme"], systemPrefersDark: boolean) {
+  if (theme === "light" || theme === "dark") return theme;
+  return systemPrefersDark ? "dark" : "light";
 }
 
 function isStandaloneApp() {

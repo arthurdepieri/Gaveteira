@@ -1,4 +1,4 @@
-import { Cloud, Download, GitMerge, KeyRound, Upload } from "lucide-react";
+import { Cloud, Download, GitMerge, KeyRound, Moon, Sun, Upload } from "lucide-react";
 import { useMemo, useState } from "react";
 import { AppData, AppSettings, Category, CloudSession, CulturalItem } from "../types";
 import { categoryLabels } from "../data/catalog";
@@ -159,6 +159,33 @@ export function SettingsView({
 
       <section className="settings-grid">
         <div className="setting-panel">
+          <div className="section-heading">
+            {data.settings.theme === "dark" ? <Moon size={20} /> : <Sun size={20} />}
+            <h2>Aparência</h2>
+          </div>
+          <p>Escolha como a Gaveteira deve acender a mesa: clara, escura ou seguindo o aparelho.</p>
+          <div className="theme-choice" role="radiogroup" aria-label="Tema da Gaveteira">
+            {[
+              ["system", "Sistema", "Segue o tema do celular ou computador"],
+              ["light", "Claro", "Papel claro e gavetas iluminadas"],
+              ["dark", "Escuro", "Arquivo noturno, com menos brilho"],
+            ].map(([value, label, description]) => (
+              <button
+                key={value}
+                type="button"
+                className={data.settings.theme === value || (!data.settings.theme && value === "system") ? "active" : ""}
+                onClick={() => onUpdateData({ settings: { ...data.settings, theme: value as AppSettings["theme"] } })}
+                role="radio"
+                aria-checked={data.settings.theme === value || (!data.settings.theme && value === "system")}
+              >
+                <strong>{label}</strong>
+                <small>{description}</small>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="setting-panel">
           <h2>Backup</h2>
           <p>Exporte por escopo, confira antes de restaurar e evite duplicar fichas que já existem.</p>
           <div className="backup-toolbar">
@@ -231,7 +258,7 @@ export function SettingsView({
                   <span>{key}</span>
                   <input
                     value={String(data.settings.apiKeys[key as keyof typeof data.settings.apiKeys] ?? "")}
-                    onChange={(event) => onUpdateData({ settings: { apiKeys: { ...data.settings.apiKeys, [key]: event.target.value } } })}
+                    onChange={(event) => onUpdateData({ settings: { ...data.settings, apiKeys: { ...data.settings.apiKeys, [key]: event.target.value } } })}
                     placeholder="Opcional"
                   />
                 </label>

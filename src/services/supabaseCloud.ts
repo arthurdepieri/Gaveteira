@@ -1,4 +1,4 @@
-import { AdminOverview, AppSettings, Category, CloudSession, CulturalItem, FamilyItem, Friendship, FriendshipStatus, SocialProfile } from "../types";
+import { AdminOverview, AppSettings, Category, CloudSession, CulturalItem, CuratedRecommendation, FamilyItem, Friendship, FriendshipStatus, SocialProfile } from "../types";
 import { isLegacyDemoItem } from "../utils/legacyDemoItems";
 
 const SESSION_KEY = "gaveteira-cloud-session:v1";
@@ -62,6 +62,15 @@ interface FriendshipRow {
 interface AdminItemOwnerRow {
   owner_id: string;
   updated_at?: string | null;
+}
+
+interface CuratedRecommendationRow {
+  id: string;
+  item_id: string;
+  owner_id: string;
+  curator_id: string;
+  note?: string | null;
+  created_at: string;
 }
 
 export function isCloudConfigured(settings: AppSettings) {
@@ -312,6 +321,108 @@ export async function fetchSocialItems(settings: AppSettings, session: CloudSess
   }));
 }
 
+export async function fetchAdminCuratableItems(settings: AppSettings, session: CloudSession): Promise<FamilyItem[]> {
+  if (session.profile?.role !== "admin") {
+    throw new Error("Sua conta nÃ£o tem permissÃµes de administrador.");
+  }
+
+  const rows = await restRequest<ItemRow[]>(settings, session, "/rest/v1/cultural_items?select=id,owner_id,family_code,item,updated_at&order=updated_at.desc&limit=120", {
+    method: "GET",
+  });
+  const visibleRows = rows.filter((row) => !isLegacyDemoItem(row.id) && !isLegacyDemoItem(row.item.id) && isVisibleSocialRow(row, session.user.id));
+  const profiles = await fetchProfiles(settings, session, [...new Set(visibleRows.map((row) => row.owner_id))]);
+
+  return visibleRows.map((row) => familyItemFromRow(row, profiles, session.user.id));
+}
+
+export async function fetchCuratedRecommendations(settings: AppSettings, session: CloudSession): Promise<CuratedRecommendation[]> {
+  let rows: CuratedRecommendationRow[];
+
+  try {
+    rows = await restRequest<CuratedRecommendationRow[]>(settings, session, "/rest/v1/curated_recommendations?select=id,item_id,owner_id,curator_id,note,created_at&order=created_at.desc", {
+      method: "GET",
+    });
+  } catch (error) {
+    if (isMissingCurationTable(error)) return [];
+    throw error;
+  }
+
+  if (!rows.length) return [];
+
+  const itemRows = await fetchItemRowsForRecommendations(settings, session, rows);
+  const profiles = await fetchProfiles(settings, session, [...new Set([
+    ...rows.map((row) => row.owner_id),
+    ...rows.map((row) => row.curator_id),
+  ])]);
+  const itemRowsByKey = new Map(itemRows.map((row) => [curationPairKey(row.owner_id, row.id), row]));
+
+  return rows
+    .map((row) => {
+      const itemRow = itemRowsByKey.get(curationPairKey(row.owner_id, row.item_id));
+      if (!itemRow || isLegacyDemoItem(itemRow.id) || isLegacyDemoItem(itemRow.item.id) || itemRow.item.visibility === "private") return null;
+      const familyItem = familyItemFromRow(itemRow, profiles, session.user.id);
+      return {
+        ...familyItem,
+        recommendationId: row.id,
+        itemId: row.item_id,
+        curatorId: row.curator_id,
+        curatorName: profiles[row.curator_id]?.display_name || "Curadoria Gaveteira",
+        note: row.note || undefined,
+        createdAt: row.created_at,
+      };
+    })
+    .filter(Boolean) as CuratedRecommendation[];
+}
+
+export async function upsertCuratedRecommendation(settings: AppSettings, session: CloudSession, entry: FamilyItem, note: string): Promise<CuratedRecommendation> {
+  if (session.profile?.role !== "admin") {
+    throw new Error("Sua conta nÃ£o tem permissÃµes de administrador.");
+  }
+  if (entry.ownerId === session.user.id) {
+    throw new Error("A curadoria deve destacar fichas de outras pessoas.");
+  }
+  if (entry.item.visibility === "private") {
+    throw new Error("Fichas privadas nÃ£o podem entrar na curadoria.");
+  }
+
+  const recommendationId = curationPairKey(entry.ownerId, entry.id);
+  const createdAt = new Date().toISOString();
+  const rows = await restRequest<CuratedRecommendationRow[]>(settings, session, "/rest/v1/curated_recommendations?on_conflict=id&select=id,item_id,owner_id,curator_id,note,created_at", {
+    method: "POST",
+    headers: { Prefer: "resolution=merge-duplicates,return=representation" },
+    body: JSON.stringify({
+      id: recommendationId,
+      item_id: entry.id,
+      owner_id: entry.ownerId,
+      curator_id: session.user.id,
+      note: note.trim() || null,
+      created_at: createdAt,
+    }),
+  });
+  const row = rows[0];
+
+  return {
+    ...entry,
+    recommendationId: row.id,
+    itemId: row.item_id,
+    curatorId: row.curator_id,
+    curatorName: session.profile?.displayName || session.user.email || "Curadoria Gaveteira",
+    note: row.note || undefined,
+    createdAt: row.created_at,
+  };
+}
+
+export async function deleteCuratedRecommendation(settings: AppSettings, session: CloudSession, recommendationId: string) {
+  if (session.profile?.role !== "admin") {
+    throw new Error("Sua conta nÃ£o tem permissÃµes de administrador.");
+  }
+
+  await restRequest(settings, session, `/rest/v1/curated_recommendations?id=eq.${encodeURIComponent(recommendationId)}`, {
+    method: "DELETE",
+    headers: { Prefer: "return=minimal" },
+  });
+}
+
 export async function searchProfiles(settings: AppSettings, session: CloudSession, query: string): Promise<SocialProfile[]> {
   const normalized = query.trim();
   if (!normalized) return [];
@@ -443,6 +554,8 @@ export async function fetchAdminOverview(settings: AppSettings, session: CloudSe
 }
 
 async function fetchProfiles(settings: AppSettings, session: CloudSession, ownerIds: string[]): Promise<Record<string, ProfileRow>> {
+  if (!ownerIds.length) return {};
+
   const quotedIds = ownerIds.map((id) => `"${id}"`).join(",");
   let rows: ProfileRow[];
 
@@ -458,6 +571,30 @@ async function fetchProfiles(settings: AppSettings, session: CloudSession, owner
   }
 
   return Object.fromEntries(rows.map((row) => [row.id, row]));
+}
+
+async function fetchItemRowsForRecommendations(settings: AppSettings, session: CloudSession, rows: CuratedRecommendationRow[]) {
+  const ownerIds = [...new Set(rows.map((row) => row.owner_id))];
+  const itemIds = [...new Set(rows.map((row) => row.item_id))];
+  if (!ownerIds.length || !itemIds.length) return [];
+
+  return restRequest<ItemRow[]>(
+    settings,
+    session,
+    `/rest/v1/cultural_items?select=id,owner_id,family_code,item,updated_at&owner_id=in.(${ownerIds.join(",")})&id=in.(${encodeURIComponent(postgrestStringList(itemIds))})`,
+    { method: "GET" },
+  );
+}
+
+function familyItemFromRow(row: ItemRow, profiles: Record<string, ProfileRow>, viewerId: string): FamilyItem {
+  return {
+    id: row.id,
+    ownerId: row.owner_id,
+    ownerName: profiles[row.owner_id]?.display_name || (row.owner_id === viewerId ? "VocÃª" : "Pessoa da Gaveteira"),
+    familyCode: row.family_code,
+    item: row.item,
+    updatedAt: row.updated_at,
+  };
 }
 
 async function getOrCreateProfile(settings: AppSettings, session: CloudSession): Promise<SocialProfile> {
@@ -672,6 +809,10 @@ function postgrestStringList(values: string[]) {
   return values.map((value) => `"${value.replace(/\\/g, "\\\\").replace(/"/g, "\\\"")}"`).join(",");
 }
 
+function curationPairKey(ownerId: string, itemId: string) {
+  return `${ownerId}:${itemId}`;
+}
+
 function authResponseToSession(response: SupabaseAuthResponse): CloudSession {
   if (!response.access_token || !response.user) {
     throw new Error("Login criado, mas o Supabase não retornou uma sessão. Verifique se confirmação por email está ativa.");
@@ -764,6 +905,14 @@ function isMissingProfileSocialColumns(error: unknown) {
     || normalized.includes("atualização social da tabela profiles");
 }
 
+function isMissingCurationTable(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  const normalized = message.toLowerCase();
+  return normalized.includes("tabela de curadoria")
+    || (normalized.includes("curated_recommendations")
+      && (normalized.includes("does not exist") || normalized.includes("schema cache") || normalized.includes("could not find")));
+}
+
 function errorMessage(value: unknown, fallback: string) {
   const record = value && typeof value === "object" ? value as Record<string, unknown> : {};
   const raw = String(record.error_description || record.message || record.msg || record.error || fallback);
@@ -799,6 +948,10 @@ function errorMessage(value: unknown, fallback: string) {
 
   if (normalized.includes("relation") && normalized.includes("friend_requests") && normalized.includes("does not exist")) {
     return "Seu Supabase ainda não tem a tabela de amizades. Rode o SQL novo em supabase/schema.sql para ativar amigos.";
+  }
+
+  if (normalized.includes("curated_recommendations") && (normalized.includes("does not exist") || normalized.includes("schema cache") || normalized.includes("could not find"))) {
+    return "Seu Supabase ainda nÃ£o tem a tabela de curadoria. Rode o SQL novo em supabase/schema.sql para ativar recomendaÃ§Ãµes destacadas.";
   }
 
   if (isUniqueFriendshipError(raw)) {

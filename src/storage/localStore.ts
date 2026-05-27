@@ -3,7 +3,7 @@ import { defaultStatuses } from "../data/catalog";
 import { withoutLegacyDemoItems } from "../utils/legacyDemoItems";
 
 const STORAGE_KEY = "gaveteira-da-vida:v1";
-const DEFAULT_SETTINGS = { apiKeys: {}, cloud: {} };
+const DEFAULT_SETTINGS = { theme: "system" as const, apiKeys: {}, cloud: {} };
 
 function emptyData(): AppData {
   return {
