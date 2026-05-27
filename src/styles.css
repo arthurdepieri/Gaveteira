@@ -2090,6 +2090,28 @@ button.danger {
   gap: 16px;
 }
 
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.auth-google-button {
+  width: 100%;
+}
+
 .segmented {
   display: inline-grid;
   grid-template-columns: repeat(2, minmax(120px, 1fr));

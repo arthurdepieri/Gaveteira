@@ -1,7 +1,7 @@
-import { LogIn, UserPlus, Users } from "lucide-react";
+import { Chrome, LogIn, UserPlus, Users } from "lucide-react";
 import { useState } from "react";
 import { AppSettings, CloudSession } from "../types";
-import { isCloudConfigured, signIn, signUp } from "../services/supabaseCloud";
+import { isCloudConfigured, signIn, signUp, startGoogleSignIn } from "../services/supabaseCloud";
 
 export function AuthGate({
   settings,
@@ -35,6 +35,16 @@ export function AuthGate({
       setMessage(error instanceof Error ? error.message : "Não consegui abrir sua conta agora.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  function submitGoogleAuth() {
+    setMessage("");
+
+    try {
+      startGoogleSignIn(settings);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Não consegui iniciar o login com Google.");
     }
   }
 
@@ -82,6 +92,11 @@ export function AuthGate({
             <button className="primary" onClick={submitAuth} disabled={loading || !configured}>
               {mode === "signup" ? <UserPlus size={16} /> : <LogIn size={16} />}
               {loading ? "Conectando..." : mode === "signup" ? "Criar e sincronizar" : "Entrar e sincronizar"}
+            </button>
+            <div className="auth-divider"><span>ou</span></div>
+            <button className="secondary auth-google-button" onClick={submitGoogleAuth} disabled={!configured}>
+              <Chrome size={16} />
+              Entrar com Google
             </button>
             {!configured ? <p className="form-error">A Gaveteira ainda não recebeu as credenciais da nuvem.</p> : null}
             {message ? <p className="form-error">{message}</p> : null}

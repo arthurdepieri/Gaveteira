@@ -12,7 +12,7 @@ import { StatsView } from "./components/StatsView";
 import { SettingsView } from "./components/SettingsView";
 import { FamilyView } from "./components/FamilyView";
 import { SocialFeedView } from "./components/SocialFeedView";
-import { deleteMyItem, fetchMyItems, fetchMyProfile, isSessionExpiredError, loadCloudSession, saveCloudSession, upsertMyItem } from "./services/supabaseCloud";
+import { consumeOAuthRedirectSession, deleteMyItem, fetchMyItems, fetchMyProfile, isSessionExpiredError, loadCloudSession, saveCloudSession, upsertMyItem } from "./services/supabaseCloud";
 import { withSharedCloudSettings } from "./config/sharedCloud";
 import { withoutLegacyDemoItems } from "./utils/legacyDemoItems";
 import { getTitle, getWorkKey, isEmptyCulturalItem } from "./utils/itemHelpers";
@@ -109,6 +109,7 @@ function App() {
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const syncInFlightRef = useRef(false);
   const syncQueuedRef = useRef(false);
+  const oauthRedirectHandledRef = useRef(false);
   const lastSyncedKeyRef = useRef("");
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
   const syncQueueRef = useRef(syncQueue);
@@ -168,6 +169,23 @@ function App() {
   useEffect(() => {
     saveCloudSession(cloudSession);
   }, [cloudSession]);
+
+  useEffect(() => {
+    if (oauthRedirectHandledRef.current || !effectiveSettings.cloud?.supabaseUrl || !effectiveSettings.cloud?.supabaseAnonKey) return;
+    oauthRedirectHandledRef.current = true;
+
+    consumeOAuthRedirectSession(effectiveSettings)
+      .then((session) => {
+        if (session) authenticated(session);
+      })
+      .catch((error) => {
+        setSyncStatus({
+          kind: "error",
+          message: "Não consegui concluir o login com Google.",
+          detail: error instanceof Error ? error.message : "Tente entrar novamente.",
+        });
+      });
+  }, [effectiveSettings]);
 
   useEffect(() => {
     const standaloneQuery = window.matchMedia("(display-mode: standalone)");

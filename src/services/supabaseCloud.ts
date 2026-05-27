@@ -14,9 +14,16 @@ interface SupabaseAuthResponse {
   user?: {
     id: string;
     email?: string;
+    user_metadata?: Record<string, unknown>;
   };
   error?: string;
   msg?: string;
+}
+
+interface SupabaseUserResponse {
+  id: string;
+  email?: string;
+  user_metadata?: Record<string, unknown>;
 }
 
 interface ProfileRow {
@@ -112,6 +119,50 @@ export async function signIn(settings: AppSettings, email: string, password: str
   const response = await authRequest(settings, "/token?grant_type=password", { email, password });
   const session = authResponseToSession(response);
   const profile = await getOrCreateProfile(settings, session);
+  return { ...session, profile };
+}
+
+export function startGoogleSignIn(settings: AppSettings) {
+  const { supabaseUrl } = requireCloudSettings(settings);
+  const redirectTo = `${window.location.origin}${window.location.pathname}`;
+  const params = new URLSearchParams({
+    provider: "google",
+    redirect_to: redirectTo,
+  });
+
+  window.location.href = `${supabaseUrl}/auth/v1/authorize?${params.toString()}`;
+}
+
+export async function consumeOAuthRedirectSession(settings: AppSettings): Promise<CloudSession | null> {
+  const params = oauthParamsFromLocation();
+  const accessToken = params.get("access_token");
+  const refreshToken = params.get("refresh_token") ?? undefined;
+  const expiresIn = Number(params.get("expires_in") ?? "");
+  const error = params.get("error_description") || params.get("error");
+
+  if (error) {
+    cleanOAuthParamsFromUrl();
+    throw new Error(decodeURIComponent(error));
+  }
+
+  if (!accessToken) return null;
+
+  const user = await fetchAuthUser(settings, accessToken);
+  const session: CloudSession = {
+    accessToken,
+    refreshToken,
+    expiresAt: Number.isFinite(expiresIn) && expiresIn > 0 ? Date.now() + expiresIn * 1000 : undefined,
+    user: {
+      id: user.id,
+      email: user.email,
+    },
+  };
+  const profile = await upsertProfile(settings, session, {
+    displayName: displayNameFromUser(user),
+    email: user.email,
+  });
+
+  cleanOAuthParamsFromUrl();
   return { ...session, profile };
 }
 
@@ -552,6 +603,21 @@ async function safeFetch(url: string, init: RequestInit) {
   }
 }
 
+async function fetchAuthUser(settings: AppSettings, accessToken: string): Promise<SupabaseUserResponse> {
+  const { supabaseUrl, supabaseAnonKey } = requireCloudSettings(settings);
+  const response = await safeFetch(`${supabaseUrl}/auth/v1/user`, {
+    method: "GET",
+    headers: {
+      apikey: supabaseAnonKey,
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(errorMessage(json, "Não consegui abrir sua conta Google."));
+  return json as SupabaseUserResponse;
+}
+
 async function ensureFreshSession(settings: AppSettings, session: CloudSession) {
   if (!session.expiresAt) return;
   if (Date.now() + TOKEN_REFRESH_MARGIN_MS < session.expiresAt) return;
@@ -635,6 +701,34 @@ function profileFromRow(row: ProfileRow, email?: string): SocialProfile {
     familyCode: row.family_code || undefined,
     role: row.role === "admin" ? "admin" : "user",
   };
+}
+
+function oauthParamsFromLocation() {
+  const params = new URLSearchParams();
+  const hash = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : window.location.hash;
+  const search = window.location.search.startsWith("?") ? window.location.search.slice(1) : window.location.search;
+
+  for (const [key, value] of new URLSearchParams(hash)) params.set(key, value);
+  for (const [key, value] of new URLSearchParams(search)) {
+    if (!params.has(key)) params.set(key, value);
+  }
+
+  return params;
+}
+
+function cleanOAuthParamsFromUrl() {
+  if (!window.location.hash && !window.location.search.includes("access_token") && !window.location.search.includes("error")) return;
+
+  window.history.replaceState({}, document.title, `${window.location.pathname}${window.location.search.replace(/[?&](access_token|refresh_token|expires_in|token_type|type|error|error_description)=[^&]*/g, "").replace(/^&/, "?")}`);
+  if (window.location.hash) {
+    window.history.replaceState({}, document.title, `${window.location.pathname}${window.location.search}`);
+  }
+}
+
+function displayNameFromUser(user: SupabaseUserResponse) {
+  const metadata = user.user_metadata ?? {};
+  const displayName = metadata.full_name || metadata.name || metadata.preferred_username || user.email?.split("@")[0];
+  return String(displayName || "Pessoa da Gaveteira");
 }
 
 function isVisibleSocialRow(row: ItemRow, viewerId: string) {
