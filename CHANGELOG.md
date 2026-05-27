@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.6.3-beta - Release local e livros por PDF - 2026-05-26
+
+Versão beta focada em organizar o fechamento de versões e acelerar a entrada de livros a partir de arquivos PDF locais.
+
+### Destaques
+
+- Fluxo local de release com `npm run release -- <versão>`, compilando o app, criando o zip versionado e atualizando `releases/manifest.json`.
+- `README.md` revisado para refletir a Gaveteira atual, com instruções de execução, PWA, nuvem, busca automática e empacotamento.
+- `ROADMAP.md` criado para separar próximos recursos planejados da documentação principal.
+- Importação rápida de livros por PDF: seleção local do arquivo, título inferido pelo nome, status `Lendo`, data de início opcional e abertura direta da ficha em edição.
+- O fluxo de PDF continua compatível com modo offline: o arquivo não é salvo nem enviado, apenas cria um rascunho de livro com formato `PDF`.
+- A ficha criada por PDF permanece compatível com a busca de metadados existente para completar autor, capa, editora, ano e gênero.
+
+### Observações
+
+- Os arquivos `.zip` em `releases/` seguem como artefatos locais e ficam fora do Git.
+- O pacote de release desta versão fica em `releases/Gaveteira-0.6.3-beta.zip`.
+
 ## 0.6.2-beta - Polimento de uso - 2026-05-21
 
 Versão beta focada em deixar a Gaveteira mais confortável, clara e tranquilizadora no uso diário.

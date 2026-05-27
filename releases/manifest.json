@@ -1,6 +1,13 @@
 {
-  "latest": "0.6.2-beta",
+  "latest": "0.6.3-beta",
   "releases": [
+    {
+      "version": "0.6.3-beta",
+      "date": "2026-05-26",
+      "title": "Release local e livros por PDF",
+      "notes": "Versão beta focada em organizar o fechamento de versões e acelerar a entrada de livros a partir de arquivos PDF locais.\n\n### Destaques\n\n- Fluxo local de release com `npm run release -- <versão>`, compilando o app, criando o zip versionado e atualizando `releases/manifest.json`.\n- `README.md` revisado para refletir a Gaveteira atual, com instruções de execução, PWA, nuvem, busca automática e empacotamento.\n- `ROADMAP.md` criado para separar próximos recursos planejados da documentação principal.\n- Importação rápida de livros por PDF: seleção local do arquivo, título inferido pelo nome, status `Lendo`, data de início opcional e abertura direta da ficha em edição.\n- O fluxo de PDF continua compatível com modo offline: o arquivo não é salvo nem enviado, apenas cria um rascunho de livro com formato `PDF`.\n- A ficha criada por PDF permanece compatível com a busca de metadados existente para completar autor, capa, editora, ano e gênero.\n\n### Observações\n\n- Os arquivos `.zip` em `releases/` seguem como artefatos locais e ficam fora do Git.\n- O pacote de release desta versão fica em `releases/Gaveteira-0.6.3-beta.zip`.",
+      "archivePath": "releases/Gaveteira-0.6.3-beta.zip"
+    },
     {
       "version": "0.6.2-beta",
       "date": "2026-05-21",
