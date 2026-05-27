@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ElementType } from "react";
-import { AlertTriangle, Archive, BarChart3, BookOpen, CheckCircle2, ChevronDown, CloudOff, Disc3, Download, FileText, Film, Gamepad2, Home, Library, ListChecks, Loader2, LogIn, LogOut, MessageSquare, Settings, Share, Tv, UserCheck, UserPlus, Users, WifiOff, X } from "lucide-react";
+import { AlertTriangle, Archive, BarChart3, BookOpen, CheckCircle2, ChevronDown, CloudOff, Disc3, Download, FileText, Film, Gamepad2, Home, Library, ListChecks, Loader2, LogIn, LogOut, MessageSquare, RefreshCw, Settings, Share, Tv, UserCheck, UserPlus, Users, WifiOff, X } from "lucide-react";
 import { AppData, AppSettings, BookItem, Category, CloudSession, CulturalItem, ViewKey } from "./types";
 import { loadData, saveData } from "./storage/localStore";
+import { snapshotIfRuntimeChanged } from "./storage/snapshots";
 import { categoryLabels } from "./data/catalog";
 import { HomeDashboard } from "./components/HomeDashboard";
 import { CategoryView, emptyFilters, Filters } from "./components/CategoryView";
@@ -62,6 +63,11 @@ interface PdfBookDraft {
   startDate: string;
 }
 
+interface PwaUpdateNotice {
+  version?: string;
+  generatedAt?: string;
+}
+
 const navItems: Array<{ key: ViewKey; label: string; icon: ElementType }> = [
   { key: "home", label: "Início", icon: Home },
   { key: "feed", label: "Feed", icon: MessageSquare },
@@ -103,6 +109,7 @@ function App() {
   const [addPickerOpen, setAddPickerOpen] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+  const [pwaUpdateNotice, setPwaUpdateNotice] = useState<PwaUpdateNotice | null>(null);
   const [standaloneMode, setStandaloneMode] = useState(() => isStandaloneApp());
   const [showStartupSplash, setShowStartupSplash] = useState(true);
   const [pdfBookDraft, setPdfBookDraft] = useState<PdfBookDraft | null>(null);
@@ -131,6 +138,27 @@ function App() {
     dataRef.current = data;
     saveData(data);
   }, [data]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function protectRuntimeChange() {
+      try {
+        const response = await fetch(`/pwa-version.json?t=${Date.now()}`, { cache: "no-store" });
+        const payload = response.ok ? await response.json() as { version?: string } : {};
+        if (cancelled) return;
+        snapshotIfRuntimeChanged(dataRef.current, payload.version || "local-dev");
+      } catch {
+        if (!cancelled) snapshotIfRuntimeChanged(dataRef.current, "local-dev");
+      }
+    }
+
+    protectRuntimeChange();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     document.documentElement.dataset.theme = activeTheme;
@@ -181,6 +209,16 @@ function App() {
       window.removeEventListener("appinstalled", handleAppInstalled);
       if (iosTimer) window.clearTimeout(iosTimer);
     };
+  }, []);
+
+  useEffect(() => {
+    function handlePwaUpdate(event: Event) {
+      const detail = (event as CustomEvent<PwaUpdateNotice>).detail;
+      setPwaUpdateNotice(detail || {});
+    }
+
+    window.addEventListener("gaveteira:pwa-update-ready", handlePwaUpdate);
+    return () => window.removeEventListener("gaveteira:pwa-update-ready", handlePwaUpdate);
   }, []);
 
   useEffect(() => {
@@ -582,6 +620,10 @@ function App() {
     localStorage.setItem(INSTALL_DISMISSED_KEY, "true");
   }
 
+  function applyPwaUpdate() {
+    window.dispatchEvent(new CustomEvent("gaveteira:pwa-apply-update"));
+  }
+
   function categoryCount(category: Category) {
     return data.items.filter((entry) => entry.category === category).length;
   }
@@ -943,6 +985,13 @@ function App() {
           onDismiss={dismissInstallPrompt}
         />
       ) : null}
+      {pwaUpdateNotice ? (
+        <PwaUpdatePrompt
+          version={pwaUpdateNotice.version}
+          onUpdate={applyPwaUpdate}
+          onDismiss={() => setPwaUpdateNotice(null)}
+        />
+      ) : null}
       <input
         ref={pdfInputRef}
         className="sr-only"
@@ -1155,6 +1204,39 @@ function InstallAppPrompt({
       <div className="install-card-actions">
         {canInstall ? <button type="button" onClick={onInstall}><Download size={15} /> Instalar</button> : null}
         <button className="install-card-close" type="button" onClick={onDismiss} aria-label="Fechar aviso de instalação">
+          <X size={16} />
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function PwaUpdatePrompt({
+  version,
+  onUpdate,
+  onDismiss,
+}: {
+  version?: string;
+  onUpdate: () => void;
+  onDismiss: () => void;
+}) {
+  return (
+    <section className="install-card update-card" aria-live="polite">
+      <div className="install-card-icon">
+        <RefreshCw size={21} />
+      </div>
+      <div className="install-card-copy">
+        <small>Atualização pronta</small>
+        <strong>Nova Gaveteira disponível</strong>
+        <span>
+          {version
+            ? `Recarregue para usar a versão ${version} e limpar arquivos antigos do app.`
+            : "Recarregue para limpar arquivos antigos e usar a versão mais recente."}
+        </span>
+      </div>
+      <div className="install-card-actions">
+        <button type="button" onClick={onUpdate}><RefreshCw size={15} /> Atualizar</button>
+        <button className="install-card-close" type="button" onClick={onDismiss} aria-label="Fechar aviso de atualização">
           <X size={16} />
         </button>
       </div>

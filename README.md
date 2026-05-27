@@ -53,6 +53,24 @@ Prévia do build:
 npm run preview
 ```
 
+## Experimentos locais
+
+### Gaveteira Duel
+
+O protótipo de jogo de cartas fica isolado em `experiments/gaveteira-duel/`. Ele não aparece na navegação principal, não usa dados reais e pode ser aberto separadamente:
+
+```bash
+npm run duel
+```
+
+URL direta:
+
+```text
+http://127.0.0.1:5173/experiments/gaveteira-duel/
+```
+
+Instruções extras ficam em `experiments/gaveteira-duel/README.md`.
+
 ## Instalar no celular
 
 Depois de publicar a Gaveteira em HTTPS ou rodar localmente em ambiente permitido pelo navegador:

@@ -1,8 +1,9 @@
-import { Cloud, Download, GitMerge, KeyRound, Moon, Sun, Upload } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Cloud, Download, GitMerge, KeyRound, Moon, RotateCcw, ShieldCheck, Sun, Trash2, Upload } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { AppData, AppSettings, Category, CloudSession, CulturalItem } from "../types";
 import { categoryLabels } from "../data/catalog";
 import { parseImportedData } from "../storage/localStore";
+import { createSafetySnapshot, loadSafetySnapshots, removeSafetySnapshot, SafetySnapshot, snapshotReasonLabel } from "../storage/snapshots";
 import { getMetadataProviders } from "../services/metadata";
 import { fetchMyItems } from "../services/supabaseCloud";
 import { getWorkKey } from "../utils/itemHelpers";
@@ -48,6 +49,7 @@ export function SettingsView({
   const [loadingCloud, setLoadingCloud] = useState(false);
   const [importPreview, setImportPreview] = useState<BackupPreview | null>(null);
   const [backupHistory, setBackupHistory] = useState<BackupHistoryEntry[]>(() => loadBackupHistory());
+  const [snapshots, setSnapshots] = useState<SafetySnapshot[]>(() => loadSafetySnapshots());
   const providers = getMetadataProviders(data.settings);
   const accountName = useMemo(() => backupAccountName(session), [session]);
   const exportItemCount = backupScope === "local"
@@ -55,6 +57,10 @@ export function SettingsView({
     : backupScope === "cloud"
       ? cloudItems?.length ?? 0
       : mergeBackupItems(data.items, cloudItems ?? []).length;
+
+  useEffect(() => {
+    setSnapshots(loadSafetySnapshots());
+  }, []);
 
   function importFile(file?: File) {
     if (!file) return;
@@ -141,10 +147,32 @@ export function SettingsView({
 
   function restorePreview() {
     if (!importPreview) return;
+    const snapshot = createSafetySnapshot(data, "before-restore", {
+      label: `Antes de restaurar ${importPreview.fileName}`,
+    });
     const restored = restoreBackupData(data, importPreview);
     onReplaceData(restored);
-    setBackupMessage(`Backup restaurado: ${importPreview.added.length} adicionados, ${importPreview.updated.length} atualizados e ${importPreview.ignored.length} ignorados.`);
+    setSnapshots(loadSafetySnapshots());
+    setBackupMessage(`Snapshot salvo (${snapshot.itemCount} fichas). Backup restaurado: ${importPreview.added.length} adicionados, ${importPreview.updated.length} atualizados e ${importPreview.ignored.length} ignorados.`);
     setImportPreview(null);
+  }
+
+  function rollbackSnapshot(snapshot: SafetySnapshot) {
+    const safety = createSafetySnapshot(data, "manual", {
+      label: `Antes de voltar para ${formatDateTime(snapshot.createdAt)}`,
+      appVersion: snapshot.appVersion,
+      schemaVersion: snapshot.schemaVersion,
+    });
+    onReplaceData(JSON.parse(JSON.stringify(snapshot.data)) as AppData);
+    setSnapshots(loadSafetySnapshots());
+    setBackupMessage(`Voltamos para o snapshot de ${formatDateTime(snapshot.createdAt)}. Também salvei um snapshot do estado anterior (${safety.itemCount} fichas).`);
+    setImportError("");
+    setImportPreview(null);
+  }
+
+  function deleteSnapshot(snapshotId: string) {
+    setSnapshots(removeSafetySnapshot(snapshotId));
+    setBackupMessage("Snapshot removido da retenção local.");
   }
 
   return (
@@ -243,6 +271,39 @@ export function SettingsView({
               ))}
             </div>
           ) : null}
+          <div className="snapshot-panel">
+            <div className="snapshot-heading">
+              <ShieldCheck size={18} />
+              <div>
+                <h3>Snapshots de segurança</h3>
+                <p>Antes de restaurar backup ou trocar versão/schema, a Gaveteira guarda até 5 pontos locais de retorno.</p>
+              </div>
+            </div>
+            {snapshots.length ? (
+              <div className="snapshot-list">
+                {snapshots.map((snapshot) => (
+                  <article key={snapshot.id} className="snapshot-row">
+                    <div>
+                      <strong>{snapshot.label}</strong>
+                      <small>{snapshot.itemCount} fichas / {snapshotReasonLabel(snapshot.reason)} / {formatDateTime(snapshot.createdAt)}</small>
+                      <small>Versão {snapshot.appVersion} / schema {snapshot.schemaVersion}</small>
+                    </div>
+                    <div className="snapshot-actions">
+                      <button className="ghost compact" type="button" onClick={() => rollbackSnapshot(snapshot)}>
+                        <RotateCcw size={14} />
+                        Voltar
+                      </button>
+                      <button className="ghost compact" type="button" onClick={() => deleteSnapshot(snapshot.id)} aria-label="Remover snapshot">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="snapshot-empty">Nenhum snapshot ainda. Eles aparecem automaticamente quando houver risco de sobrescrever fichas.</p>
+            )}
+          </div>
           {backupMessage ? <p className="form-note">{backupMessage}</p> : null}
           {importError ? <p className="form-error">{importError}</p> : null}
         </div>
