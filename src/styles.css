@@ -195,6 +195,110 @@ button:disabled {
   gap: 16px;
 }
 
+.first-card-page {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+}
+
+.first-card-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: end;
+  padding: 22px;
+  border: 1px solid var(--line);
+  background:
+    linear-gradient(90deg, rgba(134, 95, 62, 0.05) 1px, transparent 1px) 0 0 / 22px 22px,
+    rgba(255, 250, 241, 0.94);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.first-card-hero h1 {
+  margin: 0;
+  font-size: clamp(2rem, 5vw, 4.6rem);
+  line-height: 0.98;
+}
+
+.first-card-hero p {
+  max-width: 680px;
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 1.02rem;
+  line-height: 1.45;
+}
+
+.first-card-steps {
+  display: grid;
+  gap: 8px;
+  min-width: 210px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.first-card-steps li {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid var(--line);
+  background: #fffdf8;
+  border-radius: 999px;
+  font-weight: 900;
+}
+
+.first-card-steps strong {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  color: #fff8ec;
+  background: var(--green);
+  border-radius: 999px;
+}
+
+.first-card-picker {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.first-card-option {
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: 8px;
+  min-height: 150px;
+  padding: 16px;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  background: #fffdf8;
+  border-radius: 8px;
+  text-align: left;
+  box-shadow: 0 14px 28px rgba(47, 35, 24, 0.08);
+}
+
+.first-card-option svg {
+  color: var(--green);
+}
+
+.first-card-option strong {
+  font-size: 1.08rem;
+}
+
+.first-card-option small {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.first-card-option:hover {
+  border-color: var(--brass);
+  transform: translateY(-1px);
+}
+
 .auth-setup {
   display: grid;
   gap: 10px;
@@ -1762,6 +1866,11 @@ button.danger {
 }
 
 :root[data-theme="dark"] .login-card,
+:root[data-theme="dark"] .first-card-hero,
+:root[data-theme="dark"] .first-card-option,
+:root[data-theme="dark"] .first-card-steps li,
+:root[data-theme="dark"] .first-card-tutorial,
+:root[data-theme="dark"] .first-card-tutorial li,
 :root[data-theme="dark"] .hero,
 :root[data-theme="dark"] .list-header,
 :root[data-theme="dark"] .metric,
@@ -2143,6 +2252,52 @@ button.danger {
   color: #5d4426;
   background: #fff4dc;
   border-radius: 8px;
+}
+
+.first-card-tutorial {
+  display: grid;
+  gap: 12px;
+  margin: 12px 0 4px;
+  padding: 14px;
+  border: 1px solid rgba(52, 107, 93, 0.28);
+  background:
+    linear-gradient(90deg, rgba(52, 107, 93, 0.045) 1px, transparent 1px) 0 0 / 18px 18px,
+    #f3fbf5;
+  border-radius: 8px;
+}
+
+.first-card-tutorial strong {
+  display: block;
+  color: var(--ink);
+  font-size: 1.02rem;
+}
+
+.first-card-tutorial ul {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.first-card-tutorial li {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid rgba(52, 107, 93, 0.2);
+  background: rgba(255, 255, 255, 0.72);
+  border-radius: 8px;
+}
+
+.first-card-tutorial b {
+  color: var(--green);
+}
+
+.first-card-tutorial span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.35;
 }
 
 .api-ready span {
@@ -4871,6 +5026,38 @@ button.danger {
   }
 
   .filters, .form-grid, .stats-layout, .settings-grid, .api-key-grid, .metadata-search, .cover-search-row, .backup-toolbar, .login-grid, .member-profile-sections {
+    grid-template-columns: 1fr;
+  }
+
+  .first-card-hero {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
+
+  .first-card-steps {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .first-card-picker {
+    grid-template-columns: 1fr;
+  }
+
+  .first-card-option {
+    grid-template-columns: 42px minmax(0, 1fr) auto;
+    align-items: center;
+    min-height: 76px;
+  }
+
+  .first-card-option strong {
+    align-self: auto;
+  }
+
+  .first-card-option small {
+    justify-self: end;
+  }
+
+  .first-card-tutorial ul {
     grid-template-columns: 1fr;
   }
 

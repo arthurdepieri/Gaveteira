@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.6.4-beta - Atualização segura do PWA - 2026-05-29
+
+Versão beta focada em deixar a Gaveteira instalada mais confiável entre betas, evitando assets antigos e protegendo dados locais antes de operações sensíveis.
+
+### Destaques
+
+- Fluxo de atualização do PWA com cache versionado a partir da versão do `package.json`.
+- Geração automática de `pwa-version.json` e `pwa-build.js` durante o build para forçar o service worker a perceber novas betas.
+- Aviso dentro do app quando existe uma nova versão pronta, com CTA simples para atualizar/recarregar.
+- Limpeza de caches antigos do PWA após ativar a nova versão.
+- Snapshots locais de segurança antes de restaurar backup, antes de aplicar atualização PWA e ao detectar mudança de versão/schema.
+- Lista de snapshots em Configurações, com retenção curta e rollback com um clique.
+- Ajustes de instalação mobile: novo ícone, splash mais suave e bloqueio reforçado em orientação retrato.
+- Onboarding inicial fechado: login/registro antes do conteúdo, primeira ficha obrigatória para contas vazias e guia leve dentro do primeiro card.
+- Gaveteira Duel publicado como experimento local isolado em `experiments/gaveteira-duel/`.
+
+### Observações
+
+- Snapshots ficam apenas no navegador, separados da nuvem e dos backups JSON exportados.
+- Em alguns navegadores móveis, o bloqueio de orientação depende das regras do sistema ou do PWA instalado.
+- O pacote de release desta versão fica em `releases/Gaveteira-0.6.4-beta.zip`.
+
 ## 0.6.3-beta - Release local e livros por PDF - 2026-05-26
 
 Versão beta focada em organizar o fechamento de versões e acelerar a entrada de livros a partir de arquivos PDF locais.

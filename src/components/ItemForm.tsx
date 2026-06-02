@@ -44,6 +44,7 @@ export function ItemForm({
   statuses,
   settings,
   cloudSession,
+  showFirstCardTutorial = false,
   onSave,
   onDelete,
   onClose,
@@ -52,6 +53,7 @@ export function ItemForm({
   statuses: string[];
   settings: AppSettings;
   cloudSession?: CloudSession;
+  showFirstCardTutorial?: boolean;
   onSave: (item: CulturalItem) => void;
   onDelete: (id: string) => void;
   onClose: () => void;
@@ -71,6 +73,8 @@ export function ItemForm({
             <X size={20} />
           </button>
         </header>
+
+        {showFirstCardTutorial ? <FirstCardTutorial /> : null}
 
         <MobileFormSection title="Dados básicos" open>
           <MetadataLookup
@@ -146,6 +150,24 @@ export function ItemForm({
         </footer>
       </form>
     </div>
+  );
+}
+
+function FirstCardTutorial() {
+  return (
+    <section className="first-card-tutorial" aria-label="Guia rápido do primeiro card">
+      <div>
+        <p className="eyebrow">Guia rápido</p>
+        <strong>Preencha só o essencial agora. O resto pode amadurecer depois.</strong>
+      </div>
+      <ul>
+        <li><b>Completar automaticamente</b><span>Busque dados e capa; se algo não vier, preencha manualmente nas abas abaixo.</span></li>
+        <li><b>Status</b><span>Marque se quer consumir, está consumindo, terminou ou abandonou.</span></li>
+        <li><b>Nota</b><span>Use meia estrela quando quiser registrar uma impressão mais precisa.</span></li>
+        <li><b>Visibilidade</b><span>Escolha se amigos podem ver a ficha; o diário continua com privacidade própria.</span></li>
+        <li><b>Diário</b><span>Registre uma impressão curta para dar vida ao seu arquivo.</span></li>
+      </ul>
+    </section>
   );
 }
 

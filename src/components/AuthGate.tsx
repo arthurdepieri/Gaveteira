@@ -50,58 +50,58 @@ export function AuthGate({
 
   const content = (
     <>
-        <div className="brand login-brand">
-          <span className="brand-mark">G</span>
-          <div>
-            <strong>Gaveteira</strong>
-            <small>conecte para sincronizar e adicionar amigos</small>
+      <div className="brand login-brand">
+        <span className="brand-mark">G</span>
+        <div>
+          <strong>Gaveteira</strong>
+          <small>entre para abrir seu arquivo cultural</small>
+        </div>
+      </div>
+
+      <div className="login-grid">
+        <section className="setting-panel">
+          <div className="section-heading">
+            <Users size={20} />
+            <h2>Comece pela sua conta</h2>
           </div>
-        </div>
+          <p>Registre com email ou Google. Depois você cria o primeiro card e recebe um guia curto dentro da ficha.</p>
+          <p className="empty">A Gaveteira abre o conteúdo só depois do login, para cada pessoa manter seu próprio arquivo.</p>
+        </section>
 
-        <div className="login-grid">
-          <section className="setting-panel">
-            <div className="section-heading">
-              <Users size={20} />
-              <h2>Social</h2>
-            </div>
-            <p>Entre para guardar sua Gaveteira na nuvem, criar seu perfil e adicionar amigos por busca, email ou código de convite.</p>
-            <p className="empty">Sem login, suas fichas continuam guardadas só neste navegador.</p>
-          </section>
-
-          <section className="setting-panel auth-panel">
-            <div className="segmented">
-              <button className={mode === "login" ? "active" : ""} onClick={() => setMode("login")}>Entrar</button>
-              <button className={mode === "signup" ? "active" : ""} onClick={() => setMode("signup")}>Criar conta</button>
-            </div>
-            <div className="form-grid">
-              {mode === "signup" ? (
-                <label className="field">
-                  <span>Nome público</span>
-                  <input value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder="Maria" />
-                </label>
-              ) : null}
+        <section className="setting-panel auth-panel">
+          <div className="segmented">
+            <button className={mode === "login" ? "active" : ""} onClick={() => setMode("login")}>Entrar</button>
+            <button className={mode === "signup" ? "active" : ""} onClick={() => setMode("signup")}>Criar conta</button>
+          </div>
+          <div className="form-grid">
+            {mode === "signup" ? (
               <label className="field">
-                <span>Email</span>
-                <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" placeholder="seu@email.com" />
+                <span>Nome público</span>
+                <input value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder="Maria" />
               </label>
-              <label className="field">
-                <span>Senha</span>
-                <input value={password} onChange={(event) => setPassword(event.target.value)} type="password" placeholder="mínimo 6 caracteres" />
-              </label>
-            </div>
-            <button className="primary" onClick={submitAuth} disabled={loading || !configured}>
-              {mode === "signup" ? <UserPlus size={16} /> : <LogIn size={16} />}
-              {loading ? "Conectando..." : mode === "signup" ? "Criar e sincronizar" : "Entrar e sincronizar"}
-            </button>
-            <div className="auth-divider"><span>ou</span></div>
-            <button className="secondary auth-google-button" onClick={submitGoogleAuth} disabled={!configured}>
-              <Chrome size={16} />
-              Entrar com Google
-            </button>
-            {!configured ? <p className="form-error">A Gaveteira ainda não recebeu as credenciais da nuvem.</p> : null}
-            {message ? <p className="form-error">{message}</p> : null}
-          </section>
-        </div>
+            ) : null}
+            <label className="field">
+              <span>Email</span>
+              <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" placeholder="seu@email.com" />
+            </label>
+            <label className="field">
+              <span>Senha</span>
+              <input value={password} onChange={(event) => setPassword(event.target.value)} type="password" placeholder="mínimo 6 caracteres" />
+            </label>
+          </div>
+          <button className="primary" onClick={submitAuth} disabled={loading || !configured}>
+            {mode === "signup" ? <UserPlus size={16} /> : <LogIn size={16} />}
+            {loading ? "Conectando..." : mode === "signup" ? "Registrar e começar" : "Entrar"}
+          </button>
+          <div className="auth-divider"><span>ou</span></div>
+          <button className="secondary auth-google-button" onClick={submitGoogleAuth} disabled={!configured}>
+            <Chrome size={16} />
+            Entrar ou registrar com Google
+          </button>
+          {!configured ? <p className="form-error">A Gaveteira ainda não recebeu as credenciais da nuvem.</p> : null}
+          {message ? <p className="form-error">{message}</p> : null}
+        </section>
+      </div>
     </>
   );
 

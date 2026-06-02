@@ -3,7 +3,7 @@ import type { ElementType } from "react";
 import { AlertTriangle, Archive, BarChart3, BookOpen, CheckCircle2, ChevronDown, CloudOff, Disc3, Download, FileText, Film, Gamepad2, Home, Library, ListChecks, Loader2, LogIn, LogOut, MessageSquare, RefreshCw, Settings, Share, Tv, UserCheck, UserPlus, Users, WifiOff, X } from "lucide-react";
 import { AppData, AppSettings, BookItem, Category, CloudSession, CulturalItem, ViewKey } from "./types";
 import { loadData, saveData } from "./storage/localStore";
-import { snapshotIfRuntimeChanged } from "./storage/snapshots";
+import { createSafetySnapshot, snapshotIfRuntimeChanged } from "./storage/snapshots";
 import { categoryLabels } from "./data/catalog";
 import { HomeDashboard } from "./components/HomeDashboard";
 import { CategoryView, emptyFilters, Filters } from "./components/CategoryView";
@@ -13,6 +13,7 @@ import { StatsView } from "./components/StatsView";
 import { SettingsView } from "./components/SettingsView";
 import { FamilyView } from "./components/FamilyView";
 import { SocialFeedView } from "./components/SocialFeedView";
+import { AuthGate } from "./components/AuthGate";
 import { consumeOAuthRedirectSession, deleteMyItem, fetchMyItems, fetchMyProfile, isSessionExpiredError, loadCloudSession, saveCloudSession, upsertMyItem } from "./services/supabaseCloud";
 import { withSharedCloudSettings } from "./config/sharedCloud";
 import { withoutLegacyDemoItems } from "./utils/legacyDemoItems";
@@ -107,6 +108,7 @@ function App() {
   const [socialSection, setSocialSection] = useState<"profile" | "friends" | "admin">("profile");
   const [mobileDrawersOpen, setMobileDrawersOpen] = useState(false);
   const [addPickerOpen, setAddPickerOpen] = useState(false);
+  const [firstCardTutorial, setFirstCardTutorial] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [pwaUpdateNotice, setPwaUpdateNotice] = useState<PwaUpdateNotice | null>(null);
@@ -426,14 +428,20 @@ function App() {
     setActiveItemId(item.id);
   }
 
-  function addItem(category: Category) {
+  function addItem(category: Category, options: { tutorial?: boolean } = {}) {
     const item = createBlankItem(category, data.statuses[category][0]);
+    setFirstCardTutorial(Boolean(options.tutorial));
     upsertItem(item);
     setActiveItemMode("edit");
   }
 
   function requestPdfBookImport() {
     pdfInputRef.current?.click();
+  }
+
+  function startFirstPdfBookImport() {
+    setFirstCardTutorial(true);
+    requestPdfBookImport();
   }
 
   function handlePdfBookSelected(fileList: FileList | null) {
@@ -491,6 +499,10 @@ function App() {
     addItem(category);
   }
 
+  function startFirstCard(category: Category) {
+    addItem(category, { tutorial: true });
+  }
+
   function deleteItem(id: string, enqueue = true) {
     const item = dataRef.current.items.find((entry) => entry.id === id);
     setData((current) => ({ ...current, items: current.items.filter((item) => item.id !== id) }));
@@ -501,6 +513,7 @@ function App() {
   }
 
   function closeItemForm() {
+    setFirstCardTutorial(false);
     if (activeItem && isEmptyCulturalItem(activeItem)) {
       deleteItem(activeItem.id, false);
       return;
@@ -535,6 +548,10 @@ function App() {
   }
 
   const mainView = () => {
+    if (cloudSession && cloudBootstrapped && !data.items.length && !activeItem) {
+      return <FirstCardStart onChoose={startFirstCard} onChoosePdf={startFirstPdfBookImport} />;
+    }
+
     if (view === "home") {
       return (
         <HomeDashboard
@@ -643,6 +660,12 @@ function App() {
   }
 
   function applyPwaUpdate() {
+    createSafetySnapshot(dataRef.current, "version-change", {
+      appVersion: pwaUpdateNotice?.version || "atualização PWA",
+      label: pwaUpdateNotice?.version
+        ? `Antes de aplicar a atualização ${pwaUpdateNotice.version}`
+        : "Antes de aplicar atualização do app",
+    });
     window.dispatchEvent(new CustomEvent("gaveteira:pwa-apply-update"));
   }
 
@@ -858,6 +881,16 @@ function App() {
     );
   }
 
+  if (!cloudSession) {
+    return (
+      <AuthGate
+        settings={effectiveSettings}
+        onUpdateSettings={updateSettings}
+        onAuthenticated={authenticated}
+      />
+    );
+  }
+
   return (
     <div className={`app-shell${standaloneMode ? " app-shell-standalone" : ""}`}>
       <aside className="sidebar">
@@ -1039,7 +1072,10 @@ function App() {
           draft={pdfBookDraft}
           onChange={setPdfBookDraft}
           onCreate={() => createBookFromPdf(pdfBookDraft)}
-          onClose={() => setPdfBookDraft(null)}
+          onClose={() => {
+            setPdfBookDraft(null);
+            setFirstCardTutorial(false);
+          }}
         />
       ) : null}
       {activeItem && activeItemMode === "details" ? (
@@ -1058,12 +1094,56 @@ function App() {
           statuses={data.statuses[activeItem.category]}
           settings={effectiveSettings}
           cloudSession={cloudSession ?? undefined}
+          showFirstCardTutorial={firstCardTutorial}
           onSave={upsertItem}
           onDelete={deleteItem}
           onClose={closeItemForm}
         />
       ) : null}
     </div>
+  );
+}
+
+function FirstCardStart({
+  onChoose,
+  onChoosePdf,
+}: {
+  onChoose: (category: Category) => void;
+  onChoosePdf: () => void;
+}) {
+  return (
+    <main className="page first-card-page">
+      <section className="first-card-hero">
+        <div>
+          <p className="eyebrow">Primeiro arquivo</p>
+          <h1>Crie seu primeiro card</h1>
+          <p>Escolha qualquer gaveta. Em menos de um minuto você já entende como completar dados, ajustar status, nota, visibilidade e diário.</p>
+        </div>
+        <ol className="first-card-steps" aria-label="Caminho inicial">
+          <li><strong>1</strong><span>Conta criada</span></li>
+          <li><strong>2</strong><span>Primeiro card</span></li>
+          <li><strong>3</strong><span>Gavetas e app</span></li>
+        </ol>
+      </section>
+
+      <section className="first-card-picker" aria-label="Escolher primeira gaveta">
+        <button type="button" className="first-card-option first-card-pdf" onClick={onChoosePdf}>
+          <FileText size={22} />
+          <strong>Livro por PDF</strong>
+          <small>Rascunho rápido</small>
+        </button>
+        {drawerItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <button key={item.key} type="button" className={`first-card-option drawer-${item.key}`} onClick={() => onChoose(item.key)}>
+              <Icon size={22} />
+              <strong>{item.label}</strong>
+              <small>Começar aqui</small>
+            </button>
+          );
+        })}
+      </section>
+    </main>
   );
 }
 
