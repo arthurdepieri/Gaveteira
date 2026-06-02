@@ -434,7 +434,7 @@ function SeriesFields({ item, update }: { item: MutableItem; update: (patch: Rec
         <Field label="Acompanhamento"><select value={String(item.trackingStatus ?? "")} onChange={(e) => update({ trackingStatus: e.target.value })}><option value="">Selecione</option><option>Em dia</option><option>Atrasado</option><option>Pausado</option><option>Finalizada</option></select></Field>
       </MobileFieldGroup>
       <MobileFieldGroup title="Notas">
-        <TextareaField label="Comentários" value={item.comments} onChange={(value) => update({ comments: value })} />
+        <TextareaField label="Sinopse" value={item.comments} onChange={(value) => update({ comments: value })} />
       </MobileFieldGroup>
     </>
   );

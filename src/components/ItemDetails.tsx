@@ -571,7 +571,7 @@ function detailSections(item: CulturalItem): Array<{ title: string; fields: Arra
     { title: "Ficha técnica", fields: visibleFields([["Ano", item.year], ["Gênero", item.genre]]) },
     { title: "Progresso", fields: visibleFields([["Status", item.status], ["Início", item.startDate], ["Conclusão", item.endDate], ["Temporada atual", item.currentSeason], ["Episódio atual", item.currentEpisode], ["Acompanhamento", item.trackingStatus]]) },
     { title: "Avaliação", fields: visibleFields([["Nota", item.rating ? `${item.rating}/5` : ""]]) },
-    { title: "Notas pessoais", fields: visibleFields([["Comentários", item.comments]]) },
+    { title: "Notas pessoais", fields: visibleFields([["Sinopse", item.comments]]) },
   ];
 }
 
