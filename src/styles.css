@@ -5590,14 +5590,62 @@ button.danger {
 
   .detail-live-controls {
     grid-template-columns: 1fr;
+    position: sticky;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    z-index: 7;
+    gap: 12px;
+    margin-top: 6px;
+    padding: 12px;
+    box-shadow: 0 12px 28px rgba(66, 43, 25, 0.18);
+  }
+
+  .detail-live-controls::before {
+    content: "Edição rápida";
+    color: var(--brass);
+    font-size: 0.72rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .detail-live-controls select,
+  .detail-live-controls .danger {
+    width: 100%;
+    min-height: 46px;
+  }
+
+  .detail-live-controls .danger {
+    justify-content: center;
   }
 
   .quick-star-rating {
+    display: grid;
+    grid-template-columns: 1fr;
     align-items: stretch;
   }
 
   .quick-star-buttons {
-    justify-content: center;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    justify-content: stretch;
+    width: 100%;
+    min-height: 46px;
+    padding: 4px 8px;
+  }
+
+  .quick-star-wrap {
+    width: auto;
+    min-width: 0;
+    font-size: 1.35rem;
+  }
+
+  .quick-star-hit {
+    min-height: 40px;
+  }
+
+  .quick-star-clear {
+    width: 100%;
+    min-height: 42px;
   }
 
   .detail-quick-actions {
@@ -5836,6 +5884,20 @@ button.danger {
 
   .detail-identity h1 {
     font-size: clamp(1.8rem, 11vw, 2.35rem);
+  }
+
+  .detail-live-controls {
+    bottom: max(6px, env(safe-area-inset-bottom));
+    padding: 10px;
+  }
+
+  .quick-star-buttons {
+    gap: 0;
+    padding: 3px 6px;
+  }
+
+  .quick-star-wrap {
+    font-size: 1.22rem;
   }
 
   .detail-quick-actions {
