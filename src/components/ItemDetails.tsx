@@ -1,6 +1,6 @@
-import { BookOpenText, Edit3, ExternalLink, ImageIcon, Lock, Megaphone, Plus, Search, Sparkles, X } from "lucide-react";
+import { BookOpenText, Edit3, ExternalLink, ImageIcon, Lock, Megaphone, Plus, Search, Sparkles, Trash2, X } from "lucide-react";
 import { useState } from "react";
-import { AppSettings, CloudSession, CulturalItem, DiaryEntry, SocialVisibility } from "../types";
+import { AppSettings, CloudSession, CulturalItem, DiaryEntry, Rating, SocialVisibility } from "../types";
 import { categoryLabels } from "../data/catalog";
 import { getItemVisibility, getItemVisibilityLabel, getTitle, getYear, isCompleted, uid } from "../utils/itemHelpers";
 import { MetadataResult, searchMetadata } from "../services/metadata";
@@ -22,8 +22,10 @@ export function ItemDetails({
   focusDiaryId,
   settings,
   cloudSession,
+  statuses = [],
   onEdit,
   onUpdateItem,
+  onDelete,
   onClose,
 }: {
   item: CulturalItem;
@@ -31,8 +33,10 @@ export function ItemDetails({
   focusDiaryId?: string;
   settings?: AppSettings;
   cloudSession?: CloudSession;
+  statuses?: string[];
   onEdit?: () => void;
   onUpdateItem?: (item: CulturalItem) => void;
+  onDelete?: (id: string) => void;
   onClose: () => void;
 }) {
   const sections = detailSections(item);
@@ -44,6 +48,7 @@ export function ItemDetails({
   const mobileSections = ["Resumo", ...visibleSections.map((section) => section.title), "Histórico", "Diário"];
   const canEditDiary = Boolean(onUpdateItem);
   const canChangeCover = Boolean(settings && onUpdateItem);
+  const canQuickEdit = Boolean(onUpdateItem && !ownerName);
   const visibleDiary = ownerName && !canEditDiary
     ? item.diary.filter((entry) => entry.visibility === "friends")
     : item.diary;
@@ -58,6 +63,23 @@ export function ItemDetails({
 
   function updateVisibility(visibility: SocialVisibility) {
     onUpdateItem?.({ ...item, visibility, updatedAt: new Date().toISOString() } as CulturalItem);
+  }
+
+  function updateStatus(status: string) {
+    onUpdateItem?.({ ...item, status, updatedAt: new Date().toISOString() } as CulturalItem);
+  }
+
+  function updateRating(rating: Rating | undefined) {
+    onUpdateItem?.({ ...item, rating, updatedAt: new Date().toISOString() } as CulturalItem);
+  }
+
+  function deleteFromDetails() {
+    if (!onDelete) return;
+    const title = getTitle(item);
+    const confirmed = window.confirm(`Apagar "${title}" da sua Gaveteira?`);
+    if (!confirmed) return;
+    onDelete(item.id);
+    onClose();
   }
 
   return (
@@ -79,6 +101,12 @@ export function ItemDetails({
               <button type="button" className="ghost compact" onClick={() => setCoverSearchOpen((current) => !current)}>
                 <ImageIcon size={16} />
                 Trocar capa
+              </button>
+            ) : null}
+            {canQuickEdit && onDelete ? (
+              <button type="button" className="ghost compact danger-soft" onClick={deleteFromDetails}>
+                <Trash2 size={16} />
+                Apagar
               </button>
             ) : null}
             {onEdit ? (
@@ -143,6 +171,26 @@ export function ItemDetails({
               <Stars value={item.rating} />
               <strong>{item.rating ? `${item.rating}/5` : "Sem nota arquivada"}</strong>
             </div>
+            {canQuickEdit ? (
+              <div className="detail-live-controls" aria-label="Edição rápida da ficha">
+                <label>
+                  <span>Status</span>
+                  <select value={item.status} onChange={(event) => updateStatus(event.target.value)}>
+                    {statuses.map((status) => <option key={status}>{status}</option>)}
+                  </select>
+                </label>
+                <div>
+                  <span>Nota</span>
+                  <QuickStarRating value={item.rating as Rating | undefined} onChange={updateRating} />
+                </div>
+                {onDelete ? (
+                  <button type="button" className="danger compact" onClick={deleteFromDetails}>
+                    <Trash2 size={15} />
+                    Apagar ficha
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
             <div className="detail-quick-actions" aria-label="Atalhos da ficha">
               <button type="button" className="ghost compact" onClick={() => setActiveMobileSection("Histórico")}>
                 Histórico
@@ -439,6 +487,43 @@ function CoverSearchPanel({
 function loadDiaryVisibility(): DiaryEntry["visibility"] {
   const saved = localStorage.getItem(DIARY_VISIBILITY_KEY);
   return saved === "friends" ? "friends" : "private";
+}
+
+function QuickStarRating({
+  value,
+  onChange,
+}: {
+  value?: Rating;
+  onChange: (rating: Rating | undefined) => void;
+}) {
+  const options = [1, 2, 3, 4, 5] as const;
+
+  return (
+    <div className="quick-star-rating" role="group" aria-label="Alterar nota">
+      <button type="button" className="quick-star-clear" onClick={() => onChange(undefined)}>
+        Sem nota
+      </button>
+      <div className="quick-star-buttons">
+        {options.map((star) => (
+          <span key={star} className="quick-star-wrap">
+            <button
+              type="button"
+              className={`quick-star-hit quick-star-left${value === star - 0.5 ? " active" : ""}`}
+              onClick={() => onChange((star - 0.5) as Rating)}
+              aria-label={`${star - 0.5} estrela${star - 0.5 === 1 ? "" : "s"}`}
+            />
+            <button
+              type="button"
+              className={`quick-star-hit quick-star-right${value === star ? " active" : ""}`}
+              onClick={() => onChange(star as Rating)}
+              aria-label={`${star} estrela${star === 1 ? "" : "s"}`}
+            />
+            <span aria-hidden="true" className={value && value >= star ? "filled" : value && value >= star - 0.5 ? "half" : ""}>★</span>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function buildStoryTimeline(item: CulturalItem, diary: DiaryEntry[]) {

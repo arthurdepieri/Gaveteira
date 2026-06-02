@@ -1083,7 +1083,9 @@ function App() {
           item={activeItem}
           settings={effectiveSettings}
           cloudSession={cloudSession ?? undefined}
+          statuses={data.statuses[activeItem.category]}
           onUpdateItem={upsertItem}
+          onDelete={deleteItem}
           onEdit={() => setActiveItemMode("edit")}
           onClose={() => setActiveItemId(null)}
         />
