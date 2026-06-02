@@ -5590,28 +5590,16 @@ button.danger {
 
   .detail-live-controls {
     grid-template-columns: 1fr;
-    position: sticky;
-    bottom: max(8px, env(safe-area-inset-bottom));
-    z-index: 7;
-    gap: 12px;
+    gap: 10px;
     margin-top: 6px;
-    padding: 12px;
-    box-shadow: 0 12px 28px rgba(66, 43, 25, 0.18);
-  }
-
-  .detail-live-controls::before {
-    content: "Edição rápida";
-    color: var(--brass);
-    font-size: 0.72rem;
-    font-weight: 900;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+    padding: 10px;
+    box-shadow: none;
   }
 
   .detail-live-controls select,
   .detail-live-controls .danger {
     width: 100%;
-    min-height: 46px;
+    min-height: 40px;
   }
 
   .detail-live-controls .danger {
@@ -5620,8 +5608,9 @@ button.danger {
 
   .quick-star-rating {
     display: grid;
-    grid-template-columns: 1fr;
-    align-items: stretch;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 8px;
+    align-items: center;
   }
 
   .quick-star-buttons {
@@ -5629,8 +5618,8 @@ button.danger {
     grid-template-columns: repeat(5, minmax(0, 1fr));
     justify-content: stretch;
     width: 100%;
-    min-height: 46px;
-    padding: 4px 8px;
+    min-height: 40px;
+    padding: 3px 6px;
   }
 
   .quick-star-wrap {
@@ -5640,12 +5629,12 @@ button.danger {
   }
 
   .quick-star-hit {
-    min-height: 40px;
+    min-height: 34px;
   }
 
   .quick-star-clear {
-    width: 100%;
-    min-height: 42px;
+    width: auto;
+    min-height: 36px;
   }
 
   .detail-quick-actions {
@@ -5887,8 +5876,7 @@ button.danger {
   }
 
   .detail-live-controls {
-    bottom: max(6px, env(safe-area-inset-bottom));
-    padding: 10px;
+    padding: 9px;
   }
 
   .quick-star-buttons {
