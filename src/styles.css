@@ -137,11 +137,109 @@ body,
   }
 }
 
+@keyframes page-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes archive-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes archive-sheet-pull-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.985);
+    box-shadow: 0 8px 18px rgba(47, 35, 24, 0.1);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    box-shadow: var(--shadow);
+  }
+}
+
+@keyframes detail-sheet-pull-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.976);
+    box-shadow: 0 10px 22px rgba(47, 35, 24, 0.12);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    box-shadow: var(--shadow);
+  }
+}
+
+@keyframes mobile-detail-sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes mobile-drawer-pull-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .startup-splash,
-  .startup-splash img {
+  .startup-splash img,
+  .view-transition-frame,
+  .modal-backdrop,
+  .modal,
+  .mobile-drawer-backdrop,
+  .mobile-drawer-panel {
     animation-duration: 1ms;
     transition-duration: 1ms;
+  }
+
+  .drawer-nav-trigger,
+  .drawer-nav-menu,
+  .drawer-nav-menu button,
+  .mobile-bottom-nav button,
+  .item-card,
+  .item-card::after,
+  .cover img,
+  .diary-marker-row {
+    transition-duration: 1ms;
+  }
+
+  .drawer-nav.active > .drawer-nav-trigger,
+  .drawer-nav-trigger:hover,
+  .mobile-bottom-nav button.active {
+    transform: none;
+  }
+
+  .item-card:hover,
+  .item-card:focus-visible,
+  .item-card:active,
+  .item-card:hover .cover img,
+  .item-card:focus-visible .cover img {
+    transform: none;
   }
 }
 
@@ -162,6 +260,13 @@ button:disabled {
   display: grid;
   grid-template-columns: 260px minmax(0, 1fr);
   min-height: 100vh;
+}
+
+.view-transition-frame {
+  min-width: 0;
+  width: 100%;
+  animation: page-rise-in 220ms ease-out both;
+  will-change: opacity, transform;
 }
 
 .login-shell {
@@ -619,30 +724,74 @@ button:disabled {
 
 .drawer-nav-trigger {
   min-height: 46px;
+  transition:
+    background-color 180ms ease,
+    color 180ms ease,
+    box-shadow 200ms ease,
+    transform 200ms ease;
 }
 
 .drawer-nav-menu {
-  display: none;
+  display: grid;
   gap: 6px;
-  padding: 6px 0 4px 16px;
+  max-height: 0;
+  overflow: hidden;
+  padding: 0 0 0 16px;
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  transform: translateY(-4px) translateX(-6px);
+  transition:
+    max-height 230ms ease,
+    opacity 180ms ease,
+    padding 200ms ease,
+    transform 220ms ease,
+    visibility 0s linear 230ms;
 }
 
 .drawer-nav:hover .drawer-nav-menu,
 .drawer-nav:focus-within .drawer-nav-menu,
 .drawer-nav.active .drawer-nav-menu {
-  display: grid;
+  max-height: 260px;
+  padding: 6px 0 4px 16px;
+  opacity: 1;
+  pointer-events: auto;
+  visibility: visible;
+  transform: translateY(0) translateX(0);
+  transition:
+    max-height 260ms ease,
+    opacity 180ms ease,
+    padding 200ms ease,
+    transform 220ms ease,
+    visibility 0s;
 }
 
 .drawer-nav.active > .drawer-nav-trigger,
 .drawer-nav-trigger:hover {
   background: #fff3d8;
   color: #3b2819;
+  box-shadow: 0 10px 22px rgba(47, 35, 24, 0.16);
+  transform: translateX(4px);
 }
 
 .drawer-nav-menu button {
   min-height: 38px;
   padding: 9px 10px;
   background: rgba(255, 255, 255, 0.06);
+  opacity: 0;
+  transform: translateX(-8px);
+  transition:
+    background-color 180ms ease,
+    color 180ms ease,
+    opacity 180ms ease,
+    transform 200ms ease;
+}
+
+.drawer-nav:hover .drawer-nav-menu button,
+.drawer-nav:focus-within .drawer-nav-menu button,
+.drawer-nav.active .drawer-nav-menu button {
+  opacity: 1;
+  transform: translateX(0);
 }
 
 .sidebar nav small {
@@ -1509,6 +1658,7 @@ button.danger {
 }
 
 .item-card {
+  position: relative;
   overflow: hidden;
   display: grid;
   grid-template-rows: auto 1fr;
@@ -1520,10 +1670,50 @@ button.danger {
   border-radius: 8px;
   box-shadow: 0 10px 24px rgba(47, 35, 24, 0.1);
   text-align: left;
+  transition:
+    border-color 180ms ease,
+    box-shadow 220ms ease,
+    transform 200ms ease,
+    background-color 180ms ease;
+  will-change: transform;
 }
 
-.item-card:hover {
+.item-card::after {
+  content: "Abrir ficha";
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 2;
+  padding: 5px 9px;
+  color: #fff8ec;
+  background: rgba(52, 107, 93, 0.92);
+  border-radius: 999px;
+  box-shadow: 0 8px 18px rgba(47, 35, 24, 0.18);
+  font-size: 0.72rem;
+  font-weight: 900;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(6px);
+  transition:
+    opacity 180ms ease,
+    transform 200ms ease;
+}
+
+.item-card:hover,
+.item-card:focus-visible {
   transform: translateY(-2px);
+  border-color: rgba(52, 107, 93, 0.36);
+  box-shadow: 0 16px 32px rgba(47, 35, 24, 0.16);
+}
+
+.item-card:hover::after,
+.item-card:focus-visible::after {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.item-card:active {
+  transform: translateY(0) scale(0.992);
 }
 
 .item-card-body {
@@ -1596,7 +1786,18 @@ button.danger {
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
+  min-height: 25px;
   margin-top: 2px;
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 180ms ease,
+    transform 200ms ease;
+}
+
+.diary-marker-row.is-empty {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .diary-marker-row span {
@@ -1627,6 +1828,37 @@ button.danger {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transform: scale(1);
+  transition: transform 260ms ease;
+}
+
+.item-card:hover .cover img,
+.item-card:focus-visible .cover img,
+.continue-featured:hover .cover img,
+.shelf-item:hover .cover img,
+.home-shelf-item:hover .cover img,
+.suggestion-card:hover .cover img {
+  transform: scale(1.035);
+}
+
+@media (hover: none) {
+  .item-card::after {
+    display: none;
+  }
+
+  .item-card:hover {
+    transform: none;
+    border-color: var(--line);
+    box-shadow: 0 10px 24px rgba(47, 35, 24, 0.1);
+  }
+
+  .item-card:active {
+    transform: scale(0.988);
+  }
+
+  .item-card:hover .cover img {
+    transform: scale(1);
+  }
 }
 
 .cover-compact {
@@ -1691,6 +1923,7 @@ button.danger {
   place-items: center;
   padding: 22px;
   background: rgba(33, 29, 24, 0.46);
+  animation: archive-backdrop-in 180ms ease-out both;
 }
 
 .modal {
@@ -1702,6 +1935,12 @@ button.danger {
   background: #fffaf1;
   border-radius: 8px;
   box-shadow: var(--shadow);
+  animation: archive-sheet-pull-in 220ms ease-out both;
+}
+
+.detail-modal {
+  transform-origin: 50% 12%;
+  animation: detail-sheet-pull-in 260ms cubic-bezier(0.19, 1, 0.22, 1) both;
 }
 
 .modal-header, .modal-footer {
@@ -4853,11 +5092,16 @@ button.danger {
     border-radius: 7px;
     font-size: 0.72rem;
     font-weight: 800;
+    transition:
+      background-color 180ms ease,
+      color 180ms ease,
+      transform 180ms ease;
   }
 
   .mobile-bottom-nav button.active {
     color: #fffaf1;
     background: var(--green);
+    transform: translateY(-1px);
   }
 
   .app-shell-standalone .mobile-bottom-nav {
@@ -4906,6 +5150,7 @@ button.danger {
     display: grid;
     align-items: end;
     background: rgba(33, 29, 24, 0.42);
+    animation: archive-backdrop-in 180ms ease-out both;
   }
 
   .mobile-drawer-panel {
@@ -4917,6 +5162,7 @@ button.danger {
     background: #fffaf1;
     border-radius: 8px 8px 0 0;
     box-shadow: 0 -18px 38px rgba(47, 35, 24, 0.22);
+    animation: mobile-drawer-pull-in 240ms ease-out both;
   }
 
   .mobile-drawer-panel header {
@@ -5091,6 +5337,10 @@ button.danger {
     min-height: 92px;
   }
 
+  .item-card::after {
+    display: none;
+  }
+
   .item-card > .cover {
     width: 64px;
     height: 100%;
@@ -5130,6 +5380,26 @@ button.danger {
 
   .item-card .tag-row {
     display: none;
+  }
+
+  .diary-marker-row {
+    position: absolute;
+    right: 8px;
+    top: 8px;
+    z-index: 2;
+    min-height: 0;
+    margin: 0;
+  }
+
+  .diary-marker-row span {
+    display: none;
+  }
+
+  .diary-marker-row span:first-child {
+    display: inline-flex;
+    padding: 2px 6px;
+    font-size: 0.62rem;
+    box-shadow: 0 6px 14px rgba(47, 35, 24, 0.14);
   }
 
   .item-card-kicker {
@@ -7250,6 +7520,11 @@ body {
   .modal {
     max-height: 92dvh;
     padding: 12px 10px 0;
+  }
+
+  .detail-modal {
+    transform-origin: 50% 100%;
+    animation: mobile-detail-sheet-in 260ms ease-out both;
   }
 
   .modal-header {

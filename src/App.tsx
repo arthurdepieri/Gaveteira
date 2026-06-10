@@ -1019,7 +1019,9 @@ function App() {
           </button>
         )}
       </aside>
-      {mainView()}
+      <div key={view} className="view-transition-frame">
+        {mainView()}
+      </div>
       <SyncStatusCard status={syncStatus} queue={syncQueue} onReconnect={() => selectView("family")} onRetry={retrySyncNow} onRetryEntry={retrySyncEntry} compact />
       <nav className="mobile-bottom-nav" aria-label="Navegação principal mobile">
         <button type="button" className={view === "home" ? "active" : ""} onClick={() => selectView("home")}>

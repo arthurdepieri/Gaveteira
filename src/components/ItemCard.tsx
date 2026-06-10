@@ -29,11 +29,9 @@ export function ItemCard({ item, onOpen }: { item: CulturalItem; onOpen: () => v
               <span key={tag}>{tag}</span>
             ))}
           </div>
-          {diaryBadges.length ? (
-            <div className="diary-marker-row">
-              {diaryBadges.map((badge) => <span key={badge}>{badge}</span>)}
-            </div>
-          ) : null}
+          <div className={`diary-marker-row${diaryBadges.length ? "" : " is-empty"}`} aria-hidden={!diaryBadges.length}>
+            {diaryBadges.map((badge) => <span key={badge}>{badge}</span>)}
+          </div>
         </div>
         <div className="item-card-meta">
           <Stars value={item.rating} />
