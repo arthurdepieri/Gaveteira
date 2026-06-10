@@ -131,6 +131,74 @@ export async function signIn(settings: AppSettings, email: string, password: str
   return { ...session, profile };
 }
 
+export async function requestPasswordRecovery(settings: AppSettings, email: string) {
+  const redirectTo = `${window.location.origin}${window.location.pathname}`;
+  const params = new URLSearchParams({ redirect_to: redirectTo });
+  await authRequest(settings, `/recover?${params.toString()}`, {
+    email,
+  });
+}
+
+export async function consumePasswordRecoverySession(settings: AppSettings): Promise<CloudSession | null> {
+  const params = authParamsFromLocation();
+  if (params.get("type") !== "recovery") return null;
+
+  const accessToken = params.get("access_token");
+  const refreshToken = params.get("refresh_token") ?? undefined;
+  const expiresIn = Number(params.get("expires_in") ?? "");
+  const error = params.get("error_description") || params.get("error");
+
+  cleanAuthParamsFromUrl();
+
+  if (error) {
+    throw new Error(decodeURIComponent(error));
+  }
+
+  if (!accessToken) {
+    throw new Error("O link de recuperação expirou ou está incompleto. Peça um novo email para redefinir a senha.");
+  }
+
+  const user = await fetchAuthUser(settings, accessToken);
+  return {
+    accessToken,
+    refreshToken,
+    expiresAt: Number.isFinite(expiresIn) && expiresIn > 0 ? Date.now() + expiresIn * 1000 : undefined,
+    user: {
+      id: user.id,
+      email: user.email,
+    },
+  };
+}
+
+export async function updatePasswordAfterRecovery(settings: AppSettings, session: CloudSession, password: string): Promise<CloudSession> {
+  const { supabaseUrl, supabaseAnonKey } = requireCloudSettings(settings);
+  await ensureFreshSession(settings, session);
+
+  const response = await safeFetch(`${supabaseUrl}/auth/v1/user`, {
+    method: "PUT",
+    headers: {
+      apikey: supabaseAnonKey,
+      Authorization: `Bearer ${session.accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ password }),
+  });
+
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(errorMessage(json, "Não consegui salvar a nova senha."));
+
+  const user = json as SupabaseUserResponse;
+  const updatedSession: CloudSession = {
+    ...session,
+    user: {
+      id: user.id || session.user.id,
+      email: user.email ?? session.user.email,
+    },
+  };
+  const profile = await getOrCreateProfile(settings, updatedSession);
+  return { ...updatedSession, profile };
+}
+
 export function startGoogleSignIn(settings: AppSettings) {
   const { supabaseUrl } = requireCloudSettings(settings);
   const redirectTo = `${window.location.origin}${window.location.pathname}`;
@@ -143,14 +211,16 @@ export function startGoogleSignIn(settings: AppSettings) {
 }
 
 export async function consumeOAuthRedirectSession(settings: AppSettings): Promise<CloudSession | null> {
-  const params = oauthParamsFromLocation();
+  const params = authParamsFromLocation();
+  if (params.get("type") === "recovery") return null;
+
   const accessToken = params.get("access_token");
   const refreshToken = params.get("refresh_token") ?? undefined;
   const expiresIn = Number(params.get("expires_in") ?? "");
   const error = params.get("error_description") || params.get("error");
 
   if (error) {
-    cleanOAuthParamsFromUrl();
+    cleanAuthParamsFromUrl();
     throw new Error(decodeURIComponent(error));
   }
 
@@ -171,7 +241,7 @@ export async function consumeOAuthRedirectSession(settings: AppSettings): Promis
     email: user.email,
   });
 
-  cleanOAuthParamsFromUrl();
+  cleanAuthParamsFromUrl();
   return { ...session, profile };
 }
 
@@ -844,7 +914,7 @@ function profileFromRow(row: ProfileRow, email?: string): SocialProfile {
   };
 }
 
-function oauthParamsFromLocation() {
+function authParamsFromLocation() {
   const params = new URLSearchParams();
   const hash = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : window.location.hash;
   const search = window.location.search.startsWith("?") ? window.location.search.slice(1) : window.location.search;
@@ -857,7 +927,7 @@ function oauthParamsFromLocation() {
   return params;
 }
 
-function cleanOAuthParamsFromUrl() {
+function cleanAuthParamsFromUrl() {
   if (!window.location.hash && !window.location.search.includes("access_token") && !window.location.search.includes("error")) return;
 
   window.history.replaceState({}, document.title, `${window.location.pathname}${window.location.search.replace(/[?&](access_token|refresh_token|expires_in|token_type|type|error|error_description)=[^&]*/g, "").replace(/^&/, "?")}`);

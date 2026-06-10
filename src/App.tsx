@@ -14,7 +14,7 @@ import { SettingsView } from "./components/SettingsView";
 import { FamilyView } from "./components/FamilyView";
 import { SocialFeedView } from "./components/SocialFeedView";
 import { AuthGate } from "./components/AuthGate";
-import { consumeOAuthRedirectSession, deleteMyItem, fetchMyItems, fetchMyProfile, isSessionExpiredError, loadCloudSession, saveCloudSession, upsertMyItem } from "./services/supabaseCloud";
+import { consumeOAuthRedirectSession, consumePasswordRecoverySession, deleteMyItem, fetchMyItems, fetchMyProfile, isSessionExpiredError, loadCloudSession, saveCloudSession, upsertMyItem } from "./services/supabaseCloud";
 import { withSharedCloudSettings } from "./config/sharedCloud";
 import { withoutLegacyDemoItems } from "./utils/legacyDemoItems";
 import { getTitle, getWorkKey, isEmptyCulturalItem } from "./utils/itemHelpers";
@@ -96,6 +96,8 @@ function App() {
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
   const [activeItemMode, setActiveItemMode] = useState<"details" | "edit">("details");
   const [cloudSession, setCloudSession] = useState<CloudSession | null>(() => loadCloudSession());
+  const [passwordRecoverySession, setPasswordRecoverySession] = useState<CloudSession | null>(null);
+  const [authRedirectMessage, setAuthRedirectMessage] = useState("");
   const [bootstrappedCloudScope, setBootstrappedCloudScope] = useState("");
   const [syncStatus, setSyncStatus] = useState<SyncStatus>(() => ({
     kind: loadCloudSession() ? "loading" : "local",
@@ -237,14 +239,34 @@ function App() {
     if (oauthRedirectHandledRef.current || !effectiveSettings.cloud?.supabaseUrl || !effectiveSettings.cloud?.supabaseAnonKey) return;
     oauthRedirectHandledRef.current = true;
 
-    consumeOAuthRedirectSession(effectiveSettings)
+    consumePasswordRecoverySession(effectiveSettings)
+      .then((recoverySession) => {
+        if (recoverySession) {
+          setPasswordRecoverySession(recoverySession);
+          setCloudSession(null);
+          setBootstrappedCloudScope("");
+          setAuthRedirectMessage("");
+          setSyncStatus({
+            kind: "local",
+            message: "Link de recuperação validado.",
+            detail: "Crie uma nova senha para voltar para a Gaveteira.",
+          });
+          return null;
+        }
+
+        return consumeOAuthRedirectSession(effectiveSettings);
+      })
       .then((session) => {
-        if (session) authenticated(session);
+        if (session) {
+          setAuthRedirectMessage("");
+          authenticated(session);
+        }
       })
       .catch((error) => {
+        setAuthRedirectMessage(error instanceof Error ? error.message : "Tente entrar novamente.");
         setSyncStatus({
           kind: "error",
-          message: "Não consegui concluir o login com Google.",
+          message: "Não consegui concluir o acesso da conta.",
           detail: error instanceof Error ? error.message : "Tente entrar novamente.",
         });
       });
@@ -887,6 +909,12 @@ function App() {
         settings={effectiveSettings}
         onUpdateSettings={updateSettings}
         onAuthenticated={authenticated}
+        passwordRecoverySession={passwordRecoverySession}
+        onPasswordRecoveryCancel={() => {
+          setPasswordRecoverySession(null);
+          setAuthRedirectMessage("");
+        }}
+        initialMessage={authRedirectMessage}
       />
     );
   }

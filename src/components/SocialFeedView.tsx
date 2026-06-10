@@ -199,30 +199,6 @@ export function SocialFeedView({
         {message ? <p className="form-note">{message}</p> : null}
       </section>
 
-      <section className="setting-panel social-curation-panel">
-        <div className="section-heading split">
-          <div className="section-heading">
-            <Award size={20} />
-            <h2>Curadoria</h2>
-          </div>
-          <span className="soft-label">recomendações destacadas</span>
-        </div>
-        <div className="curation-feed-grid">
-          {curatedRecommendations.length ? curatedRecommendations.slice(0, 8).map((recommendation) => (
-            <button key={recommendation.recommendationId} type="button" className="curation-feed-card" onClick={() => openCuratedRecommendation(recommendation)}>
-              <Cover item={recommendation.item} compact />
-              <span>
-                <small>Ficha de {recommendation.ownerName}</small>
-                <strong>{getTitle(recommendation.item)}</strong>
-                <em>{categoryLabels[recommendation.item.category]} / curadoria de {recommendation.curatorName}</em>
-                {recommendation.note ? <p>{recommendation.note}</p> : null}
-                <Stars value={recommendation.item.rating} />
-              </span>
-            </button>
-          )) : <p className="empty">Quando um admin reconhecer uma ficha, ela aparece aqui como recomendação da Gaveteira.</p>}
-        </div>
-      </section>
-
       <section className="setting-panel social-feed-panel">
         <div className="section-heading split">
           <div className="section-heading">
@@ -297,6 +273,30 @@ export function SocialFeedView({
           <InsightList title="Favoritos do grupo" icon={<Heart size={17} />} items={socialComparisons.favoriteRanking} />
           <InsightList title="Gêneros da galera" icon={<TrendingUp size={17} />} items={socialComparisons.topGenres} />
           <InsightList title="Ativos agora" icon={<Users size={17} />} items={socialComparisons.activePeople} />
+        </div>
+      </section>
+
+      <section className="setting-panel social-curation-panel">
+        <div className="section-heading split">
+          <div className="section-heading">
+            <Award size={20} />
+            <h2>Curadoria</h2>
+          </div>
+          <span className="soft-label">recomendações destacadas</span>
+        </div>
+        <div className="curation-feed-grid">
+          {curatedRecommendations.length ? curatedRecommendations.slice(0, 8).map((recommendation) => (
+            <button key={recommendation.recommendationId} type="button" className="curation-feed-card" onClick={() => openCuratedRecommendation(recommendation)}>
+              <Cover item={recommendation.item} compact />
+              <span>
+                <small>Ficha de {recommendation.ownerName}</small>
+                <strong>{getTitle(recommendation.item)}</strong>
+                <em>{categoryLabels[recommendation.item.category]} / curadoria de {recommendation.curatorName}</em>
+                {recommendation.note ? <p>{recommendation.note}</p> : null}
+                <Stars value={recommendation.item.rating} />
+              </span>
+            </button>
+          )) : <p className="empty">Quando um admin reconhecer uma ficha, ela aparece aqui como recomendação da Gaveteira.</p>}
         </div>
       </section>
 

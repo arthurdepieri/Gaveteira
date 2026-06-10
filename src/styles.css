@@ -1416,6 +1416,20 @@ button.secondary {
   font-weight: 700;
 }
 
+.auth-link-button {
+  justify-self: center;
+  min-height: 32px;
+  padding: 4px 8px;
+  color: var(--green);
+  border: 0;
+  background: transparent;
+  font-weight: 800;
+}
+
+.auth-link-button:hover {
+  text-decoration: underline;
+}
+
 button.danger {
   display: inline-flex;
   align-items: center;
@@ -6379,4 +6393,370 @@ button.danger {
   color: #aee1d0 !important;
   border-color: rgba(79, 146, 127, 0.48) !important;
   background: rgba(79, 146, 127, 0.16) !important;
+}
+
+/* Visual polish: calmer hierarchy and fewer competing surfaces. */
+:root {
+  --surface: rgba(255, 250, 241, 0.86);
+  --surface-solid: #fffaf1;
+  --surface-subtle: rgba(255, 253, 248, 0.58);
+  --surface-elevated: rgba(255, 253, 248, 0.92);
+  --line-soft: rgba(134, 95, 62, 0.18);
+  --shadow: 0 10px 28px rgba(47, 35, 24, 0.10);
+  --shadow-soft: 0 6px 18px rgba(47, 35, 24, 0.08);
+  --section-gap: 16px;
+}
+
+:root[data-theme="dark"] {
+  --surface: rgba(36, 31, 26, 0.86);
+  --surface-solid: #241f1a;
+  --surface-subtle: rgba(43, 33, 24, 0.58);
+  --surface-elevated: rgba(43, 33, 24, 0.92);
+  --line-soft: rgba(213, 166, 83, 0.18);
+  --shadow: 0 10px 28px rgba(0, 0, 0, 0.26);
+  --shadow-soft: 0 6px 18px rgba(0, 0, 0, 0.18);
+}
+
+body {
+  background:
+    linear-gradient(90deg, rgba(94, 60, 39, 0.035) 1px, transparent 1px) 0 0 / 32px 32px,
+    linear-gradient(#f7f1e6, #efe5d5);
+}
+
+:root[data-theme="dark"] body {
+  background:
+    linear-gradient(90deg, rgba(213, 166, 83, 0.035) 1px, transparent 1px) 0 0 / 32px 32px,
+    linear-gradient(#171411, #211a15);
+}
+
+.page {
+  padding-top: 28px;
+}
+
+.hero,
+.list-header,
+.section,
+.stat-panel,
+.setting-panel,
+.archive-block,
+.detail-hero,
+.cover-search-panel,
+.diary-focus-panel,
+.member-profile-card,
+.category-breakdown-panel,
+.snapshot-panel,
+.login-card,
+.first-card-hero,
+.onboarding-card,
+.empty-state-card {
+  border-color: var(--line-soft);
+  background: var(--surface);
+  box-shadow: none;
+}
+
+.section,
+.stat-panel,
+.setting-panel {
+  margin-top: var(--section-gap);
+  padding: 18px;
+}
+
+.hero,
+.list-header {
+  align-items: center;
+  padding: 22px;
+  background: var(--surface-elevated);
+}
+
+.hero h1,
+.list-header h1 {
+  font-size: clamp(2rem, 4vw, 3.7rem);
+  line-height: 1;
+}
+
+.hero p,
+.list-header p {
+  max-width: 620px;
+  margin-top: 8px;
+}
+
+.hero-counters,
+.metric,
+.home-empty-action,
+.home-social-empty,
+.home-shelf-item,
+.suggestion-card,
+.shelf-item,
+.item-card,
+.social-feed-event,
+.social-recommendation-card,
+.comparison-card,
+.curation-feed-card,
+.curation-featured-card,
+.family-card,
+.member-highlight-item,
+.member-recent-item,
+.category-stat-card,
+.category-stat-metrics span,
+.category-mini-list,
+.category-favorites,
+.category-stat-detail,
+.backup-preview,
+.backup-preview-stats span {
+  border-color: var(--line-soft);
+  background: var(--surface-elevated);
+  box-shadow: none;
+}
+
+.home-shelf-item:hover,
+.suggestion-card:hover,
+.item-card:hover,
+.shelf-item:hover,
+.social-recommendation-card:hover,
+.curation-feed-card:hover,
+.curation-featured-card:hover,
+.family-card:hover,
+.member-highlight-item:hover,
+.member-recent-item:hover {
+  border-color: rgba(184, 135, 55, 0.45);
+  box-shadow: var(--shadow-soft);
+}
+
+.home-continue-panel,
+.home-life-panel,
+.home-suggestions,
+.home-drawers-panel {
+  background: var(--surface);
+}
+
+.home-continue-panel {
+  border-color: rgba(52, 107, 93, 0.26);
+}
+
+.home-live-grid {
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.continue-grid,
+.suggestion-grid,
+.drawer-grid,
+.comparison-grid,
+.category-stats-grid,
+.category-breakdown-grid,
+.settings-grid,
+.stats-layout {
+  gap: 12px;
+}
+
+.quick-stats {
+  margin: 14px 0;
+}
+
+.metric {
+  min-height: 78px;
+  padding: 14px;
+}
+
+.metric strong {
+  font-size: 1.75rem;
+}
+
+.drawer {
+  min-height: 70px;
+  border-bottom-width: 3px;
+  box-shadow: none;
+}
+
+.drawer::before {
+  opacity: 0.45;
+}
+
+.item-card,
+.home-shelf-item,
+.suggestion-card,
+.social-feed-event,
+.comparison-card,
+.curation-feed-card,
+.family-card {
+  border-radius: 8px;
+}
+
+.filters {
+  padding: 12px;
+  border: 1px solid var(--line-soft);
+  background: var(--surface);
+  border-radius: 8px;
+}
+
+.detail-live-controls,
+.privacy-note,
+.api-ready,
+.detail-summary-panel {
+  border-color: var(--line-soft);
+  background: var(--surface-subtle);
+}
+
+.detail-quick-actions button,
+.feed-action-row button,
+.feed-action-row span,
+.member-profile-tabs,
+.feed-scope-tabs {
+  border-color: var(--line-soft);
+  background: var(--surface-subtle);
+}
+
+.category-stat-card {
+  color: var(--ink);
+}
+
+.category-stat-card small,
+.category-stat-card span {
+  color: var(--muted);
+}
+
+.category-stat-card header strong,
+.category-stat-metrics b,
+.category-stat-detail strong,
+.category-mini-list b {
+  color: var(--green);
+  background: var(--surface-subtle);
+}
+
+.social-curation-panel,
+.social-comparison-panel,
+.social-diary-corner {
+  background: var(--surface-subtle);
+}
+
+:root[data-theme="dark"] .hero,
+:root[data-theme="dark"] .list-header,
+:root[data-theme="dark"] .section,
+:root[data-theme="dark"] .stat-panel,
+:root[data-theme="dark"] .setting-panel,
+:root[data-theme="dark"] .archive-block,
+:root[data-theme="dark"] .detail-hero,
+:root[data-theme="dark"] .cover-search-panel,
+:root[data-theme="dark"] .diary-focus-panel,
+:root[data-theme="dark"] .member-profile-card,
+:root[data-theme="dark"] .category-breakdown-panel,
+:root[data-theme="dark"] .snapshot-panel,
+:root[data-theme="dark"] .login-card,
+:root[data-theme="dark"] .first-card-hero,
+:root[data-theme="dark"] .onboarding-card,
+:root[data-theme="dark"] .empty-state-card,
+:root[data-theme="dark"] .home-continue-panel,
+:root[data-theme="dark"] .home-life-panel,
+:root[data-theme="dark"] .home-suggestions,
+:root[data-theme="dark"] .home-drawers-panel,
+:root[data-theme="dark"] .home-shelf-item,
+:root[data-theme="dark"] .suggestion-card,
+:root[data-theme="dark"] .item-card,
+:root[data-theme="dark"] .item-card-body,
+:root[data-theme="dark"] .social-feed-event,
+:root[data-theme="dark"] .social-recommendation-card,
+:root[data-theme="dark"] .comparison-card,
+:root[data-theme="dark"] .curation-feed-card,
+:root[data-theme="dark"] .curation-featured-card,
+:root[data-theme="dark"] .family-card,
+:root[data-theme="dark"] .member-highlight-item,
+:root[data-theme="dark"] .member-recent-item,
+:root[data-theme="dark"] .filters {
+  border-color: var(--line-soft);
+  background: var(--surface);
+  box-shadow: none;
+}
+
+:root[data-theme="dark"] .social-curation-panel,
+:root[data-theme="dark"] .social-comparison-panel,
+:root[data-theme="dark"] .social-diary-corner,
+:root[data-theme="dark"] .detail-live-controls,
+:root[data-theme="dark"] .privacy-note,
+:root[data-theme="dark"] .api-ready,
+:root[data-theme="dark"] .detail-summary-panel,
+:root[data-theme="dark"] .feed-scope-tabs,
+:root[data-theme="dark"] .member-profile-tabs {
+  border-color: var(--line-soft);
+  background: var(--surface-subtle);
+}
+
+@media (max-width: 760px) {
+  .page {
+    padding-top: 18px;
+  }
+
+  .list-header,
+  .section,
+  .stat-panel,
+  .setting-panel {
+    padding: 14px;
+  }
+
+  .hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .hero h1 {
+    font-size: clamp(2rem, 10vw, 2.8rem);
+  }
+
+  .list-header h1 {
+    font-size: clamp(1.8rem, 10vw, 2.6rem);
+  }
+
+  .hero p {
+    max-width: none;
+    margin-top: 6px;
+    font-size: 0.98rem;
+    line-height: 1.35;
+  }
+
+  .hero-counters {
+    align-self: start;
+    min-width: 86px;
+    min-height: 72px;
+    padding: 10px;
+  }
+
+  .hero-counters strong {
+    font-size: 1.9rem;
+    line-height: 1;
+  }
+
+  .hero-counters span {
+    font-size: 0.76rem;
+    line-height: 1.15;
+    text-align: center;
+  }
+
+  .quick-stats {
+    gap: 8px;
+  }
+
+  .metric {
+    min-height: 68px;
+    padding: 11px;
+  }
+}
+
+@media (max-width: 520px) {
+  .hero {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-counters {
+    width: 100%;
+    min-height: 0;
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 12px;
+  }
+
+  .hero-counters strong {
+    font-size: 1.75rem;
+  }
 }
