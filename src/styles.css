@@ -7417,3 +7417,61 @@ body {
     min-height: 108px;
   }
 }
+
+/* Mobile detail header fix: keep close/actions reachable instead of a large text toolbar. */
+@media (max-width: 760px) {
+  .detail-modal > .modal-header {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    display: flex;
+    justify-content: flex-end;
+    margin: -4px 0 8px;
+    padding: 6px 0;
+    background:
+      linear-gradient(90deg, rgba(134, 95, 62, 0.045) 1px, transparent 1px) 0 0 / 28px 28px,
+      rgba(255, 250, 241, 0.97);
+  }
+
+  .detail-modal > .modal-header > div:first-child {
+    display: none;
+  }
+
+  .detail-modal > .modal-header .modal-actions {
+    display: flex;
+    flex: 0 0 auto;
+    justify-content: flex-end;
+    gap: 5px;
+    width: auto;
+    max-width: 100%;
+    overflow: visible;
+  }
+
+  .detail-modal > .modal-header .modal-actions button {
+    display: inline-grid;
+    flex: 0 0 38px !important;
+    place-items: center;
+    width: 38px !important;
+    min-width: 38px !important;
+    min-height: 38px;
+    padding: 0 !important;
+    font-size: 0 !important;
+  }
+
+  .detail-modal > .modal-header .modal-actions button svg {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+  }
+
+  .detail-modal > .modal-header .modal-actions .icon-button {
+    border-color: rgba(94, 60, 39, 0.24);
+    background: #fffdf8;
+  }
+}
+
+:root[data-theme="dark"] .detail-modal > .modal-header {
+  background:
+    linear-gradient(90deg, rgba(213, 166, 83, 0.035) 1px, transparent 1px) 0 0 / 22px 22px,
+    rgba(36, 29, 23, 0.97);
+}

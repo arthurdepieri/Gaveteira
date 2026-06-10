@@ -1150,7 +1150,7 @@ function PortraitOnlyNotice() {
       <div>
         <RotateCcw size={30} />
         <strong>Vire para o modo retrato</strong>
-        <p>A Gaveteira foi pensada para funcionar em pé no celular.</p>
+        <p>Infelizmente, ainda não conseguimos manter a orientação da gaveteira fixa.</p>
       </div>
     </aside>
   );
