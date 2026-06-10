@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.6.5-beta - Mobile mais leve e retrato fixo - 2026-06-10
+
+Versão beta focada em deixar a Gaveteira instalada no celular mais confortável e fazer o PWA anunciar uma atualização nova de forma clara.
+
+### Destaques
+
+- Revisão mobile separada do desktop, com cards mais compactos, menus mais baixos e modais menos pesados.
+- Barra inferior reduzida para ocupar menos tela no celular.
+- Painel de Gavetas no mobile mais curto, com botões menores e leitura mais rápida.
+- Ficha do item simplificada: topo mais direto, ações rápidas menores, abas sem excesso de sticky e blocos mais limpos.
+- Cards de jogos no mobile mostram tempo jogado de forma discreta.
+- Manifesto PWA atualizado para `portrait-primary`.
+- Reforço da trava de orientação em retrato via Screen Orientation API e fallback visual quando o navegador/celular ignora a trava.
+- Versão/cache do PWA avançados para que a Gaveteira instalada mostre o CTA de atualização.
+
+### Observações
+
+- Em alguns celulares, especialmente iOS, o sistema pode impedir uma trava física total da rotação em apps web. Nesses casos, a Gaveteira bloqueia visualmente o uso em paisagem e pede para voltar ao modo retrato.
+
 ## 0.6.4-beta - Atualização segura do PWA - 2026-05-29
 
 Versão beta focada em deixar a Gaveteira instalada mais confiável entre betas, evitando assets antigos e protegendo dados locais antes de operações sensíveis.

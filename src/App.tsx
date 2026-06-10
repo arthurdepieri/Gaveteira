@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ElementType } from "react";
-import { AlertTriangle, Archive, BarChart3, BookOpen, CheckCircle2, ChevronDown, CloudOff, Disc3, Download, FileText, Film, Gamepad2, Home, Library, ListChecks, Loader2, LogIn, LogOut, MessageSquare, RefreshCw, Settings, Share, Tv, UserCheck, UserPlus, Users, WifiOff, X } from "lucide-react";
+import { AlertTriangle, Archive, BarChart3, BookOpen, CheckCircle2, ChevronDown, CloudOff, Disc3, Download, FileText, Film, Gamepad2, Home, Library, ListChecks, Loader2, LogIn, LogOut, MessageSquare, RefreshCw, RotateCcw, Settings, Share, Tv, UserCheck, UserPlus, Users, WifiOff, X } from "lucide-react";
 import { AppData, AppSettings, BookItem, Category, CloudSession, CulturalItem, ViewKey } from "./types";
 import { loadData, saveData } from "./storage/localStore";
 import { createSafetySnapshot, snapshotIfRuntimeChanged } from "./storage/snapshots";
@@ -289,11 +289,17 @@ function App() {
 
     requestPortraitLock();
     window.addEventListener("orientationchange", requestPortraitLock);
+    window.addEventListener("resize", requestPortraitLock);
+    window.addEventListener("focus", requestPortraitLock);
+    window.addEventListener("pointerdown", requestPortraitLock);
     document.addEventListener("visibilitychange", requestPortraitLock);
     document.addEventListener("fullscreenchange", requestPortraitLock);
 
     return () => {
       window.removeEventListener("orientationchange", requestPortraitLock);
+      window.removeEventListener("resize", requestPortraitLock);
+      window.removeEventListener("focus", requestPortraitLock);
+      window.removeEventListener("pointerdown", requestPortraitLock);
       document.removeEventListener("visibilitychange", requestPortraitLock);
       document.removeEventListener("fullscreenchange", requestPortraitLock);
     };
@@ -905,17 +911,20 @@ function App() {
 
   if (!cloudSession) {
     return (
-      <AuthGate
-        settings={effectiveSettings}
-        onUpdateSettings={updateSettings}
-        onAuthenticated={authenticated}
-        passwordRecoverySession={passwordRecoverySession}
-        onPasswordRecoveryCancel={() => {
-          setPasswordRecoverySession(null);
-          setAuthRedirectMessage("");
-        }}
-        initialMessage={authRedirectMessage}
-      />
+      <>
+        <AuthGate
+          settings={effectiveSettings}
+          onUpdateSettings={updateSettings}
+          onAuthenticated={authenticated}
+          passwordRecoverySession={passwordRecoverySession}
+          onPasswordRecoveryCancel={() => {
+            setPasswordRecoverySession(null);
+            setAuthRedirectMessage("");
+          }}
+          initialMessage={authRedirectMessage}
+        />
+        <PortraitOnlyNotice />
+      </>
     );
   }
 
@@ -1130,7 +1139,20 @@ function App() {
           onClose={closeItemForm}
         />
       ) : null}
+      <PortraitOnlyNotice />
     </div>
+  );
+}
+
+function PortraitOnlyNotice() {
+  return (
+    <aside className="portrait-lock-overlay" aria-live="polite">
+      <div>
+        <RotateCcw size={30} />
+        <strong>Vire para o modo retrato</strong>
+        <p>A Gaveteira foi pensada para funcionar em pé no celular.</p>
+      </div>
+    </aside>
   );
 }
 
@@ -1724,7 +1746,7 @@ function lockPortraitOrientation() {
   };
 
   if (!orientation?.lock) return;
-  orientation.lock("portrait").catch(() => {
+  orientation.lock("portrait-primary").catch(() => {
     // Alguns navegadores só permitem travar orientação em PWA instalado ou tela cheia.
   });
 }

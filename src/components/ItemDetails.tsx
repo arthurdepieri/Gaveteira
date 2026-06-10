@@ -149,24 +149,6 @@ export function ItemDetails({
                 {getItemVisibilityLabel(item)}
               </span>
             </div>
-            {!ownerName ? (
-              <div className={`privacy-note privacy-note-${itemVisibility}`}>
-                <p>
-                  {itemVisibility === "private"
-                    ? "Esta ficha está privada e não aparece para amigos, no Feed ou nas comparações sociais."
-                    : "Esta ficha está visível para amigos. Entradas privadas do diário continuam ocultas."}
-                </p>
-                {onUpdateItem ? (
-                  <label className="detail-privacy-control">
-                    <span>Privacidade da ficha</span>
-                    <select value={itemVisibility === "private" ? "private" : "friends"} onChange={(event) => updateVisibility(event.target.value as SocialVisibility)}>
-                      <option value="friends">Visível para amigos</option>
-                      <option value="private">Privado</option>
-                    </select>
-                  </label>
-                ) : null}
-              </div>
-            ) : null}
             <div className="detail-rating-line">
               <Stars value={item.rating} />
               <strong>{item.rating ? `${item.rating}/5` : "Sem nota arquivada"}</strong>
@@ -214,6 +196,24 @@ export function ItemDetails({
                 </button>
               ) : null}
             </div>
+            {!ownerName ? (
+              <div className={`privacy-note privacy-note-${itemVisibility}`}>
+                <p>
+                  {itemVisibility === "private"
+                    ? "Esta ficha está privada e não aparece para amigos, no Feed ou nas comparações sociais."
+                    : "Esta ficha está visível para amigos. Entradas privadas do diário continuam ocultas."}
+                </p>
+                {onUpdateItem ? (
+                  <label className="detail-privacy-control">
+                    <span>Privacidade da ficha</span>
+                    <select value={itemVisibility === "private" ? "private" : "friends"} onChange={(event) => updateVisibility(event.target.value as SocialVisibility)}>
+                      <option value="friends">Visível para amigos</option>
+                      <option value="private">Privado</option>
+                    </select>
+                  </label>
+                ) : null}
+              </div>
+            ) : null}
             {item.tags.length ? (
               <div className="tag-row">
                 {item.tags.map((tag) => <span key={tag}>{tag}</span>)}
