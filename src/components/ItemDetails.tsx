@@ -1,5 +1,6 @@
 import { BookOpenText, Edit3, ExternalLink, ImageIcon, Lock, Megaphone, Plus, Search, Sparkles, Trash2, X } from "lucide-react";
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { AppSettings, CloudSession, CulturalItem, DiaryEntry, Rating, SocialVisibility } from "../types";
 import { categoryLabels } from "../data/catalog";
 import { getItemVisibility, getItemVisibilityLabel, getTitle, getYear, isCompleted, uid } from "../utils/itemHelpers";
@@ -82,7 +83,7 @@ export function ItemDetails({
     onClose();
   }
 
-  return (
+  return createPortal(
     <div className="modal-backdrop" role="dialog" aria-modal="true">
       <article className="modal detail-modal archive-sheet">
         <header className="modal-header">
@@ -325,7 +326,8 @@ export function ItemDetails({
           ) : null}
         </section>
       </article>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
