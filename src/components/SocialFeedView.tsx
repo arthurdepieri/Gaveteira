@@ -1,5 +1,5 @@
 import { Award, BookmarkPlus, CheckCircle2, Cloud, Eye, GitCompare, Heart, Loader2, MessageSquare, RefreshCw, ShieldCheck, Sparkles, TrendingUp, Users, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { AppSettings, CloudSession, CulturalItem, CuratedRecommendation, FamilyItem, Friendship, SocialProfile } from "../types";
 import { categoryLabels, defaultStatuses } from "../data/catalog";
@@ -43,6 +43,8 @@ export function SocialFeedView({
   const [activeDiaryId, setActiveDiaryId] = useState<string | undefined>();
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [feedLoaded, setFeedLoaded] = useState(false);
+  const feedLoadedRef = useRef(false);
 
   const acceptedFriends = friendships.filter((friendship) => friendship.status === "accepted");
   const groups = useMemo<OwnerGroup[]>(() => {
@@ -99,6 +101,8 @@ export function SocialFeedView({
   useEffect(() => {
     if (!session) return;
 
+    feedLoadedRef.current = false;
+    setFeedLoaded(false);
     refreshFeed(true);
     const intervalId = window.setInterval(() => refreshFeed(true), SOCIAL_REFRESH_INTERVAL_MS);
     return () => window.clearInterval(intervalId);
@@ -107,7 +111,9 @@ export function SocialFeedView({
   async function refreshFeed(silent = false) {
     if (!session) return;
 
-    if (!silent) {
+    const showBusy = !silent || !feedLoadedRef.current;
+
+    if (showBusy) {
       setLoading(true);
       setMessage("");
     }
@@ -125,13 +131,15 @@ export function SocialFeedView({
       if (JSON.stringify(freshProfile) !== JSON.stringify(session.profile)) {
         onAuthenticated({ ...session, profile: freshProfile });
       }
+      feedLoadedRef.current = true;
+      setFeedLoaded(true);
       if (!silent) setMessage("Feed conferido. O arquivo social está em dia.");
     } catch (error) {
       if (!silent) {
         setMessage(error instanceof Error ? error.message : "Não consegui abrir o Feed agora.");
       }
     } finally {
-      if (!silent) setLoading(false);
+      if (showBusy) setLoading(false);
     }
   }
 
@@ -224,7 +232,7 @@ export function SocialFeedView({
           </button>
         </div>
         <div className="social-feed-list">
-          {visibleFeed.length ? visibleFeed.map((event) => (
+          {loading && !feedLoaded ? <FeedSkeletonList /> : visibleFeed.length ? visibleFeed.map((event) => (
             <FeedEventCard
               key={event.id}
               event={event}
@@ -247,7 +255,7 @@ export function SocialFeedView({
           <span className="soft-label">notas públicas</span>
         </div>
         <div className="social-feed-list">
-          {diaryFeed.length ? diaryFeed.map((event) => (
+          {loading && !feedLoaded ? <FeedSkeletonList compact /> : diaryFeed.length ? diaryFeed.map((event) => (
             <FeedEventCard
               key={event.id}
               event={event}
@@ -313,6 +321,26 @@ export function SocialFeedView({
     setActiveEntry(recommendation);
     setActiveDiaryId(undefined);
   }
+}
+
+function FeedSkeletonList({ compact = false }: { compact?: boolean }) {
+  return (
+    <>
+      {[0, 1, 2].slice(0, compact ? 2 : 3).map((item) => (
+        <article className="social-feed-event social-feed-skeleton" key={item} aria-label="Carregando movimento do feed">
+          <div className="feed-event-icon skeleton-block" />
+          <div>
+            <span className="skeleton-line skeleton-line-title" />
+            <span className="skeleton-line skeleton-line-long" />
+            <span className="skeleton-pill-row">
+              <i className="skeleton-pill" />
+              <i className="skeleton-pill short" />
+            </span>
+          </div>
+        </article>
+      ))}
+    </>
+  );
 }
 
 function FeedEventCard({

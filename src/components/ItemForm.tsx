@@ -236,6 +236,7 @@ function MetadataLookup({
         </button>
       </div>
       {error ? <p className="metadata-error">{error}</p> : null}
+      {loading ? <MetadataSkeletonList mode={mode} /> : null}
       {results.length ? (
         <div className="metadata-results">
           {results.map((result) => (
@@ -301,6 +302,22 @@ function MobileFormSection({ title, open, children }: { title: string; open?: bo
       <summary>{title}</summary>
       <div>{children}</div>
     </details>
+  );
+}
+
+function MetadataSkeletonList({ mode }: { mode: "data" | "cover" }) {
+  return (
+    <div className={`metadata-results metadata-skeleton-list metadata-skeleton-${mode}`} aria-label="Buscando opções">
+      {[0, 1, 2].map((item) => (
+        <div className="metadata-result metadata-skeleton-card" key={item}>
+          <span className="metadata-cover skeleton-block" />
+          <span>
+            <strong className="skeleton-line skeleton-line-title" />
+            <small className="skeleton-line skeleton-line-short" />
+          </span>
+        </div>
+      ))}
+    </div>
   );
 }
 

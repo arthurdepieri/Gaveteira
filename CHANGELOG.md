@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.6.6-beta - Polimento visual e estados vivos - 2026-06-11
+
+Versão beta focada em deixar a Gaveteira mais refinada durante carregamentos, sincronização, instalação e uso em modo escuro.
+
+### Destaques
+
+- Skeletons visuais em formato de ficha/card para buscas automáticas de dados, busca de capas, Feed e área de amigos.
+- Feedback de sincronização mais vivo, com pulso suave, linha de estado e cores próprias para salvo localmente, na fila, enviando, enviado, falha e sessão expirada.
+- Aviso de nova versão disponível com destaque mais perceptível, sem parecer erro.
+- Splash de abertura mais suave, com entrada e saída mais elegantes e fundo claro próprio, independente do modo escuro.
+- Convite de instalação PWA redesenhado como etiqueta de arquivo/convite de mesa, com texto menos técnico.
+- Dark mode mais autoral, com atmosfera de arquivo à noite, fundos menos chapados, bordas mais suaves e cards sem branco agressivo.
+- Ajustes de contraste em superfícies sociais, fichas, cards, busca de metadados e componentes mobile no tema escuro.
+
+### Observações
+
+- Esta versão é uma subversão de polimento visual da linha `0.6.x`, sem mudar o modelo de dados.
+- O pacote de release desta versão fica em `releases/Gaveteira-0.6.6-beta.zip`.
+
 ## 0.6.5-beta - Mobile mais leve e retrato fixo - 2026-06-10
 
 Versão beta focada em deixar a Gaveteira instalada no celular mais confortável e fazer o PWA anunciar uma atualização nova de forma clara.

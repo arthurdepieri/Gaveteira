@@ -1331,9 +1331,9 @@ function InstallAppPrompt({
   onDismiss: () => void;
 }) {
   const installText = canInstall
-    ? "Abra em tela cheia, com ícone próprio e navegação mais limpa no celular."
+    ? "Guarde a Gaveteira na tela inicial como um arquivo de bolso, sem barra do navegador."
     : isIos
-      ? "No iPhone, a instalação é feita pelo botão de compartilhar do Safari."
+      ? "No iPhone, use o compartilhar do Safari para fixar esta gaveta na tela inicial."
       : "Use o menu do navegador para adicionar a Gaveteira à tela inicial.";
 
   return (
@@ -1342,8 +1342,8 @@ function InstallAppPrompt({
         <span>G</span>
       </div>
       <div className="install-card-copy">
-        <small>Modo app</small>
-        <strong>Instalar Gaveteira</strong>
+        <small>Etiqueta de mesa</small>
+        <strong>Levar Gaveteira para o celular</strong>
         <span>{installText}</span>
         {isIos && !canInstall ? (
           <ol className="install-steps">
@@ -1352,8 +1352,8 @@ function InstallAppPrompt({
           </ol>
         ) : (
           <div className="install-perks">
-            <span>sem barra do navegador</span>
-            <span>atalho rápido</span>
+            <span>abre como app</span>
+            <span>atalho de bolso</span>
           </div>
         )}
       </div>

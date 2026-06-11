@@ -471,6 +471,7 @@ function CoverSearchPanel({
         </button>
       </div>
       {error ? <p className="metadata-error">{error}</p> : null}
+      {loading ? <CoverSearchSkeleton /> : null}
       {results.length ? (
         <div className="cover-search-results">
           {results.map((result) => (
@@ -483,6 +484,20 @@ function CoverSearchPanel({
         </div>
       ) : null}
     </section>
+  );
+}
+
+function CoverSearchSkeleton() {
+  return (
+    <div className="cover-search-results cover-search-skeleton-list" aria-label="Buscando capas">
+      {[0, 1, 2, 3].map((item) => (
+        <div className="cover-search-result cover-search-skeleton-card" key={item}>
+          <span className="skeleton-block" />
+          <strong className="skeleton-line skeleton-line-title" />
+          <small className="skeleton-line skeleton-line-short" />
+        </div>
+      ))}
+    </div>
   );
 }
 

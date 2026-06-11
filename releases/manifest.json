@@ -1,6 +1,13 @@
 {
-  "latest": "0.6.4-beta",
+  "latest": "0.6.6-beta",
   "releases": [
+    {
+      "version": "0.6.6-beta",
+      "date": "2026-06-11",
+      "title": "Polimento visual e estados vivos",
+      "notes": "Versão beta focada em deixar a Gaveteira mais refinada durante carregamentos, sincronização, instalação e uso em modo escuro.\n\n### Destaques\n\n- Skeletons visuais em formato de ficha/card para buscas automáticas de dados, busca de capas, Feed e área de amigos.\n- Feedback de sincronização mais vivo, com pulso suave, linha de estado e cores próprias para salvo localmente, na fila, enviando, enviado, falha e sessão expirada.\n- Aviso de nova versão disponível com destaque mais perceptível, sem parecer erro.\n- Splash de abertura mais suave, com entrada e saída mais elegantes e fundo claro próprio, independente do modo escuro.\n- Convite de instalação PWA redesenhado como etiqueta de arquivo/convite de mesa, com texto menos técnico.\n- Dark mode mais autoral, com atmosfera de arquivo à noite, fundos menos chapados, bordas mais suaves e cards sem branco agressivo.\n- Ajustes de contraste em superfícies sociais, fichas, cards, busca de metadados e componentes mobile no tema escuro.\n\n### Observações\n\n- Esta versão é uma subversão de polimento visual da linha `0.6.x`, sem mudar o modelo de dados.\n- O pacote de release desta versão fica em `releases/Gaveteira-0.6.6-beta.zip`.",
+      "archivePath": "releases/Gaveteira-0.6.6-beta.zip"
+    },
     {
       "version": "0.6.4-beta",
       "date": "2026-05-29",

@@ -1,5 +1,5 @@
 import { Award, CalendarDays, Cloud, Edit3, Heart, LogOut, RefreshCw, Search, ShieldCheck, Sparkles, Trash2, UploadCloud, UserCheck, UserPlus, Users, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AdminOverview, AppSettings, Category, CloudSession, CulturalItem, CuratedRecommendation, FamilyItem, Friendship, SocialProfile } from "../types";
 import { categoryLabels } from "../data/catalog";
 import { deleteCuratedRecommendation, deleteFriendship, fetchAdminCuratableItems, fetchAdminOverview, fetchCuratedRecommendations, fetchFriendships, fetchMyItems, fetchMyProfile, fetchSocialItems, respondFriendRequest, searchProfiles, sendFriendRequest, syncMyItems, updateMyProfile, upsertCuratedRecommendation } from "../services/supabaseCloud";
@@ -43,6 +43,8 @@ export function FamilyView({
   const [friendships, setFriendships] = useState<Friendship[]>([]);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [socialLoaded, setSocialLoaded] = useState(false);
+  const socialLoadedRef = useRef(false);
   const [selectedOwnerId, setSelectedOwnerId] = useState("");
   const [sortMode, setSortMode] = useState<"ratingDesc" | "ratingAsc" | "recent">("ratingDesc");
   const [memberProfileSection, setMemberProfileSection] = useState<"summary" | "favorites" | "current" | "recent" | "drawers" | "stats">("summary");
@@ -147,6 +149,8 @@ export function FamilyView({
   useEffect(() => {
     if (!session) return;
 
+    socialLoadedRef.current = false;
+    setSocialLoaded(false);
     refreshSocial(true);
     const intervalId = window.setInterval(() => refreshSocial(true), SOCIAL_REFRESH_INTERVAL_MS);
     return () => window.clearInterval(intervalId);
@@ -199,8 +203,9 @@ export function FamilyView({
 
   async function refreshSocial(silent = false) {
     if (!session) return;
+    const showBusy = !silent || !socialLoadedRef.current;
 
-    if (!silent) {
+    if (showBusy) {
       setLoading(true);
       setMessage("");
     }
@@ -213,6 +218,8 @@ export function FamilyView({
       ]);
       setFriendships(nextFriendships);
       setSocialItems(nextItems);
+      socialLoadedRef.current = true;
+      setSocialLoaded(true);
       if (JSON.stringify(freshProfile) !== JSON.stringify(session.profile)) {
         onAuthenticated({ ...session, profile: freshProfile });
       }
@@ -221,7 +228,7 @@ export function FamilyView({
         setMessage(error instanceof Error ? error.message : "Não consegui abrir o arquivo social.");
       }
     } finally {
-      if (!silent) {
+      if (showBusy) {
         setLoading(false);
       }
     }
@@ -589,7 +596,7 @@ export function FamilyView({
             <button className="primary" onClick={runSearch} disabled={loading || !searchQuery.trim()}>Buscar</button>
           </div>
           <div className="social-result-list">
-            {searchResults.length ? searchResults.map((profile) => (
+            {loading && searchQuery.trim() && !searchResults.length ? <SocialPeopleSkeleton compact /> : searchResults.length ? searchResults.map((profile) => (
               <ProfileRowCard
                 key={profile.id}
                 profile={profile}
@@ -606,7 +613,7 @@ export function FamilyView({
         <section className="setting-panel">
           <h2>Convites recebidos</h2>
           <div className="social-result-list">
-            {pendingReceived.length ? pendingReceived.map((friendship) => (
+            {loading && !socialLoaded ? <SocialPeopleSkeleton compact /> : pendingReceived.length ? pendingReceived.map((friendship) => (
               <div className="social-person-row" key={friendship.id}>
                 <PersonIdentity profile={friendship.profile} />
                 <div className="button-row">
@@ -621,7 +628,7 @@ export function FamilyView({
         <section className="setting-panel">
           <h2>Convites enviados</h2>
           <div className="social-result-list">
-            {pendingSent.length ? pendingSent.map((friendship) => (
+            {loading && !socialLoaded ? <SocialPeopleSkeleton compact /> : pendingSent.length ? pendingSent.map((friendship) => (
               <ProfileRowCard key={friendship.id} profile={friendship.profile} actionLabel="Pendente" disabled />
             )) : <p className="empty">Nenhum convite esperando resposta.</p>}
           </div>
@@ -737,7 +744,7 @@ export function FamilyView({
       {socialTab === "friends" ? (
       <section className="section">
         <h2>Perfis dos amigos</h2>
-        {selectedGroup ? (
+        {loading && !socialLoaded ? <SocialPeopleSkeleton /> : selectedGroup ? (
           <>
             <div className="family-owners">
               {friendGroups.map((group) => (
@@ -957,6 +964,23 @@ export function FamilyView({
         />
       ) : null}
     </main>
+  );
+}
+
+function SocialPeopleSkeleton({ compact = false }: { compact?: boolean }) {
+  return (
+    <div className={`social-skeleton-stack${compact ? " compact" : ""}`} aria-label="Carregando pessoas">
+      {[0, 1, 2].slice(0, compact ? 2 : 3).map((item) => (
+        <div className="social-person-row social-person-skeleton" key={item}>
+          <span className="avatar skeleton-block" />
+          <span>
+            <strong className="skeleton-line skeleton-line-title" />
+            <small className="skeleton-line skeleton-line-short" />
+          </span>
+          {!compact ? <i className="skeleton-pill" /> : null}
+        </div>
+      ))}
+    </div>
   );
 }
 
