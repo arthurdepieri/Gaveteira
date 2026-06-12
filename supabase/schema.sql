@@ -17,6 +17,9 @@ alter table public.profiles add column if not exists invite_code text;
 alter table public.profiles add column if not exists role text not null default 'user';
 
 alter table public.profiles
+alter column family_code set default 'social';
+
+alter table public.profiles
 drop constraint if exists profiles_role_check;
 
 alter table public.profiles
@@ -41,6 +44,9 @@ create table if not exists public.cultural_items (
   updated_at timestamptz not null default now(),
   primary key (id, owner_id)
 );
+
+alter table public.cultural_items
+alter column family_code set default 'social';
 
 create table if not exists public.friend_requests (
   id uuid primary key default gen_random_uuid(),
@@ -154,18 +160,7 @@ alter table public.sync_changes enable row level security;
 alter table public.activity_events enable row level security;
 alter table public.admin_audit_logs enable row level security;
 
-create or replace function public.current_family_code()
-returns text
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select family_code
-  from public.profiles
-  where id = auth.uid()
-  limit 1
-$$;
+drop function if exists public.current_family_code();
 
 create or replace function public.is_admin()
 returns boolean
@@ -173,6 +168,7 @@ language sql
 stable
 security definer
 set search_path = public
+set row_security = off
 as $$
   select exists (
     select 1
@@ -188,6 +184,7 @@ language sql
 stable
 security definer
 set search_path = public
+set row_security = off
 as $$
   select left_user_id is not null
     and right_user_id is not null
@@ -239,6 +236,7 @@ language sql
 stable
 security definer
 set search_path = public
+set row_security = off
 as $$
   select
     ci.id,
@@ -285,6 +283,7 @@ language sql
 stable
 security definer
 set search_path = public
+set row_security = off
 as $$
   select
     ci.id,
@@ -321,6 +320,7 @@ language sql
 stable
 security definer
 set search_path = public
+set row_security = off
 as $$
   select
     cr.id as recommendation_id,
@@ -365,6 +365,7 @@ language sql
 stable
 security definer
 set search_path = public
+set row_security = off
 as $$
   select
     p.id as profile_id,
@@ -451,6 +452,7 @@ returns table (
 language plpgsql
 security definer
 set search_path = public
+set row_security = off
 as $$
 declare
   current_user_id uuid := auth.uid();
@@ -458,7 +460,6 @@ declare
   normalized_client_change_id text := coalesce(nullif(requested_client_change_id, ''), normalized_operation || ':' || requested_item_id);
   normalized_item_id text := coalesce(nullif(requested_item_id, ''), requested_payload->>'id');
   applied_at timestamptz := now();
-  family text;
   was_created boolean := false;
   event_type text;
 begin
@@ -529,14 +530,6 @@ begin
     raise exception 'Payload da ficha inválido.';
   end if;
 
-  select family_code
-  into family
-  from public.profiles
-  where id = current_user_id
-  limit 1;
-
-  family := coalesce(family, 'social');
-
   select not exists (
     select 1
     from public.cultural_items
@@ -548,7 +541,7 @@ begin
   values (
     normalized_item_id,
     current_user_id,
-    family,
+    'social',
     requested_payload,
     coalesce(requested_local_updated_at, applied_at)
   )
@@ -646,6 +639,7 @@ language sql
 stable
 security definer
 set search_path = public
+set row_security = off
 as $$
   select
     ae.id as event_id,
@@ -683,6 +677,7 @@ returns table (
 language plpgsql
 security definer
 set search_path = public
+set row_security = off
 as $$
 declare
   previous_role text;
@@ -743,6 +738,7 @@ language sql
 stable
 security definer
 set search_path = public
+set row_security = off
 as $$
   select
     log.id,
@@ -766,6 +762,7 @@ returns trigger
 language plpgsql
 security definer
 set search_path = public
+set row_security = off
 as $$
 declare
   action_name text;
@@ -979,7 +976,6 @@ grant select, insert, update, delete on public.curated_recommendations to authen
 grant select, insert, update on public.sync_changes to authenticated;
 grant select, insert on public.activity_events to authenticated;
 grant select, insert on public.admin_audit_logs to authenticated;
-grant execute on function public.current_family_code() to authenticated;
 grant execute on function public.is_admin() to authenticated;
 grant execute on function public.are_friends(uuid, uuid) to authenticated;
 grant execute on function public.sanitize_social_item(jsonb) to authenticated;

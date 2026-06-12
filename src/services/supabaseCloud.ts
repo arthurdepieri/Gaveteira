@@ -3,6 +3,7 @@ import { isLegacyDemoItem } from "../utils/legacyDemoItems";
 
 const SESSION_KEY = "gaveteira-cloud-session:v1";
 const TOKEN_REFRESH_MARGIN_MS = 60_000;
+const LEGACY_SOCIAL_CODE = "social";
 const PROFILE_SELECT = "id,display_name,email,username,bio,avatar_url,favorite_categories,invite_code,family_code,role";
 const PROFILE_SELECT_WITHOUT_ROLE = "id,display_name,email,username,bio,avatar_url,favorite_categories,invite_code,family_code";
 const LEGACY_PROFILE_SELECT = "id,display_name,family_code";
@@ -307,11 +308,6 @@ export async function consumeOAuthRedirectSession(settings: AppSettings): Promis
   return { ...session, profile };
 }
 
-export async function changeFamilyCode(settings: AppSettings, session: CloudSession, familyCode: string): Promise<SocialProfile> {
-  const displayName = session.profile?.displayName || session.user.email?.split("@")[0] || "Pessoa da Gaveteira";
-  return upsertProfile(settings, session, { ...session.profile, displayName, familyCode, email: session.user.email });
-}
-
 export async function refreshCloudSession(settings: AppSettings, session: CloudSession): Promise<CloudSession> {
   if (!session.refreshToken) {
     throw new Error("Sua sessão expirou. Entre novamente para renovar o acesso.");
@@ -338,17 +334,15 @@ export async function refreshCloudSession(settings: AppSettings, session: CloudS
 }
 
 export async function syncMyItems(settings: AppSettings, session: CloudSession, items: CulturalItem[]) {
-  const familyCode = session.profile?.familyCode || settings.cloud?.familyCode?.trim() || "social";
   await upsertProfile(settings, session, {
     ...session.profile,
     displayName: session.profile?.displayName || session.user.email?.split("@")[0] || "Pessoa da Gaveteira",
     email: session.user.email,
-    familyCode,
   });
   const rows = items.filter((item) => !isLegacyDemoItem(item.id)).map((item) => ({
     id: item.id,
     owner_id: session.user.id,
-    family_code: familyCode,
+    family_code: LEGACY_SOCIAL_CODE,
     item,
     updated_at: item.updatedAt,
   }));
@@ -366,12 +360,10 @@ export async function syncMyItems(settings: AppSettings, session: CloudSession, 
 export async function upsertMyItem(settings: AppSettings, session: CloudSession, item: CulturalItem, clientChangeId?: string) {
   if (isLegacyDemoItem(item.id)) return;
 
-  const familyCode = session.profile?.familyCode || settings.cloud?.familyCode?.trim() || "social";
   await upsertProfile(settings, session, {
     ...session.profile,
     displayName: session.profile?.displayName || session.user.email?.split("@")[0] || "Pessoa da Gaveteira",
     email: session.user.email,
-    familyCode,
   });
 
   try {
@@ -393,7 +385,7 @@ export async function upsertMyItem(settings: AppSettings, session: CloudSession,
     body: JSON.stringify({
       id: item.id,
       owner_id: session.user.id,
-      family_code: familyCode,
+      family_code: LEGACY_SOCIAL_CODE,
       item,
       updated_at: item.updatedAt,
     }),
@@ -908,7 +900,6 @@ async function getOrCreateProfile(settings: AppSettings, session: CloudSession):
   return upsertProfile(settings, session, {
     displayName: session.user.email?.split("@")[0] || "Pessoa da Gaveteira",
     email: session.user.email,
-    familyCode: settings.cloud?.familyCode?.trim() || "social",
   });
 }
 
@@ -930,7 +921,7 @@ async function upsertProfile(settings: AppSettings, session: CloudSession, profi
     id: session.user.id,
     display_name: profile.displayName,
     email: profile.email || session.user.email || null,
-    family_code: profile.familyCode || settings.cloud?.familyCode?.trim() || "social",
+    family_code: LEGACY_SOCIAL_CODE,
   };
 
   if ("username" in profile) row.username = cleanUsername(profile.username);
@@ -1094,9 +1085,8 @@ function normalizeSupabaseUrl(value?: string) {
   return url.origin;
 }
 
-function requireFamilyCode(settings: AppSettings) {
-  const familyCode = settings.cloud?.familyCode?.trim() || "social";
-  return familyCode;
+function requireFamilyCode(_settings: AppSettings) {
+  return LEGACY_SOCIAL_CODE;
 }
 
 function postgrestStringList(values: string[]) {

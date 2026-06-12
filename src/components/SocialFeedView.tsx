@@ -164,7 +164,7 @@ export function SocialFeedView({
         id: item.id,
         ownerId: session.user.id,
         ownerName: session.profile?.displayName || session.user.email || "Você",
-        familyCode: session.profile?.familyCode || settings.cloud?.familyCode?.trim() || "social",
+        familyCode: "social",
         item,
         updatedAt: item.updatedAt,
       }, ...current]);

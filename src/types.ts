@@ -143,7 +143,6 @@ export interface AppSettings {
 export interface CloudSettings {
   supabaseUrl?: string;
   supabaseAnonKey?: string;
-  familyCode?: string;
 }
 
 export interface SocialProfile {
