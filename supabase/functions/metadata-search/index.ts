@@ -27,6 +27,10 @@ Deno.serve(async (request) => {
     return json({ error: "Metodo nao permitido." }, 405);
   }
 
+  if (!request.headers.get("Authorization")?.startsWith("Bearer ")) {
+    return json({ error: "Sessão obrigatória para busca segura." }, 401);
+  }
+
   try {
     const { category, query } = await request.json() as { category?: Category; query?: string };
     const normalizedQuery = query?.trim();
@@ -97,27 +101,54 @@ async function searchGames(query: string) {
 
   const steamUrl = new URL(`https://steamcommunity.com/actions/SearchApps/${encodeURIComponent(query)}`);
   const steam = await fetchJson(steamUrl).catch(() => []);
-  results.push(...arrayOfRecords(steam).slice(0, 8).map((game) => {
+  const steamResults = await Promise.all(arrayOfRecords(steam).slice(0, 8).map(async (game) => {
     const appId = stringValue(game.appid);
     const name = stringValue(game.name);
     const logo = stringValue(game.logo);
+    const details = recordValue(await fetchSteamGameDetails(appId).catch(() => ({})));
+    const releaseDate = stringValue(recordValue(details.release_date).date);
+    const developers = arrayOfStrings(details.developers).join(", ");
+    const publishers = arrayOfStrings(details.publishers).join(", ");
+    const genres = arrayOfRecords(details.genres).map((genre) => stringValue(genre.description)).filter(Boolean).join(", ");
+    const coverUrl = stringValue(details.header_image) || steamHeaderImage(appId) || logo;
 
     return {
       id: `steam-${appId}`,
       provider: "Steam",
       title: name,
-      subtitle: appId ? `App ${appId}` : undefined,
-      coverUrl: logo,
+      subtitle: [yearFromLooseDate(releaseDate), appId ? `App ${appId}` : undefined].filter(Boolean).join(" / "),
+      year: yearFromLooseDate(releaseDate),
+      coverUrl,
       patch: cleanPatch({
         category: "games",
         name,
-        coverUrl: logo,
+        releaseYear: yearFromLooseDate(releaseDate),
+        genre: genres,
+        developer: developers,
+        publisher: publishers,
+        coverUrl,
       }),
       links: appId ? [link("Steam", `https://store.steampowered.com/app/${appId}`)] : [],
     };
   }));
+  results.push(...steamResults);
 
   return results;
+}
+
+async function fetchSteamGameDetails(appId: string): Promise<Record<string, unknown>> {
+  if (!appId) return {};
+
+  const detailsUrl = new URL("https://store.steampowered.com/api/appdetails");
+  detailsUrl.searchParams.set("appids", appId);
+  detailsUrl.searchParams.set("filters", "basic");
+
+  const json = await fetchJson(detailsUrl);
+  return recordValue(recordValue(recordValue(json)[appId]).data);
+}
+
+function steamHeaderImage(appId: string) {
+  return appId ? `https://cdn.akamai.steamstatic.com/steam/apps/${appId}/header.jpg` : "";
 }
 
 async function searchBooks(query: string) {
@@ -265,6 +296,39 @@ async function searchMovies(query: string) {
     }));
   }
 
+  const itunesUrl = new URL("https://itunes.apple.com/search");
+  itunesUrl.searchParams.set("term", query);
+  itunesUrl.searchParams.set("media", "movie");
+  itunesUrl.searchParams.set("entity", "movie");
+  itunesUrl.searchParams.set("limit", "6");
+  itunesUrl.searchParams.set("country", "BR");
+
+  const itunes = await fetchJson(itunesUrl).catch(() => ({}));
+  results.push(...arrayOfRecords(recordValue(itunes).results).map((movie) => {
+    const title = stringValue(movie.trackName);
+    const releaseDate = stringValue(movie.releaseDate);
+    const poster = upscaleAppleArtwork(stringValue(movie.artworkUrl100));
+    const url = stringValue(movie.trackViewUrl);
+
+    return {
+      id: `itunes-movie-${stringValue(movie.trackId) || title}`,
+      provider: "iTunes",
+      title,
+      subtitle: [releaseDate?.slice(0, 4), stringValue(movie.primaryGenreName)].filter(Boolean).join(" / "),
+      year: yearFromDate(releaseDate),
+      coverUrl: poster,
+      patch: cleanPatch({
+        category: "movies",
+        title,
+        year: yearFromDate(releaseDate),
+        genre: stringValue(movie.primaryGenreName),
+        runtimeMinutes: minutesFromMillis(numberValue(movie.trackTimeMillis)),
+        coverUrl: poster,
+      }),
+      links: url ? [link("iTunes", url)] : [],
+    };
+  }));
+
   return results;
 }
 
@@ -323,7 +387,7 @@ async function searchAlbums(query: string) {
       const title = stringValue(album.name);
       const artist = stringValue(album.artist);
       const images = arrayOfRecords(album.image);
-      const coverUrl = stringValue(images.reverse().find((image) => stringValue(image["#text"]))?.["#text"]);
+      const coverUrl = normalizeCoverUrl(stringValue(images.reverse().find((image) => stringValue(image["#text"]))?.["#text"]));
       const url = stringValue(album.url);
 
       return {
@@ -343,7 +407,84 @@ async function searchAlbums(query: string) {
     }));
   }
 
+  results.push(...await searchAppleMusicAlbums(query));
+  results.push(...await searchMusicBrainzAlbums(query));
+
   return results;
+}
+
+async function searchMusicBrainzAlbums(query: string): Promise<MetadataResult[]> {
+  const url = new URL("https://musicbrainz.org/ws/2/release-group/");
+  url.searchParams.set("query", query);
+  url.searchParams.set("fmt", "json");
+  url.searchParams.set("limit", "8");
+
+  const musicbrainz = await fetchJson(url).catch(() => ({}));
+  return arrayOfRecords(recordValue(musicbrainz)["release-groups"]).map((album) => {
+    const id = stringValue(album.id);
+    const title = stringValue(album.title);
+    const artists = arrayOfRecords(album["artist-credit"])
+      .map((artistCredit) => stringValue(recordValue(artistCredit.artist).name))
+      .filter(Boolean)
+      .join(", ");
+    const tags = arrayOfRecords(album.tags).map((tag) => stringValue(tag.name)).filter(Boolean).slice(0, 5).join(", ");
+    const firstRelease = stringValue(album["first-release-date"]);
+    const coverUrl = id ? `https://coverartarchive.org/release-group/${id}/front-500` : "";
+
+    return {
+      id: `musicbrainz-${id || title}`,
+      provider: "MusicBrainz",
+      title,
+      subtitle: [artists, firstRelease?.slice(0, 4), tags].filter(Boolean).join(" / "),
+      year: yearFromDate(firstRelease),
+      coverUrl,
+      patch: cleanPatch({
+        category: "albums",
+        name: title,
+        artist: artists,
+        releaseYear: yearFromDate(firstRelease),
+        genre: tags,
+        coverUrl,
+      }),
+      links: id ? [link("MusicBrainz", `https://musicbrainz.org/release-group/${id}`)] : [],
+    };
+  });
+}
+
+async function searchAppleMusicAlbums(query: string): Promise<MetadataResult[]> {
+  const url = new URL("https://itunes.apple.com/search");
+  url.searchParams.set("term", query);
+  url.searchParams.set("media", "music");
+  url.searchParams.set("entity", "album");
+  url.searchParams.set("limit", "8");
+  url.searchParams.set("country", "BR");
+
+  const apple = await fetchJson(url).catch(() => ({}));
+  return arrayOfRecords(recordValue(apple).results).map((album) => {
+    const title = stringValue(album.collectionName);
+    const artist = stringValue(album.artistName);
+    const releaseDate = stringValue(album.releaseDate);
+    const coverUrl = upscaleAppleArtwork(stringValue(album.artworkUrl100));
+    const url = stringValue(album.collectionViewUrl);
+
+    return {
+      id: `apple-music-album-${stringValue(album.collectionId) || artist + title}`,
+      provider: "Apple Music",
+      title,
+      subtitle: [artist, releaseDate?.slice(0, 4), stringValue(album.primaryGenreName)].filter(Boolean).join(" / "),
+      year: yearFromDate(releaseDate),
+      coverUrl,
+      patch: cleanPatch({
+        category: "albums",
+        name: title,
+        artist,
+        releaseYear: yearFromDate(releaseDate),
+        genre: stringValue(album.primaryGenreName),
+        coverUrl,
+      }),
+      links: url ? [link("Apple Music", url)] : [],
+    };
+  });
 }
 
 async function searchSeries(query: string) {
@@ -357,6 +498,38 @@ async function searchSeries(query: string) {
     ]));
     results.push(...tmdbResults.flat());
   }
+
+  const tvMazeUrl = new URL("https://api.tvmaze.com/search/shows");
+  tvMazeUrl.searchParams.set("q", query);
+
+  const tvmaze = await fetchJson(tvMazeUrl).catch(() => []);
+  results.push(...arrayOfRecords(tvmaze).slice(0, 6).map((entry) => {
+    const show = recordValue(entry.show);
+    const title = stringValue(show.name);
+    const premiered = stringValue(show.premiered);
+    const image = recordValue(show.image);
+    const coverUrl = normalizeCoverUrl(stringValue(image.original) || stringValue(image.medium));
+    const genres = arrayOfStrings(show.genres).join(", ");
+    const url = stringValue(show.url);
+
+    return {
+      id: `tvmaze-${stringValue(show.id) || title}`,
+      provider: "TVMaze",
+      title,
+      subtitle: [premiered?.slice(0, 4), genres].filter(Boolean).join(" / "),
+      year: yearFromDate(premiered),
+      coverUrl,
+      patch: cleanPatch({
+        category: "series",
+        title,
+        year: yearFromDate(premiered),
+        genre: genres,
+        coverUrl,
+        comments: stripHtml(stringValue(show.summary)),
+      }),
+      links: url ? [link("TVMaze", url)] : [],
+    };
+  }));
 
   return results;
 }
@@ -433,6 +606,15 @@ function yearFromDate(value: string) {
   return Number.isFinite(year) && year > 0 ? year : undefined;
 }
 
+function yearFromLooseDate(value: string) {
+  const match = value.match(/\b(19|20)\d{2}\b/);
+  return match ? Number(match[0]) : yearFromDate(value);
+}
+
+function minutesFromMillis(value?: number) {
+  return value ? Math.round(value / 60000) : undefined;
+}
+
 function normalizePosterUrl(url: string) {
   if (!url || url === "N/A") return "";
   return url.replace("http://", "https://");
@@ -487,6 +669,14 @@ function upgradeGoogleBookCover(url: string) {
   return normalizeCoverUrl(url)
     .replace("zoom=1", "zoom=3")
     .replace("zoom=2", "zoom=3");
+}
+
+function upscaleAppleArtwork(url: string) {
+  return normalizeCoverUrl(url).replace(/\/\d+x\d+bb\./, "/600x600bb.");
+}
+
+function stripHtml(value: string) {
+  return value.replace(/<[^>]+>/g, "").trim();
 }
 
 function tmdbImageUrl(path: string, size: "w500" | "w780") {

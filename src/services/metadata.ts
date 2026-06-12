@@ -11,19 +11,21 @@ export interface MetadataProvider {
 }
 
 export function getMetadataProviders(settings: AppSettings): MetadataProvider[] {
+  const cloudSearchConfigured = Boolean(settings.cloud?.supabaseUrl && settings.cloud?.supabaseAnonKey);
+
   return [
-    { id: "igdb", name: "IGDB", category: "games", requiresKey: true, configured: Boolean(settings.apiKeys.igdb) },
+    { id: "igdb", name: "IGDB", category: "games", requiresKey: true, configured: Boolean(settings.apiKeys.igdb) || cloudSearchConfigured },
     { id: "steam", name: "Steam", category: "games", requiresKey: false, configured: true },
-    { id: "rawg", name: "RAWG", category: "games", requiresKey: true, configured: Boolean(settings.apiKeys.rawg) },
+    { id: "rawg", name: "RAWG", category: "games", requiresKey: true, configured: Boolean(settings.apiKeys.rawg) || cloudSearchConfigured },
     { id: "hltb", name: "HowLongToBeat", category: "games", requiresKey: false, configured: true },
     { id: "googleBooks", name: "Google Books", category: "books", requiresKey: false, configured: true },
     { id: "openLibrary", name: "Open Library", category: "books", requiresKey: false, configured: true },
-    { id: "spotify", name: "Spotify", category: "albums", requiresKey: true, configured: Boolean(settings.apiKeys.spotify) },
+    { id: "spotify", name: "Spotify", category: "albums", requiresKey: true, configured: Boolean(settings.apiKeys.spotify) || cloudSearchConfigured },
     { id: "musicbrainz", name: "MusicBrainz", category: "albums", requiresKey: false, configured: true },
-    { id: "lastfm", name: "Last.fm", category: "albums", requiresKey: true, configured: Boolean(settings.apiKeys.lastfm) },
-    { id: "tmdb", name: "TMDB", category: "movies", requiresKey: true, configured: Boolean(settings.apiKeys.tmdb) },
-    { id: "tmdb-series", name: "TMDB", category: "series", requiresKey: true, configured: Boolean(settings.apiKeys.tmdb) },
-    { id: "omdb", name: "OMDb", category: "movies", requiresKey: true, configured: Boolean(settings.apiKeys.omdb) },
+    { id: "lastfm", name: "Last.fm", category: "albums", requiresKey: true, configured: Boolean(settings.apiKeys.lastfm) || cloudSearchConfigured },
+    { id: "tmdb", name: "TMDB", category: "movies", requiresKey: true, configured: Boolean(settings.apiKeys.tmdb) || cloudSearchConfigured },
+    { id: "tmdb-series", name: "TMDB", category: "series", requiresKey: true, configured: Boolean(settings.apiKeys.tmdb) || cloudSearchConfigured },
+    { id: "omdb", name: "OMDb", category: "movies", requiresKey: true, configured: Boolean(settings.apiKeys.omdb) || cloudSearchConfigured },
   ];
 }
 
@@ -53,6 +55,10 @@ export async function searchMetadata(item: CulturalItem, settings: AppSettings, 
   if (!normalizedQuery) return [];
 
   const cloudResults = await searchCloudMetadata(item.category, normalizedQuery, settings, session);
+  if (cloudResults.length) {
+    return rankedResults(normalizedQuery, cloudResults, 12);
+  }
+
   const searches: Record<Category, () => Promise<MetadataResult[]>> = {
     games: () => searchGames(normalizedQuery, settings),
     books: () => searchBooks(normalizedQuery),
@@ -62,7 +68,7 @@ export async function searchMetadata(item: CulturalItem, settings: AppSettings, 
   };
 
   const localResults = await searches[item.category]();
-  return rankedResults(normalizedQuery, [...cloudResults, ...localResults], 12);
+  return rankedResults(normalizedQuery, localResults, 12);
 }
 
 async function searchCloudMetadata(category: Category, query: string, settings: AppSettings, session?: CloudSession): Promise<MetadataResult[]> {

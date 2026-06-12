@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { AppSettings, Category, CloudSession, CulturalItem, DiaryEntry, ExternalLink, Rating, SocialVisibility, TimelineEvent } from "../types";
 import { categoryLabels } from "../data/catalog";
 import { getProviderHint, MetadataResult, searchMetadata } from "../services/metadata";
+import { uploadStoredImage } from "../services/storage";
 import { getTitle, uid } from "../utils/itemHelpers";
 import { RatingInput } from "./Rating";
 import { TagInput } from "./TagInput";
@@ -112,6 +113,12 @@ export function ItemForm({
               </Field>
               <Field label="Capa ou poster">
                 <input value={item.coverUrl ?? ""} onChange={(event) => update({ coverUrl: event.target.value })} placeholder="URL da imagem" />
+                <CoverUploadInput
+                  item={item}
+                  settings={settings}
+                  cloudSession={cloudSession}
+                  onUploaded={(coverUrl) => update({ coverUrl })}
+                />
               </Field>
               <Field label="Tags">
                 <TagInput value={item.tags} onChange={(tags) => update({ tags })} />
@@ -190,6 +197,7 @@ function MetadataLookup({
   const [mode, setMode] = useState<"data" | "cover">("data");
   const [error, setError] = useState("");
   const configuredKeys = Object.values(settings.apiKeys).filter(Boolean).length;
+  const cloudMetadataActive = Boolean(settings.cloud?.supabaseUrl && settings.cloud?.supabaseAnonKey && cloudSession?.accessToken);
 
   async function runSearch(nextMode: "data" | "cover") {
     setLoading(true);
@@ -218,7 +226,7 @@ function MetadataLookup({
       <div className="metadata-header">
         <div>
           <strong>Completar automaticamente</strong>
-          <span>{getProviderHint(item.category)}. Chaves configuradas: {configuredKeys}. Cadastro manual segue livre.</span>
+          <span>{getProviderHint(item.category)}. {cloudMetadataActive ? "Busca segura pela nuvem ativa." : `Chaves configuradas: ${configuredKeys}.`} Cadastro manual segue livre.</span>
         </div>
       </div>
       <div className="metadata-search">
@@ -275,6 +283,46 @@ function updateMetadataResult(item: CulturalItem, result: MetadataResult, update
     ...result.patch,
     links: mergeLinks(item.links, result.links ?? []),
   });
+}
+
+function CoverUploadInput({
+  item,
+  settings,
+  cloudSession,
+  onUploaded,
+}: {
+  item: CulturalItem;
+  settings: AppSettings;
+  cloudSession?: CloudSession;
+  onUploaded: (coverUrl: string) => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [message, setMessage] = useState("");
+
+  async function uploadCover(file?: File) {
+    if (!file) return;
+
+    setUploading(true);
+    setMessage("");
+
+    try {
+      const coverUrl = await uploadStoredImage(settings, cloudSession, file, "covers", item.id);
+      onUploaded(coverUrl);
+      setMessage(cloudSession ? "Capa enviada para o Storage." : "Capa carregada neste navegador.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Não consegui enviar essa capa.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <label className="local-image-upload">
+      <span>{uploading ? "Enviando capa..." : "Enviar imagem local"}</span>
+      <input type="file" accept="image/*" disabled={uploading} onChange={(event) => uploadCover(event.target.files?.[0])} />
+      {message ? <small>{message}</small> : <small>Usa Supabase Storage quando sua conta está conectada.</small>}
+    </label>
+  );
 }
 
 function mergeLinks(existing: ExternalLink[], incoming: ExternalLink[]) {

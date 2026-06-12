@@ -3423,7 +3423,7 @@ button.danger {
 
 .admin-user-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
   align-items: center;
   gap: 10px;
   padding: 10px;
@@ -3441,6 +3441,43 @@ button.danger {
   color: #5a4028;
   font-size: 0.78rem;
   font-weight: 900;
+}
+
+.admin-user-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.admin-log-list {
+  display: grid;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line);
+}
+
+.admin-log-list h3 {
+  margin: 0;
+  color: var(--wood-dark);
+}
+
+.admin-log-row {
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  background: #fffdf8;
+  border-radius: 8px;
+}
+
+.admin-log-row strong {
+  color: var(--ink);
+}
+
+.admin-log-row span,
+.admin-log-row small {
+  color: var(--muted);
+  font-weight: 800;
 }
 
 .admin-curation {
@@ -3912,6 +3949,37 @@ button.danger {
   color: var(--muted);
   font-size: 0.78rem;
   font-weight: 800;
+}
+
+.local-image-upload {
+  display: grid;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+  padding: 0.75rem;
+  border: 1px dashed color-mix(in srgb, var(--accent) 42%, var(--line));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--paper) 86%, var(--accent-soft));
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.local-image-upload span {
+  font-weight: 850;
+}
+
+.local-image-upload input[type="file"] {
+  width: 100%;
+  color: var(--muted);
+}
+
+.local-image-upload small {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.cover-local-upload {
+  margin-top: 0.8rem;
 }
 
 .large-avatar {
@@ -5899,6 +5967,11 @@ button.danger {
     justify-self: start;
   }
 
+  .admin-user-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
   .modal-backdrop {
     padding: 0;
     align-items: end;
@@ -6769,6 +6842,7 @@ button.danger {
 :root[data-theme="dark"] .social-mobile-switch,
 :root[data-theme="dark"] .mobile-drawer-list button,
 :root[data-theme="dark"] .admin-user-row,
+:root[data-theme="dark"] .admin-log-row,
 :root[data-theme="dark"] .admin-user-row > span,
 :root[data-theme="dark"] .admin-user-row > small {
   color: var(--ink);

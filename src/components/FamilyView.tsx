@@ -1,8 +1,9 @@
 import { Award, CalendarDays, Cloud, Edit3, Heart, LogOut, RefreshCw, Search, ShieldCheck, Sparkles, Trash2, UploadCloud, UserCheck, UserPlus, Users, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AdminOverview, AppSettings, Category, CloudSession, CulturalItem, CuratedRecommendation, FamilyItem, Friendship, SocialProfile } from "../types";
+import { AdminAuditLog, AdminOverview, AppSettings, Category, CloudSession, CulturalItem, CuratedRecommendation, FamilyItem, Friendship, SocialProfile } from "../types";
 import { categoryLabels } from "../data/catalog";
-import { deleteCuratedRecommendation, deleteFriendship, fetchAdminCuratableItems, fetchAdminOverview, fetchCuratedRecommendations, fetchFriendships, fetchMyItems, fetchMyProfile, fetchSocialItems, respondFriendRequest, searchProfiles, sendFriendRequest, syncMyItems, updateMyProfile, upsertCuratedRecommendation } from "../services/supabaseCloud";
+import { deleteCuratedRecommendation, deleteFriendship, fetchAdminCuratableItems, fetchAdminLogs, fetchAdminOverview, fetchCuratedRecommendations, fetchFriendships, fetchMyItems, fetchMyProfile, fetchSocialItems, respondFriendRequest, searchProfiles, sendFriendRequest, setProfileRole, syncMyItems, updateMyProfile, upsertCuratedRecommendation } from "../services/supabaseCloud";
+import { uploadStoredImage } from "../services/storage";
 import { getGenres, getRating, getTitle, getYear, isCompleted, isInProgress, isWishlist } from "../utils/itemHelpers";
 import { Cover } from "./Cover";
 import { Stars } from "./Rating";
@@ -60,6 +61,8 @@ export function FamilyView({
   const [curationNotes, setCurationNotes] = useState<Record<string, string>>({});
   const [curationSearch, setCurationSearch] = useState("");
   const [curationBusyId, setCurationBusyId] = useState("");
+  const [adminLogs, setAdminLogs] = useState<AdminAuditLog[]>([]);
+  const [adminRoleBusyId, setAdminRoleBusyId] = useState("");
 
   const acceptedFriends = friendships.filter((friendship) => friendship.status === "accepted");
   const pendingReceived = friendships.filter((friendship) => friendship.status === "pending" && friendship.direction === "received");
@@ -170,6 +173,7 @@ export function FamilyView({
     setLoading(true);
     setMessage("");
 
+    setLoading(true);
     try {
       await syncMyItems(settings, session, localItems);
       setMessage("Sua gaveteira foi enviada para a nuvem.");
@@ -240,14 +244,16 @@ export function FamilyView({
     setLoading(true);
     setAdminError("");
     try {
-      const [overview, items, recommendations] = await Promise.all([
+      const [overview, items, recommendations, logs] = await Promise.all([
         fetchAdminOverview(settings, session),
         fetchAdminCuratableItems(settings, session),
         fetchCuratedRecommendations(settings, session),
+        fetchAdminLogs(settings, session),
       ]);
       setAdminOverview(overview);
       setAdminItems(items);
       setCuratedRecommendations(recommendations);
+      setAdminLogs(logs);
       setCurationNotes((current) => {
         const next = { ...current };
         recommendations.forEach((recommendation) => {
@@ -259,6 +265,39 @@ export function FamilyView({
       setAdminError(error instanceof Error ? error.message : "Não consegui abrir o painel administrativo.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function changeProfileRole(profile: SocialProfile, role: "user" | "admin") {
+    if (!session || !isAdmin) return;
+
+    if (profile.id === session.user.id && role !== "admin") {
+      setAdminError("Você não pode remover seu próprio papel de administrador.");
+      return;
+    }
+
+    const nextLabel = role === "admin" ? "promover para admin" : "remover admin";
+    const confirmed = window.confirm(`Deseja ${nextLabel} de ${profile.displayName}?`);
+    if (!confirmed) return;
+
+    setAdminRoleBusyId(profile.id);
+    setAdminError("");
+    setMessage("");
+
+    try {
+      await setProfileRole(settings, session, profile.id, role);
+      setAdminOverview((current) => current ? {
+        ...current,
+        profiles: current.profiles.map((entry) => entry.profile.id === profile.id
+          ? { ...entry, profile: { ...entry.profile, role } }
+          : entry),
+      } : current);
+      setMessage(role === "admin" ? `${profile.displayName} agora é admin.` : `${profile.displayName} voltou a ser usuário.`);
+      await refreshAdmin();
+    } catch (error) {
+      setAdminError(error instanceof Error ? error.message : "Não consegui alterar o papel desse perfil.");
+    } finally {
+      setAdminRoleBusyId("");
     }
   }
 
@@ -330,12 +369,15 @@ export function FamilyView({
     if (!file) return;
 
     setMessage("");
+    setLoading(true);
     try {
-      const avatarUrl = await fileToAvatarDataUrl(file);
+      const avatarUrl = await uploadStoredImage(settings, session ?? undefined, file, "avatars");
       setProfileDraft((current) => ({ ...current, avatarUrl }));
-      setMessage("Foto carregada. Salve o perfil para sincronizar.");
+      setMessage(session ? "Foto enviada. Salve o perfil para sincronizar." : "Foto carregada neste navegador. Salve o perfil para manter.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Não consegui preparar essa foto para o perfil.");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -665,9 +707,45 @@ export function FamilyView({
                 <PersonIdentity profile={entry.profile} />
                 <span>{entry.itemCount} fichas</span>
                 <small>{entry.profile.role === "admin" ? "admin" : "user"}</small>
+                <div className="admin-user-actions">
+                  {entry.profile.role === "admin" ? (
+                    <button
+                      className="ghost compact"
+                      type="button"
+                      onClick={() => changeProfileRole(entry.profile, "user")}
+                      disabled={loading || adminRoleBusyId === entry.profile.id || entry.profile.id === session?.user.id}
+                    >
+                      Remover admin
+                    </button>
+                  ) : (
+                    <button
+                      className="primary compact"
+                      type="button"
+                      onClick={() => changeProfileRole(entry.profile, "admin")}
+                      disabled={loading || adminRoleBusyId === entry.profile.id}
+                    >
+                      Promover admin
+                    </button>
+                  )}
+                </div>
               </div>
             )) : (
               <p className="empty">{loading ? "Carregando perfis..." : "Nenhum perfil carregado ainda."}</p>
+            )}
+          </div>
+          <div className="admin-log-list">
+            <h3>Logs administrativos</h3>
+            {adminLogs.length ? adminLogs.slice(0, 8).map((log) => (
+              <article key={log.id} className="admin-log-row">
+                <strong>{adminLogLabel(log.action)}</strong>
+                <span>
+                  {log.actorName}
+                  {log.targetName ? ` → ${log.targetName}` : ""}
+                </span>
+                <small>{formatLogDate(log.createdAt)}</small>
+              </article>
+            )) : (
+              <p className="empty">{loading ? "Carregando logs..." : "Nenhuma ação administrativa registrada ainda."}</p>
             )}
           </div>
           <section className="admin-curation">
@@ -1139,6 +1217,23 @@ function formatDate(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "sem data";
   return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+function formatLogDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "sem data";
+  return date.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+
+function adminLogLabel(action: string) {
+  const labels: Record<string, string> = {
+    promote_admin: "Promoveu administrador",
+    demote_admin: "Removeu administrador",
+    curate_item: "Destacou uma ficha",
+    remove_curation: "Removeu um destaque",
+  };
+
+  return labels[action] || "Ação administrativa";
 }
 
 function profileToDraft(profile?: SocialProfile) {

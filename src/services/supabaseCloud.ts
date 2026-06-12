@@ -1,4 +1,4 @@
-import { AdminOverview, AppSettings, Category, CloudSession, CulturalItem, CuratedRecommendation, FamilyItem, Friendship, FriendshipStatus, SocialProfile } from "../types";
+import { AdminAuditLog, AdminOverview, AppSettings, Category, CloudSession, CulturalItem, CuratedRecommendation, FamilyItem, Friendship, FriendshipStatus, SocialProfile } from "../types";
 import { isLegacyDemoItem } from "../utils/legacyDemoItems";
 
 const SESSION_KEY = "gaveteira-cloud-session:v1";
@@ -42,6 +42,7 @@ interface ProfileRow {
 interface ItemRow {
   id: string;
   owner_id: string;
+  owner_name?: string;
   family_code: string;
   item: CulturalItem;
   updated_at: string;
@@ -64,12 +65,73 @@ interface AdminItemOwnerRow {
   updated_at?: string | null;
 }
 
+interface AdminOverviewRpcRow {
+  profile_id: string;
+  display_name: string;
+  email?: string | null;
+  username?: string | null;
+  bio?: string | null;
+  avatar_url?: string | null;
+  favorite_categories?: Category[] | null;
+  invite_code?: string | null;
+  family_code?: string | null;
+  role?: string | null;
+  item_count?: number | string | null;
+  last_activity?: string | null;
+}
+
+interface AdminAuditLogRow {
+  id: string;
+  actor_id: string;
+  actor_name?: string | null;
+  target_user_id?: string | null;
+  target_name?: string | null;
+  action: string;
+  details?: Record<string, unknown> | null;
+  created_at: string;
+}
+
 interface CuratedRecommendationRow {
   id: string;
   item_id: string;
   owner_id: string;
   curator_id: string;
   note?: string | null;
+  created_at: string;
+}
+
+interface CuratedRecommendationRpcRow extends ItemRow {
+  recommendation_id: string;
+  item_id: string;
+  curator_id: string;
+  curator_name?: string | null;
+  note?: string | null;
+  created_at: string;
+}
+
+export type CloudSocialEventKind = "added" | "updated" | "finished" | "abandoned" | "favorite" | "wishlist" | "diary";
+
+export interface CloudSocialFeedEvent {
+  eventId: string;
+  eventType: CloudSocialEventKind;
+  actorId: string;
+  actorName: string;
+  itemOwnerId: string;
+  itemId: string;
+  item: CulturalItem;
+  diaryId?: string;
+  createdAt: string;
+}
+
+interface SocialFeedRpcRow {
+  event_id: string;
+  event_type: CloudSocialEventKind;
+  actor_id: string;
+  actor_name: string;
+  item_owner_id: string;
+  item_id: string;
+  item: CulturalItem;
+  diary_id?: string | null;
   created_at: string;
 }
 
@@ -301,7 +363,7 @@ export async function syncMyItems(settings: AppSettings, session: CloudSession, 
   });
 }
 
-export async function upsertMyItem(settings: AppSettings, session: CloudSession, item: CulturalItem) {
+export async function upsertMyItem(settings: AppSettings, session: CloudSession, item: CulturalItem, clientChangeId?: string) {
   if (isLegacyDemoItem(item.id)) return;
 
   const familyCode = session.profile?.familyCode || settings.cloud?.familyCode?.trim() || "social";
@@ -311,6 +373,19 @@ export async function upsertMyItem(settings: AppSettings, session: CloudSession,
     email: session.user.email,
     familyCode,
   });
+
+  try {
+    await rpcRequest(settings, session, "apply_item_change", {
+      requested_operation: "upsert",
+      requested_item_id: item.id,
+      requested_payload: item,
+      requested_local_updated_at: item.updatedAt,
+      requested_client_change_id: clientChangeId || `upsert:${item.id}`,
+    });
+    return;
+  } catch (error) {
+    if (!isMissingSyncRpc(error)) throw error;
+  }
 
   await restRequest(settings, session, "/rest/v1/cultural_items?on_conflict=id,owner_id", {
     method: "POST",
@@ -337,7 +412,20 @@ async function deleteMyItemsExcept(settings: AppSettings, session: CloudSession,
   });
 }
 
-export async function deleteMyItem(settings: AppSettings, session: CloudSession, itemId: string) {
+export async function deleteMyItem(settings: AppSettings, session: CloudSession, itemId: string, clientChangeId?: string) {
+  try {
+    await rpcRequest(settings, session, "apply_item_change", {
+      requested_operation: "delete",
+      requested_item_id: itemId,
+      requested_payload: null,
+      requested_local_updated_at: new Date().toISOString(),
+      requested_client_change_id: clientChangeId || `delete:${itemId}`,
+    });
+    return;
+  } catch (error) {
+    if (!isMissingSyncRpc(error)) throw error;
+  }
+
   await restRequest(settings, session, `/rest/v1/cultural_items?id=eq.${encodeURIComponent(itemId)}&owner_id=eq.${encodeURIComponent(session.user.id)}`, {
     method: "DELETE",
   });
@@ -370,6 +458,15 @@ export async function fetchFamilyItems(settings: AppSettings, session: CloudSess
 }
 
 export async function fetchSocialItems(settings: AppSettings, session: CloudSession): Promise<FamilyItem[]> {
+  try {
+    const rows = await rpcRequest<ItemRow[]>(settings, session, "get_social_items");
+    return rows
+      .filter((row) => !isLegacyDemoItem(row.id) && !isLegacyDemoItem(row.item.id))
+      .map((row) => familyItemFromRpcRow(row, session.user.id));
+  } catch (error) {
+    if (!isMissingSocialRpc(error)) throw error;
+  }
+
   const friendships = await fetchFriendships(settings, session);
   const friendIds = friendships
     .filter((friendship) => friendship.status === "accepted")
@@ -391,9 +488,35 @@ export async function fetchSocialItems(settings: AppSettings, session: CloudSess
   }));
 }
 
+export async function fetchSocialFeed(settings: AppSettings, session: CloudSession): Promise<CloudSocialFeedEvent[]> {
+  const rows = await rpcRequest<SocialFeedRpcRow[]>(settings, session, "get_social_feed", { feed_limit: 80 });
+  return rows
+    .filter((row) => !isLegacyDemoItem(row.item_id) && !isLegacyDemoItem(row.item.id))
+    .map((row) => ({
+      eventId: row.event_id,
+      eventType: row.event_type,
+      actorId: row.actor_id,
+      actorName: row.actor_name,
+      itemOwnerId: row.item_owner_id,
+      itemId: row.item_id,
+      item: row.item,
+      diaryId: row.diary_id || undefined,
+      createdAt: row.created_at,
+    }));
+}
+
 export async function fetchAdminCuratableItems(settings: AppSettings, session: CloudSession): Promise<FamilyItem[]> {
   if (session.profile?.role !== "admin") {
     throw new Error("Sua conta nÃ£o tem permissÃµes de administrador.");
+  }
+
+  try {
+    const rows = await rpcRequest<ItemRow[]>(settings, session, "get_admin_curatable_items");
+    return rows
+      .filter((row) => !isLegacyDemoItem(row.id) && !isLegacyDemoItem(row.item.id))
+      .map((row) => familyItemFromRpcRow(row, session.user.id));
+  } catch (error) {
+    if (!isMissingSocialRpc(error)) throw error;
   }
 
   const rows = await restRequest<ItemRow[]>(settings, session, "/rest/v1/cultural_items?select=id,owner_id,family_code,item,updated_at&order=updated_at.desc&limit=120", {
@@ -406,6 +529,24 @@ export async function fetchAdminCuratableItems(settings: AppSettings, session: C
 }
 
 export async function fetchCuratedRecommendations(settings: AppSettings, session: CloudSession): Promise<CuratedRecommendation[]> {
+  try {
+    const rows = await rpcRequest<CuratedRecommendationRpcRow[]>(settings, session, "get_curated_recommendations");
+    return rows
+      .filter((row) => !isLegacyDemoItem(row.id) && !isLegacyDemoItem(row.item.id))
+      .map((row) => ({
+        ...familyItemFromRpcRow(row, session.user.id),
+        recommendationId: row.recommendation_id,
+        itemId: row.item_id,
+        curatorId: row.curator_id,
+        curatorName: row.curator_name || "Curadoria Gaveteira",
+        note: row.note || undefined,
+        createdAt: row.created_at,
+      }));
+  } catch (error) {
+    if (isMissingCurationTable(error)) return [];
+    if (!isMissingSocialRpc(error)) throw error;
+  }
+
   let rows: CuratedRecommendationRow[];
 
   try {
@@ -590,6 +731,34 @@ export async function fetchAdminOverview(settings: AppSettings, session: CloudSe
     throw new Error("Sua conta não tem permissões de administrador.");
   }
 
+  try {
+    const rows = await rpcRequest<AdminOverviewRpcRow[]>(settings, session, "get_admin_overview");
+    const profiles = rows.map((row) => ({
+      profile: profileFromRow({
+        id: row.profile_id,
+        display_name: row.display_name,
+        email: row.email,
+        username: row.username,
+        bio: row.bio,
+        avatar_url: row.avatar_url,
+        favorite_categories: row.favorite_categories,
+        invite_code: row.invite_code,
+        family_code: row.family_code,
+        role: row.role,
+      }),
+      itemCount: Number(row.item_count ?? 0),
+      lastActivity: row.last_activity || undefined,
+    }));
+
+    return {
+      profiles,
+      totalProfiles: profiles.length,
+      totalItems: profiles.reduce((total, row) => total + row.itemCount, 0),
+    };
+  } catch (error) {
+    if (!isMissingSocialRpc(error)) throw error;
+  }
+
   const profileRows = await restRequest<ProfileRow[]>(settings, session, `/rest/v1/profiles?select=${PROFILE_SELECT}&order=display_name.asc`, {
     method: "GET",
   });
@@ -621,6 +790,43 @@ export async function fetchAdminOverview(settings: AppSettings, session: CloudSe
     totalProfiles: profiles.length,
     totalItems: itemRows.length,
   };
+}
+
+export async function setProfileRole(settings: AppSettings, session: CloudSession, profileId: string, role: "user" | "admin"): Promise<SocialProfile> {
+  if (session.profile?.role !== "admin") {
+    throw new Error("Sua conta não tem permissões de administrador.");
+  }
+
+  await rpcRequest(settings, session, "set_profile_role", {
+    target_profile_id: profileId,
+    next_role: role,
+  });
+
+  const profiles = await fetchProfiles(settings, session, [profileId]);
+  return profileFromRow(profiles[profileId] ?? { id: profileId, display_name: "Pessoa da Gaveteira", role });
+}
+
+export async function fetchAdminLogs(settings: AppSettings, session: CloudSession): Promise<AdminAuditLog[]> {
+  if (session.profile?.role !== "admin") {
+    throw new Error("Sua conta não tem permissões de administrador.");
+  }
+
+  try {
+    const rows = await rpcRequest<AdminAuditLogRow[]>(settings, session, "get_admin_logs", { log_limit: 40 });
+    return rows.map((row) => ({
+      id: row.id,
+      actorId: row.actor_id,
+      actorName: row.actor_name || "Admin",
+      targetUserId: row.target_user_id || undefined,
+      targetName: row.target_name || undefined,
+      action: row.action,
+      details: row.details || {},
+      createdAt: row.created_at,
+    }));
+  } catch (error) {
+    if (isMissingSocialRpc(error)) return [];
+    throw error;
+  }
 }
 
 async function fetchProfiles(settings: AppSettings, session: CloudSession, ownerIds: string[]): Promise<Record<string, ProfileRow>> {
@@ -656,11 +862,22 @@ async function fetchItemRowsForRecommendations(settings: AppSettings, session: C
   );
 }
 
+function familyItemFromRpcRow(row: ItemRow, viewerId: string): FamilyItem {
+  return {
+    id: row.id,
+    ownerId: row.owner_id,
+    ownerName: row.owner_name || (row.owner_id === viewerId ? "Você" : "Pessoa da Gaveteira"),
+    familyCode: row.family_code,
+    item: row.item,
+    updatedAt: row.updated_at,
+  };
+}
+
 function familyItemFromRow(row: ItemRow, profiles: Record<string, ProfileRow>, viewerId: string): FamilyItem {
   return {
     id: row.id,
     ownerId: row.owner_id,
-    ownerName: profiles[row.owner_id]?.display_name || (row.owner_id === viewerId ? "VocÃª" : "Pessoa da Gaveteira"),
+    ownerName: profiles[row.owner_id]?.display_name || (row.owner_id === viewerId ? "Você" : "Pessoa da Gaveteira"),
     familyCode: row.family_code,
     item: row.item,
     updatedAt: row.updated_at,
@@ -776,6 +993,13 @@ async function restRequest<T>(settings: AppSettings, session: CloudSession, path
   if (result.response.status === 204) return undefined as T;
   if (!result.response.ok) throw new Error(errorMessage(result.json, "Não consegui sincronizar com a nuvem."));
   return result.json as T;
+}
+
+async function rpcRequest<T>(settings: AppSettings, session: CloudSession, functionName: string, body: Record<string, unknown> = {}): Promise<T> {
+  return restRequest<T>(settings, session, `/rest/v1/rpc/${functionName}`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
 }
 
 async function sendRestRequest(
@@ -981,6 +1205,30 @@ function isMissingCurationTable(error: unknown) {
   return normalized.includes("tabela de curadoria")
     || (normalized.includes("curated_recommendations")
       && (normalized.includes("does not exist") || normalized.includes("schema cache") || normalized.includes("could not find")));
+}
+
+function isMissingSocialRpc(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  const normalized = message.toLowerCase();
+
+  return normalized.includes("schema cache")
+    || normalized.includes("could not find")
+    || normalized.includes("does not exist")
+    || normalized.includes("get_social_items")
+    || normalized.includes("get_admin_curatable_items")
+    || normalized.includes("get_curated_recommendations")
+    || normalized.includes("get_admin_overview")
+    || normalized.includes("get_social_feed");
+}
+
+function isMissingSyncRpc(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  const normalized = message.toLowerCase();
+
+  return normalized.includes("schema cache")
+    || normalized.includes("could not find")
+    || normalized.includes("does not exist")
+    || normalized.includes("apply_item_change");
 }
 
 function errorMessage(value: unknown, fallback: string) {

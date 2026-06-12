@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.6.7-beta - Admin real e backend social - 2026-06-11
+
+Versão beta focada em transformar a base social da Gaveteira em uma estrutura mais confiável para publicação, administração e crescimento futuro.
+
+### Destaques
+
+- Área administrativa com promoção e remoção de admins a partir do próprio app.
+- Logs administrativos simples para ações importantes, como alterar papéis e destacar/remover recomendações de curadoria.
+- Curadoria mais auditável, mantendo autoria das fichas destacadas e registrando ações relevantes.
+- Regras SQL reforçadas para que usuários editem apenas o próprio conteúdo, amigos vejam apenas fichas visíveis e diário privado continue protegido.
+- Feed, social e curadoria preparados para usar funções do Supabase em vez de depender apenas de montagem no navegador.
+- Busca automática movida para Edge Function, deixando chaves de APIs externas fora do frontend.
+- Upload de avatar e capas próprias preparado com Supabase Storage, incluindo fallback local quando a nuvem não estiver disponível.
+- Sync mais sólido com fila/registro de alterações no banco para reduzir duplicatas e acompanhar falhas com mais precisão.
+
+### Observações
+
+- Rode o SQL atualizado em `supabase/schema.sql` no Supabase antes de usar os recursos novos de admin, Storage, feed e sync em produção.
+- Esta versão altera backend, permissões e funções RPC. Depois de publicar, o PWA instalado deve receber o aviso de atualização.
+- O pacote de release desta versão fica em `releases/Gaveteira-0.6.7-beta.zip`.
+
 ## 0.6.6-beta - Polimento visual e estados vivos - 2026-06-11
 
 Versão beta focada em deixar a Gaveteira mais refinada durante carregamentos, sincronização, instalação e uso em modo escuro.

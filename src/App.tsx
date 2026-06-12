@@ -825,11 +825,11 @@ function App() {
 
         try {
           if (entry.action === "delete") {
-            await deleteMyItem(effectiveSettings, cloudSession, entry.itemId);
+            await deleteMyItem(effectiveSettings, cloudSession, entry.itemId, entry.id);
           } else {
             const item = dataRef.current.items.find((candidate) => candidate.id === entry.itemId);
             if (item) {
-              await upsertMyItem(effectiveSettings, cloudSession, item);
+              await upsertMyItem(effectiveSettings, cloudSession, item, entry.id);
             }
           }
 

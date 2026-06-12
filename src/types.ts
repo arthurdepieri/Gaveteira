@@ -213,6 +213,17 @@ export interface AdminOverview {
   totalItems: number;
 }
 
+export interface AdminAuditLog {
+  id: string;
+  actorId: string;
+  actorName: string;
+  targetUserId?: string;
+  targetName?: string;
+  action: string;
+  details?: Record<string, unknown>;
+  createdAt: string;
+}
+
 export interface AppData {
   version: number;
   items: CulturalItem[];

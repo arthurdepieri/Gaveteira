@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { AppSettings, CloudSession, CulturalItem, CuratedRecommendation, FamilyItem, Friendship, SocialProfile } from "../types";
 import { categoryLabels, defaultStatuses } from "../data/catalog";
-import { fetchCuratedRecommendations, fetchFriendships, fetchMyProfile, fetchSocialItems, upsertMyItem } from "../services/supabaseCloud";
+import { CloudSocialFeedEvent, fetchCuratedRecommendations, fetchFriendships, fetchMyProfile, fetchSocialFeed, fetchSocialItems, upsertMyItem } from "../services/supabaseCloud";
 import { getGenres, getRating, getTitle, isCompleted, isInProgress, isWishlist, uid } from "../utils/itemHelpers";
 import { AuthGate } from "./AuthGate";
 import { Cover } from "./Cover";
@@ -35,6 +35,7 @@ export function SocialFeedView({
   onUpdateSettings: (settings: AppSettings) => void;
 }) {
   const [socialItems, setSocialItems] = useState<FamilyItem[]>([]);
+  const [cloudFeedEvents, setCloudFeedEvents] = useState<FeedEvent[]>([]);
   const [curatedRecommendations, setCuratedRecommendations] = useState<CuratedRecommendation[]>([]);
   const [friendships, setFriendships] = useState<Friendship[]>([]);
   const [savingEventId, setSavingEventId] = useState("");
@@ -81,11 +82,15 @@ export function SocialFeedView({
   }, [acceptedFriends, session, socialItems]);
 
   const socialFeed = useMemo(() => {
+    if (cloudFeedEvents.length) return cloudFeedEvents;
     const viewerId = session?.user.id ?? "";
     return buildSocialFeed(socialItems, viewerId)
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-  }, [session?.user.id, socialItems]);
-  const diaryFeed = useMemo(() => buildDiaryFeed(socialItems, session?.user.id ?? "").slice(0, 8), [session?.user.id, socialItems]);
+  }, [cloudFeedEvents, session?.user.id, socialItems]);
+  const diaryFeed = useMemo(() => {
+    const backendDiary = cloudFeedEvents.filter((event) => event.kind === "diary").slice(0, 8);
+    return backendDiary.length ? backendDiary : buildDiaryFeed(socialItems, session?.user.id ?? "").slice(0, 8);
+  }, [cloudFeedEvents, session?.user.id, socialItems]);
   const friendFeed = socialFeed.filter((event) => event.entry.ownerId !== session?.user.id);
   const myFeed = socialFeed.filter((event) => event.entry.ownerId === session?.user.id);
   const visibleFeed = (feedScope === "friends" ? friendFeed : myFeed).slice(0, 12);
@@ -125,8 +130,10 @@ export function SocialFeedView({
         fetchCuratedRecommendations(settings, session),
         fetchMyProfile(settings, session),
       ]);
+      const backendFeed = await fetchSocialFeed(settings, session).catch(() => []);
       setFriendships(nextFriendships);
       setSocialItems(nextItems);
+      setCloudFeedEvents(backendFeed.map((event) => cloudFeedEventToFeedEvent(event, session.user.id)));
       setCuratedRecommendations(recommendations);
       if (JSON.stringify(freshProfile) !== JSON.stringify(session.profile)) {
         onAuthenticated({ ...session, profile: freshProfile });
@@ -446,6 +453,41 @@ function buildSocialFeed(entries: FamilyItem[], viewerId: string): FeedEvent[] {
 
       return { id: `feed-${entry.ownerId}-${entry.id}-added`, kind: "added" as FeedKind, entry, text: `${actor} adicionou ${title}.`, detail: detailParts.join(" / "), updatedAt: entry.updatedAt };
     });
+}
+
+function cloudFeedEventToFeedEvent(event: CloudSocialFeedEvent, viewerId: string): FeedEvent {
+  const entry: FamilyItem = {
+    id: event.itemId,
+    ownerId: event.itemOwnerId,
+    ownerName: event.actorId === viewerId ? "Você" : event.actorName,
+    familyCode: "social",
+    item: event.item,
+    updatedAt: event.createdAt,
+  };
+  const actor = event.actorId === viewerId ? "Você" : event.actorName;
+  const title = getTitle(event.item) || "uma ficha";
+  const rating = getRating(event.item);
+  const detailParts = [categoryLabels[event.item.category], event.item.status, rating ? `${rating} estrelas` : "", formatDate(event.createdAt)].filter(Boolean);
+
+  return {
+    id: `cloud-feed-${event.eventId}`,
+    kind: event.eventType === "updated" ? "added" : event.eventType,
+    entry,
+    text: cloudFeedText(event.eventType, actor, title, rating),
+    detail: event.eventType === "diary" ? "Entrada pública de diário" : detailParts.join(" / "),
+    updatedAt: event.createdAt,
+    diaryId: event.diaryId,
+  };
+}
+
+function cloudFeedText(kind: CloudSocialFeedEvent["eventType"], actor: string, title: string, rating: number) {
+  if (kind === "abandoned") return `${actor} abandonou ${title}.`;
+  if (kind === "finished") return `${actor} terminou ${title}${rating ? ` e deu ${rating} estrelas` : ""}.`;
+  if (kind === "favorite") return `${actor} colocou ${title} entre os favoritos.`;
+  if (kind === "wishlist") return `${actor} quer consumir ${title}.`;
+  if (kind === "diary") return `${actor} escreveu no diário de ${title}.`;
+  if (kind === "updated") return `${actor} atualizou ${title}.`;
+  return `${actor} adicionou ${title}.`;
 }
 
 function buildDiaryFeed(entries: FamilyItem[], viewerId: string): FeedEvent[] {

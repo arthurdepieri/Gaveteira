@@ -5,6 +5,7 @@ import { AppSettings, CloudSession, CulturalItem, DiaryEntry, Rating, SocialVisi
 import { categoryLabels } from "../data/catalog";
 import { getItemVisibility, getItemVisibilityLabel, getTitle, getYear, isCompleted, uid } from "../utils/itemHelpers";
 import { MetadataResult, searchMetadata } from "../services/metadata";
+import { uploadStoredImage } from "../services/storage";
 import { Cover } from "./Cover";
 import { Stars } from "./Rating";
 
@@ -449,6 +450,28 @@ function CoverSearchPanel({
     }
   }
 
+  async function uploadCover(file?: File) {
+    if (!file) return;
+
+    setLoading(true);
+    setError("");
+
+    try {
+      const coverUrl = await uploadStoredImage(settings, cloudSession, file, "covers", item.id);
+      onApply({
+        id: `local-cover-${item.id}`,
+        provider: "Arquivo local",
+        title: getTitle(item),
+        coverUrl,
+        patch: { coverUrl },
+      });
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : "Não consegui enviar essa capa.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <section className="cover-search-panel">
       <div className="section-heading split">
@@ -470,6 +493,11 @@ function CoverSearchPanel({
           {loading ? "Buscando..." : "Buscar capas"}
         </button>
       </div>
+      <label className="local-image-upload cover-local-upload">
+        <span>{loading ? "Preparando imagem..." : "Enviar capa própria"}</span>
+        <input type="file" accept="image/*" disabled={loading} onChange={(event) => uploadCover(event.target.files?.[0])} />
+        <small>Arquivos locais vão para o Storage quando você está conectado.</small>
+      </label>
       {error ? <p className="metadata-error">{error}</p> : null}
       {loading ? <CoverSearchSkeleton /> : null}
       {results.length ? (
