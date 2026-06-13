@@ -1,6 +1,7 @@
 import { CulturalItem } from "../types";
 import { Cover } from "./Cover";
 import { Stars } from "./Rating";
+import { getSeasonalThemeClassName, getSeasonalThemeId } from "../data/seasonalThemes";
 import { getGenre, getItemVisibility, getItemVisibilityLabel, getTitle, getYear } from "../utils/itemHelpers";
 
 export function ItemCard({ item, onOpen }: { item: CulturalItem; onOpen: () => void }) {
@@ -10,7 +11,7 @@ export function ItemCard({ item, onOpen }: { item: CulturalItem; onOpen: () => v
   const visibility = getItemVisibility(item);
 
   return (
-    <button className="item-card" onClick={onOpen}>
+    <button className={getSeasonalThemeClassName(item, "item-card")} data-season-theme={getSeasonalThemeId(item)} onClick={onOpen}>
       <Cover item={item} />
       <div className="item-card-body">
         <div className="item-card-main">

@@ -127,6 +127,7 @@ export function isEmptyCulturalItem(item: CulturalItem) {
     "links",
     "timeline",
     "diary",
+    "seasonalTheme",
     "createdAt",
     "updatedAt",
     "rating",

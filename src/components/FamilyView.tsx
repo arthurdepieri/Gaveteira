@@ -631,7 +631,7 @@ export function FamilyView({
         <section className="setting-panel social-search-panel">
           <div className="section-heading">
             <Search size={20} />
-            <h2>Procurar pessoas</h2>
+            <h2>Adicionar amigo</h2>
           </div>
           <div className="social-search-row">
             <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} onKeyDown={(event) => event.key === "Enter" ? runSearch() : undefined} placeholder="email, username, nome ou código" />
@@ -647,6 +647,18 @@ export function FamilyView({
                 disabled={loading || friendships.some((friendship) => friendship.profile.id === profile.id && friendship.status !== "rejected")}
               />
             )) : <p className="empty">Digite email, username, nome ou código para encontrar uma pessoa.</p>}
+          </div>
+        </section>
+        <section className="setting-panel social-rule-card">
+          <div className="section-heading">
+            <UserPlus size={20} />
+            <h2>Como a rede funciona</h2>
+          </div>
+          <p>A Gaveteira mostra fichas por amizade aceita e respeita a privacidade escolhida em cada ficha.</p>
+          <div className="social-rule-steps">
+            <span>Enviar convite</span>
+            <span>Aceitar amizade</span>
+            <span>Ver fichas visíveis</span>
           </div>
         </section>
       </section>
@@ -1031,7 +1043,23 @@ export function FamilyView({
               </div>
             ) : null}
           </>
-        ) : <p className="empty">Adicione amigos para visitar outros arquivos pessoais.</p>}
+        ) : (
+          <div className="social-empty-state">
+            <Users size={28} />
+            <h3>Nenhum amigo na mesa ainda</h3>
+            <p>Busque alguém por email, username ou código de convite. Quando a pessoa aceitar, o perfil dela aparece aqui com favoritos, últimas adições e gavetas visíveis.</p>
+            <div className="button-row">
+              <button type="button" className="primary" onClick={() => document.querySelector<HTMLInputElement>(".social-search-row input")?.focus()}>
+                <UserPlus size={16} />
+                Adicionar amigo
+              </button>
+              <button type="button" className="ghost" onClick={() => refreshSocial()}>
+                <RefreshCw size={16} />
+                Atualizar social
+              </button>
+            </div>
+          </div>
+        )}
       </section>
       ) : null}
       {activeEntry ? (

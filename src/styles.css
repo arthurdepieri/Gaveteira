@@ -1306,6 +1306,27 @@ button:disabled {
   background: rgba(255, 253, 248, 0.58);
 }
 
+.social-onboarding-card {
+  grid-template-columns: 30px minmax(0, 1fr);
+  align-items: start;
+}
+
+.social-onboarding-card > svg {
+  margin-top: 2px;
+  color: var(--green);
+}
+
+.social-onboarding-card > div:not(.social-onboarding-actions) {
+  min-width: 0;
+}
+
+.social-onboarding-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .drawer-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
@@ -2405,12 +2426,15 @@ button.danger {
 :root[data-theme="dark"] .home-shelf-item,
 :root[data-theme="dark"] .suggestion-card,
 :root[data-theme="dark"] .home-social-empty,
+:root[data-theme="dark"] .social-empty-state,
+:root[data-theme="dark"] .social-rule-steps span,
 :root[data-theme="dark"] .item-card-body,
 :root[data-theme="dark"] .family-owners button,
 :root[data-theme="dark"] .feed-scope-tabs button.active,
 :root[data-theme="dark"] .social-feed-event,
 :root[data-theme="dark"] .social-recommendation-card,
 :root[data-theme="dark"] .comparison-card,
+:root[data-theme="dark"] .curation-filter-row button,
 :root[data-theme="dark"] .feed-action-row button,
 :root[data-theme="dark"] .feed-action-row span {
   color: var(--ink);
@@ -3393,6 +3417,65 @@ button.danger {
   display: none;
 }
 
+.social-rule-card {
+  align-content: start;
+  gap: 12px;
+}
+
+.social-rule-card .section-heading svg,
+.social-empty-state > svg {
+  color: var(--green);
+}
+
+.social-rule-card p {
+  max-width: 520px;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.48;
+}
+
+.social-rule-steps {
+  display: grid;
+  gap: 8px;
+}
+
+.social-rule-steps span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  width: fit-content;
+  padding: 7px 10px;
+  color: var(--wood-dark);
+  border: 1px solid var(--line);
+  background: #fffdf8;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.social-empty-state {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+  padding: 22px;
+  border: 1px dashed rgba(184, 135, 55, 0.42);
+  background:
+    linear-gradient(90deg, rgba(184, 135, 55, 0.045) 1px, transparent 1px) 0 0 / 20px 20px,
+    rgba(255, 250, 241, 0.74);
+  border-radius: 8px;
+}
+
+.social-empty-state h3,
+.social-empty-state p {
+  margin: 0;
+}
+
+.social-empty-state p {
+  max-width: 680px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
 .admin-panel {
   display: grid;
   gap: 14px;
@@ -3608,6 +3691,56 @@ button.danger {
   gap: 12px;
 }
 
+.curation-intro {
+  max-width: 760px;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.48;
+}
+
+.curation-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.curation-filter-row button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 7px 10px;
+  color: var(--wood-dark);
+  border: 1px solid var(--line);
+  background: #fffdf8;
+  border-radius: 999px;
+  font-size: 0.84rem;
+  font-weight: 900;
+}
+
+.curation-filter-row button span {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  color: #6a4528;
+  background: #fff4da;
+  border-radius: 999px;
+  font-size: 0.74rem;
+}
+
+.curation-filter-row button.active {
+  color: #fffaf1;
+  border-color: var(--green);
+  background: var(--green);
+}
+
+.curation-filter-row button.active span {
+  color: var(--green);
+  background: #fffaf1;
+}
+
 .curation-feed-grid {
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
 }
@@ -3645,6 +3778,12 @@ button.danger {
 .curation-feed-card p {
   color: var(--muted);
   font-style: normal;
+}
+
+.curation-feed-card small {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .curation-feed-card p {
@@ -6814,10 +6953,27 @@ button.danger {
 :root[data-theme="dark"] .curation-card-open small,
 :root[data-theme="dark"] .curation-card-open em,
 :root[data-theme="dark"] .curation-card label > span,
+:root[data-theme="dark"] .curation-intro,
 :root[data-theme="dark"] .curation-feed-card small,
 :root[data-theme="dark"] .curation-feed-card em,
 :root[data-theme="dark"] .curation-feed-card p {
   color: var(--muted);
+}
+
+:root[data-theme="dark"] .curation-filter-row button.active {
+  color: #fffaf1;
+  border-color: var(--green);
+  background: var(--green);
+}
+
+:root[data-theme="dark"] .curation-filter-row button span {
+  color: #f1d7aa;
+  background: #30251b;
+}
+
+:root[data-theme="dark"] .curation-filter-row button.active span {
+  color: var(--green);
+  background: #fffaf1;
 }
 
 @media (max-width: 760px) {

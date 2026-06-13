@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 import { AppSettings, Category, CloudSession, CulturalItem, DiaryEntry, ExternalLink, Rating, SocialVisibility, TimelineEvent } from "../types";
 import { categoryLabels } from "../data/catalog";
+import { createSeasonalThemeStamp } from "../data/seasonalThemes";
 import { getProviderHint, MetadataResult, searchMetadata } from "../services/metadata";
 import { uploadStoredImage } from "../services/storage";
 import { getTitle, uid } from "../utils/itemHelpers";
@@ -20,6 +21,8 @@ const diaryPrompts = [
 ];
 
 export function createBlankItem(category: Category, status: string): CulturalItem {
+  const now = new Date();
+  const seasonalTheme = createSeasonalThemeStamp(now);
   const base = {
     id: uid(category),
     category,
@@ -29,8 +32,9 @@ export function createBlankItem(category: Category, status: string): CulturalIte
     links: [],
     timeline: [],
     diary: [],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    ...(seasonalTheme ? { seasonalTheme } : {}),
+    createdAt: now.toISOString(),
+    updatedAt: now.toISOString(),
   };
 
   if (category === "games") return { ...base, category, name: "", platform: "", status };

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 import { AppSettings, CloudSession, CulturalItem, DiaryEntry, Rating, SocialVisibility } from "../types";
 import { categoryLabels } from "../data/catalog";
+import { getSeasonalThemeClassName, getSeasonalThemeId } from "../data/seasonalThemes";
 import { getItemVisibility, getItemVisibilityLabel, getTitle, getYear, isCompleted, uid } from "../utils/itemHelpers";
 import { MetadataResult, searchMetadata } from "../services/metadata";
 import { uploadStoredImage } from "../services/storage";
@@ -86,7 +87,7 @@ export function ItemDetails({
 
   return createPortal(
     <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <article className="modal detail-modal archive-sheet">
+      <article className={getSeasonalThemeClassName(item, "modal detail-modal archive-sheet")} data-season-theme={getSeasonalThemeId(item)}>
         <header className="modal-header">
           <div>
             <p className="eyebrow">{categoryLabels[item.category]}{ownerName ? ` / ${ownerName}` : ""}</p>
@@ -138,7 +139,7 @@ export function ItemDetails({
           />
         ) : null}
 
-        <section className="detail-hero">
+        <section className="detail-hero" data-season-theme={getSeasonalThemeId(item)}>
           <Cover item={item} />
           <div className="detail-identity">
             <span className="archive-stamp">{item.status}</span>

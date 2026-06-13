@@ -1676,6 +1676,7 @@ function mergeDuplicateItems(left: CulturalItem, right: CulturalItem) {
     links: mergeById(oldest.links, newest.links),
     timeline: mergeById(oldest.timeline, newest.timeline),
     diary: mergeById(oldest.diary, newest.diary),
+    seasonalTheme: newest.seasonalTheme ?? oldest.seasonalTheme,
     coverUrl: newest.coverUrl || oldest.coverUrl,
     updatedAt: newest.updatedAt,
   } as CulturalItem;

@@ -182,6 +182,19 @@ export function HomeDashboard({
               ) : null}
             </div>
           </article>
+
+          <article className="onboarding-card social-onboarding-card">
+            <MessageSquare size={22} />
+            <div>
+              <p className="eyebrow">Primeiro círculo</p>
+              <h2>Convide amigos quando quiser comparar gavetas</h2>
+              <p>O social funciona por amizade aceita: fichas visíveis aparecem para amigos; fichas privadas e diários privados continuam guardados.</p>
+            </div>
+            <div className="social-onboarding-actions">
+              <button type="button" className="ghost" onClick={onOpenFamily}>Abrir Social</button>
+              <button type="button" className="ghost subtle" onClick={onOpenFeed}>Ver Feed</button>
+            </div>
+          </article>
         </section>
       ) : null}
 

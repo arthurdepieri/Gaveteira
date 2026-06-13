@@ -1,7 +1,6 @@
-import { Award, BookmarkPlus, CheckCircle2, Cloud, Eye, GitCompare, Heart, Loader2, MessageSquare, RefreshCw, ShieldCheck, Sparkles, TrendingUp, Users, X } from "lucide-react";
+import { Award, BookmarkPlus, CheckCircle2, Cloud, Heart, Loader2, MessageSquare, RefreshCw, ShieldCheck, Sparkles, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { ReactNode } from "react";
-import { AppSettings, CloudSession, CulturalItem, CuratedRecommendation, FamilyItem, Friendship, SocialProfile } from "../types";
+import { AppSettings, Category, CloudSession, CulturalItem, CuratedRecommendation, FamilyItem, Friendship, SocialProfile } from "../types";
 import { categoryLabels, defaultStatuses } from "../data/catalog";
 import { CloudSocialFeedEvent, fetchCuratedRecommendations, fetchFriendships, fetchMyProfile, fetchSocialFeed, fetchSocialItems, upsertMyItem } from "../services/supabaseCloud";
 import { getGenres, getRating, getTitle, isCompleted, isInProgress, isWishlist, uid } from "../utils/itemHelpers";
@@ -40,6 +39,7 @@ export function SocialFeedView({
   const [friendships, setFriendships] = useState<Friendship[]>([]);
   const [savingEventId, setSavingEventId] = useState("");
   const [feedScope, setFeedScope] = useState<"friends" | "mine">("friends");
+  const [curationCategory, setCurationCategory] = useState<Category | "all">("all");
   const [activeEntry, setActiveEntry] = useState<FamilyItem | null>(null);
   const [activeDiaryId, setActiveDiaryId] = useState<string | undefined>();
   const [message, setMessage] = useState("");
@@ -101,7 +101,15 @@ export function SocialFeedView({
       .map((entry) => entry.item);
     return new Set([...localItems, ...cloudItems].map(comparableKey).filter(Boolean));
   }, [localItems, session?.user.id, socialItems]);
-  const socialComparisons = useMemo(() => buildSocialComparisons(groups, session?.user.id ?? ""), [groups, session?.user.id]);
+  const curatedByCategory = useMemo(() => {
+    return (Object.keys(categoryLabels) as Category[]).map((category) => ({
+      category,
+      count: curatedRecommendations.filter((recommendation) => recommendation.item.category === category).length,
+    }));
+  }, [curatedRecommendations]);
+  const visibleCuratedRecommendations = curationCategory === "all"
+    ? curatedRecommendations
+    : curatedRecommendations.filter((recommendation) => recommendation.item.category === curationCategory);
 
   useEffect(() => {
     if (!session) return;
@@ -183,7 +191,7 @@ export function SocialFeedView({
           <div>
             <p className="eyebrow">Movimento social</p>
             <h1>Feed</h1>
-            <p>Entre para acompanhar atualizações, comparações e sinais leves da sua rede.</p>
+            <p>Entre para acompanhar atualizações e sinais leves da sua rede.</p>
           </div>
           <Cloud size={38} />
         </section>
@@ -198,7 +206,7 @@ export function SocialFeedView({
         <div>
           <p className="eyebrow">Movimento social</p>
           <h1>Feed</h1>
-          <p>Eventos simples da sua rede e comparações entre gaveteiras, sem transformar tudo em mural barulhento.</p>
+          <p>Eventos simples da sua rede, notas públicas e recomendações, sem transformar tudo em mural barulhento.</p>
         </div>
         <MessageSquare size={38} />
       </section>
@@ -276,42 +284,38 @@ export function SocialFeedView({
         </div>
       </section>
 
-      <section className="setting-panel social-comparison-panel">
-        <div className="section-heading">
-          <GitCompare size={20} />
-          <h2>Comparações</h2>
-        </div>
-        <div className="comparison-grid">
-          <InsightList title="Itens em comum" icon={<Eye size={17} />} items={socialComparisons.commonItems} />
-          <InsightList title="Notas diferentes" icon={<GitCompare size={17} />} items={socialComparisons.ratingDifferences} />
-          <InsightList title="Wishlist compartilhada" icon={<Sparkles size={17} />} items={socialComparisons.sharedWishlist} />
-          <InsightList title="Favoritos do grupo" icon={<Heart size={17} />} items={socialComparisons.favoriteRanking} />
-          <InsightList title="Gêneros da galera" icon={<TrendingUp size={17} />} items={socialComparisons.topGenres} />
-          <InsightList title="Ativos agora" icon={<Users size={17} />} items={socialComparisons.activePeople} />
-        </div>
-      </section>
-
       <section className="setting-panel social-curation-panel">
         <div className="section-heading split">
           <div className="section-heading">
             <Award size={20} />
-            <h2>Curadoria</h2>
+            <h2>Recomendações da Gaveteira</h2>
           </div>
-          <span className="soft-label">recomendações destacadas</span>
+          <span className="soft-label">{curatedRecommendations.length} destaques</span>
+        </div>
+        <p className="curation-intro">Fichas reconhecidas por admins</p>
+        <div className="curation-filter-row" aria-label="Filtrar recomendações por gaveta">
+          <button type="button" className={curationCategory === "all" ? "active" : ""} onClick={() => setCurationCategory("all")}>
+            Todas <span>{curatedRecommendations.length}</span>
+          </button>
+          {curatedByCategory.map(({ category, count }) => (
+            <button key={category} type="button" className={curationCategory === category ? "active" : ""} onClick={() => setCurationCategory(category)}>
+              {categoryLabels[category]} <span>{count}</span>
+            </button>
+          ))}
         </div>
         <div className="curation-feed-grid">
-          {curatedRecommendations.length ? curatedRecommendations.slice(0, 8).map((recommendation) => (
+          {visibleCuratedRecommendations.length ? visibleCuratedRecommendations.slice(0, 10).map((recommendation) => (
             <button key={recommendation.recommendationId} type="button" className="curation-feed-card" onClick={() => openCuratedRecommendation(recommendation)}>
               <Cover item={recommendation.item} compact />
               <span>
-                <small>Ficha de {recommendation.ownerName}</small>
+                <small><Award size={13} /> Curadoria / ficha de {recommendation.ownerName}</small>
                 <strong>{getTitle(recommendation.item)}</strong>
                 <em>{categoryLabels[recommendation.item.category]} / curadoria de {recommendation.curatorName}</em>
                 {recommendation.note ? <p>{recommendation.note}</p> : null}
                 <Stars value={recommendation.item.rating} />
               </span>
             </button>
-          )) : <p className="empty">Quando um admin reconhecer uma ficha, ela aparece aqui como recomendação da Gaveteira.</p>}
+          )) : <p className="empty">{curatedRecommendations.length ? "Nenhuma recomendação nessa gaveta por enquanto." : "Quando um admin reconhecer uma ficha, ela aparece aqui como recomendação da Gaveteira."}</p>}
         </div>
       </section>
 
@@ -392,17 +396,6 @@ function FeedEventCard({
         </div>
       </div>
     </article>
-  );
-}
-
-function InsightList({ title, icon, items }: { title: string; icon: ReactNode; items: string[] }) {
-  return (
-    <section className="comparison-card">
-      <h3>{icon}{title}</h3>
-      <div className="comparison-list">
-        {items.length ? items.map((item) => <span key={item}>{item}</span>) : <p className="empty">Ainda faltam fichas para comparar.</p>}
-      </div>
-    </section>
   );
 }
 

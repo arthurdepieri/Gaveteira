@@ -5,6 +5,12 @@ export type ProfileRole = "user" | "admin";
 
 export type Rating = 0.5 | 1 | 1.5 | 2 | 2.5 | 3 | 3.5 | 4 | 4.5 | 5;
 
+export interface SeasonalThemeStamp {
+  id: string;
+  label: string;
+  assignedAt: string;
+}
+
 export interface TimelineEvent {
   id: string;
   date: string;
@@ -35,6 +41,7 @@ export interface SharedFields {
   links: ExternalLink[];
   timeline: TimelineEvent[];
   diary: DiaryEntry[];
+  seasonalTheme?: SeasonalThemeStamp;
   createdAt: string;
   updatedAt: string;
 }
