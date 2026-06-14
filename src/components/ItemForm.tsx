@@ -64,120 +64,217 @@ export function ItemForm({
   onClose: () => void;
 }) {
   const draft = item as MutableItem;
+  const [tutorialStep, setTutorialStep] = useState(0);
   const update = (patch: Record<string, unknown>) => onSave({ ...item, ...patch, updatedAt: new Date().toISOString() } as CulturalItem);
+  const tutorialActive = showFirstCardTutorial;
+  const tutorialComplete = !tutorialActive || tutorialStep === firstCardTutorialSteps.length - 1;
+  const advanceFirstCardTutorial = () => {
+    if (tutorialStep === 1 && !item.diary.length) {
+      update({ diary: [createBlankDiaryEntry(loadDiaryVisibility())] });
+    }
+    setTutorialStep((current) => Math.min(firstCardTutorialSteps.length - 1, current + 1));
+  };
+  const categoryFields = (
+    <>
+      {item.category === "games" ? <GameFields item={draft} update={update} /> : null}
+      {item.category === "books" ? <BookFields item={draft} update={update} /> : null}
+      {item.category === "albums" ? <AlbumFields item={draft} update={update} /> : null}
+      {item.category === "movies" ? <MovieFields item={draft} update={update} /> : null}
+      {item.category === "series" ? <SeriesFields item={draft} update={update} /> : null}
+    </>
+  );
+  const statusRatingFields = (
+    <MobileFieldGroup title="Status e avaliação">
+      <Field label="Status">
+        <select value={item.status} onChange={(event) => update({ status: event.target.value })}>
+          {statuses.map((status) => <option key={status}>{status}</option>)}
+        </select>
+      </Field>
+      <Field label="Nota">
+        <RatingInput value={item.rating as Rating | undefined} onChange={(rating) => update({ rating })} />
+      </Field>
+    </MobileFieldGroup>
+  );
+  const visibilityField = (
+    <Field label="Visibilidade">
+      <select value={item.visibility === "private" ? "private" : "friends"} onChange={(event) => update({ visibility: event.target.value as SocialVisibility })}>
+        <option value="private">Privado</option>
+        <option value="friends">Visível para amigos</option>
+      </select>
+      <small>{item.visibility === "private" ? "Só você vê esta ficha na área social." : "Amigos podem ver a ficha; o diário ainda respeita a privacidade de cada entrada."}</small>
+    </Field>
+  );
+  const coverTagsFields = (
+    <MobileFieldGroup title="Capa e tags">
+      {visibilityField}
+      <Field label="Capa ou poster">
+        <input value={item.coverUrl ?? ""} onChange={(event) => update({ coverUrl: event.target.value })} placeholder="URL da imagem" />
+        <CoverUploadInput
+          item={item}
+          settings={settings}
+          cloudSession={cloudSession}
+          onUploaded={(coverUrl) => update({ coverUrl })}
+        />
+      </Field>
+      <Field label="Tags">
+        <TagInput value={item.tags} onChange={(tags) => update({ tags })} />
+      </Field>
+    </MobileFieldGroup>
+  );
+  const metadataLookup = (
+    <MetadataLookup
+      item={item}
+      settings={settings}
+      cloudSession={cloudSession}
+      onApply={(result) => updateMetadataResult(item, result, update)}
+      onApplyCover={(result) => updateCoverResult(item, result, update)}
+    />
+  );
 
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <form className="modal" onSubmit={(event) => event.preventDefault()}>
+    <div className={`modal-backdrop${tutorialActive ? " first-card-form-backdrop" : ""}`} role="dialog" aria-modal="true">
+      <form className={`modal${tutorialActive ? " first-card-form-modal" : ""}`} onSubmit={(event) => event.preventDefault()}>
         <header className="modal-header">
           <div>
             <p className="eyebrow">{categoryLabels[item.category]}</p>
             <h2>{getTitle(item) || "Nova ficha"}</h2>
           </div>
-          <button type="button" className="icon-button" onClick={onClose} aria-label="Fechar">
+          <button type="button" className="icon-button" onClick={onClose} aria-label="Fechar" disabled={!tutorialComplete}>
             <X size={20} />
           </button>
         </header>
 
-        {showFirstCardTutorial ? <FirstCardTutorial /> : null}
+        {showFirstCardTutorial ? (
+          <>
+            <FirstCardTutorial
+              step={tutorialStep}
+              onBack={() => setTutorialStep((current) => Math.max(0, current - 1))}
+              onNext={advanceFirstCardTutorial}
+            />
 
-        <MobileFormSection title="Dados básicos" open>
-          <MetadataLookup
-            item={item}
-            settings={settings}
-            cloudSession={cloudSession}
-            onApply={(result) => updateMetadataResult(item, result, update)}
-            onApplyCover={(result) => updateCoverResult(item, result, update)}
-          />
+            {tutorialStep === 0 ? (
+              <MobileFormSection title="Completar ficha" open>
+                {metadataLookup}
+                <div className="form-grid first-card-tutorial-grid">
+                  {categoryFields}
+                </div>
+              </MobileFormSection>
+            ) : null}
 
-          <div className="form-grid">
-            {item.category === "games" ? <GameFields item={draft} update={update} /> : null}
-            {item.category === "books" ? <BookFields item={draft} update={update} /> : null}
-            {item.category === "albums" ? <AlbumFields item={draft} update={update} /> : null}
-            {item.category === "movies" ? <MovieFields item={draft} update={update} /> : null}
-            {item.category === "series" ? <SeriesFields item={draft} update={update} /> : null}
+            {tutorialStep === 1 ? (
+              <MobileFormSection title="Status, nota e visibilidade" open>
+                <div className="form-grid first-card-tutorial-grid">
+                  {statusRatingFields}
+                  <MobileFieldGroup title="Visibilidade">
+                    {visibilityField}
+                  </MobileFieldGroup>
+                </div>
+              </MobileFormSection>
+            ) : null}
 
-            <MobileFieldGroup title="Status e avaliação">
-              <Field label="Status">
-                <select value={item.status} onChange={(event) => update({ status: event.target.value })}>
-                  {statuses.map((status) => <option key={status}>{status}</option>)}
-                </select>
-              </Field>
-              <Field label="Nota">
-                <RatingInput value={item.rating as Rating | undefined} onChange={(rating) => update({ rating })} />
-              </Field>
-            </MobileFieldGroup>
-            <MobileFieldGroup title="Capa e tags">
-              <Field label="Visibilidade">
-                <select value={item.visibility === "private" ? "private" : "friends"} onChange={(event) => update({ visibility: event.target.value as SocialVisibility })}>
-                  <option value="private">Privado</option>
-                  <option value="friends">Visível para amigos</option>
-                </select>
-                <small>{item.visibility === "private" ? "Só você vê esta ficha na área social." : "Amigos podem ver a ficha; o diário ainda respeita a privacidade de cada entrada."}</small>
-              </Field>
-              <Field label="Capa ou poster">
-                <input value={item.coverUrl ?? ""} onChange={(event) => update({ coverUrl: event.target.value })} placeholder="URL da imagem" />
-                <CoverUploadInput
-                  item={item}
-                  settings={settings}
-                  cloudSession={cloudSession}
-                  onUploaded={(coverUrl) => update({ coverUrl })}
-                />
-              </Field>
-              <Field label="Tags">
-                <TagInput value={item.tags} onChange={(tags) => update({ tags })} />
-              </Field>
-            </MobileFieldGroup>
-          </div>
-        </MobileFormSection>
+            {tutorialStep === 2 ? (
+              <MobileFormSection title="Diário" open>
+                <section className="form-section first-card-diary-step">
+                  <h3>Primeiro diário</h3>
+                  <DiaryEditor entries={item.diary} onChange={(diary) => update({ diary })} />
+                </section>
+              </MobileFormSection>
+            ) : null}
+          </>
+        ) : (
+          <>
+            <MobileFormSection title="Dados básicos" open>
+              {metadataLookup}
 
-        <MobileFormSection title="Links">
-          <section className="form-section">
-            <h3>Links externos</h3>
-            <RepeatingLinks links={item.links} onChange={(links) => update({ links })} />
-          </section>
-        </MobileFormSection>
+              <div className="form-grid">
+                {categoryFields}
+                {statusRatingFields}
+                {coverTagsFields}
+              </div>
+            </MobileFormSection>
 
-        <MobileFormSection title="Histórico">
-          <section className="form-section">
-            <h3>Histórico</h3>
-            <TimelineEditor events={item.timeline} onChange={(timeline) => update({ timeline })} />
-          </section>
-        </MobileFormSection>
+            <MobileFormSection title="Links">
+              <section className="form-section">
+                <h3>Links externos</h3>
+                <RepeatingLinks links={item.links} onChange={(links) => update({ links })} />
+              </section>
+            </MobileFormSection>
 
-        <MobileFormSection title="Diário">
-          <section className="form-section">
-            <h3>Diário</h3>
-            <DiaryEditor entries={item.diary} onChange={(diary) => update({ diary })} />
-          </section>
-        </MobileFormSection>
+            <MobileFormSection title="Histórico">
+              <section className="form-section">
+                <h3>Histórico</h3>
+                <TimelineEditor events={item.timeline} onChange={(timeline) => update({ timeline })} />
+              </section>
+            </MobileFormSection>
+
+            <MobileFormSection title="Diário">
+              <section className="form-section">
+                <h3>Diário</h3>
+                <DiaryEditor entries={item.diary} onChange={(diary) => update({ diary })} />
+              </section>
+            </MobileFormSection>
+          </>
+        )}
 
         <footer className="modal-footer">
           <button type="button" className="danger" onClick={() => onDelete(item.id)}>
             <Trash2 size={16} />
             Remover ficha
           </button>
-          <button type="button" className="primary" onClick={onClose}>Concluir</button>
+          <button type="button" className="primary" onClick={tutorialComplete ? onClose : advanceFirstCardTutorial}>
+            {tutorialComplete ? "Concluir" : "Próxima etapa"}
+          </button>
         </footer>
       </form>
     </div>
   );
 }
 
-function FirstCardTutorial() {
+const firstCardTutorialSteps = [
+  {
+    eyebrow: "Etapa 1 de 3",
+    title: "Complete do seu jeito",
+    description: "É possível completar automaticamente ou manualmente. Nem todas as databases detêm todas as informações, então qualquer campo pode ser ajustado com calma.",
+  },
+  {
+    eyebrow: "Etapa 2 de 3",
+    title: "Status, nota e visibilidade",
+    description: "Nesta página você define o status da ficha, a nota e quem pode ver esse card.",
+  },
+  {
+    eyebrow: "Etapa 3 de 3",
+    title: "Registre o primeiro diário",
+    description: "Abra uma primeira entrada para guardar uma impressão, citação, memória ou opinião inicial.",
+  },
+];
+
+function FirstCardTutorial({
+  step,
+  onBack,
+  onNext,
+}: {
+  step: number;
+  onBack: () => void;
+  onNext: () => void;
+}) {
+  const current = firstCardTutorialSteps[step];
+
   return (
-    <section className="first-card-tutorial" aria-label="Guia rápido do primeiro card">
-      <div>
-        <p className="eyebrow">Guia rápido</p>
-        <strong>Preencha só o essencial agora. O resto pode amadurecer depois.</strong>
+    <section className="first-card-tutorial" aria-label="Tutorial da primeira ficha">
+      <div className="first-card-tutorial-copy" key={current.title}>
+        <p className="eyebrow">{current.eyebrow}</p>
+        <strong>{current.title}</strong>
+        <span>{current.description}</span>
       </div>
-      <ul>
-        <li><b>Completar automaticamente</b><span>Busque dados e capa; se algo não vier, preencha manualmente nas abas abaixo.</span></li>
-        <li><b>Status</b><span>Marque se quer consumir, está consumindo, terminou ou abandonou.</span></li>
-        <li><b>Nota</b><span>Use meia estrela quando quiser registrar uma impressão mais precisa.</span></li>
-        <li><b>Visibilidade</b><span>Escolha se amigos podem ver a ficha; o diário continua com privacidade própria.</span></li>
-        <li><b>Diário</b><span>Registre uma impressão curta para dar vida ao seu arquivo.</span></li>
-      </ul>
+      <div className="first-card-tutorial-steps" aria-hidden="true">
+        {firstCardTutorialSteps.map((entry, index) => (
+          <span key={entry.title} className={index === step ? "active" : index < step ? "done" : ""} />
+        ))}
+      </div>
+      <div className="first-card-tutorial-actions">
+        <button type="button" className="ghost" onClick={onBack} disabled={step === 0}>Voltar</button>
+        <button type="button" className="primary" onClick={onNext} disabled={step === firstCardTutorialSteps.length - 1}>Próxima etapa</button>
+      </div>
     </section>
   );
 }
@@ -572,9 +669,19 @@ function DiaryEditor({ entries, onChange }: { entries: DiaryEntry[]; onChange: (
           <button type="button" className="icon-button" onClick={() => onChange(entries.filter((item) => item.id !== entry.id))}><X size={16} /></button>
         </div>
       ))}
-      <button type="button" className="ghost" onClick={() => onChange([...entries, { id: uid("diary"), date: new Date().toISOString().slice(0, 10), text: "", visibility: defaultVisibility, type: "Impressão" }])}>Nova entrada</button>
+      <button type="button" className="ghost" onClick={() => onChange([...entries, createBlankDiaryEntry(defaultVisibility)])}>Nova entrada</button>
     </div>
   );
+}
+
+function createBlankDiaryEntry(visibility: DiaryEntry["visibility"]): DiaryEntry {
+  return {
+    id: uid("diary"),
+    date: new Date().toISOString().slice(0, 10),
+    text: "",
+    visibility,
+    type: "Impressão",
+  };
 }
 
 function loadDiaryVisibility(): DiaryEntry["visibility"] {

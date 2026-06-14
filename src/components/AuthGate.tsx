@@ -130,7 +130,7 @@ export function AuthGate({
             <Users size={20} />
             <h2>Comece pela sua conta</h2>
           </div>
-          <p>Registre com email ou Google. Depois você cria o primeiro card e recebe um guia curto dentro da ficha.</p>
+          <p>Registre com email ou Google. Depois você cria o primeiro card com um tutorial por etapas dentro da ficha.</p>
           <p className="empty">A Gaveteira abre o conteúdo só depois do login, para cada pessoa manter seu próprio arquivo.</p>
         </section>
 

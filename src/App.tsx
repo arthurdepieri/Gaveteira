@@ -111,6 +111,7 @@ function App() {
   const [mobileDrawersOpen, setMobileDrawersOpen] = useState(false);
   const [addPickerOpen, setAddPickerOpen] = useState(false);
   const [firstCardTutorial, setFirstCardTutorial] = useState(false);
+  const [showFirstCardWelcome, setShowFirstCardWelcome] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [pwaUpdateNotice, setPwaUpdateNotice] = useState<PwaUpdateNotice | null>(null);
@@ -467,11 +468,6 @@ function App() {
     pdfInputRef.current?.click();
   }
 
-  function startFirstPdfBookImport() {
-    setFirstCardTutorial(true);
-    requestPdfBookImport();
-  }
-
   function handlePdfBookSelected(fileList: FileList | null) {
     const file = fileList?.[0];
     if (!file) return;
@@ -541,6 +537,7 @@ function App() {
   }
 
   function closeItemForm() {
+    const completedFirstCardTutorial = firstCardTutorial && activeItem && !isEmptyCulturalItem(activeItem);
     setFirstCardTutorial(false);
     if (activeItem && isEmptyCulturalItem(activeItem)) {
       deleteItem(activeItem.id, false);
@@ -549,6 +546,9 @@ function App() {
 
     setActiveItemId(null);
     setActiveItemMode("details");
+    if (completedFirstCardTutorial) {
+      setShowFirstCardWelcome(true);
+    }
   }
 
   function updateData(patch: Partial<AppData>) {
@@ -577,7 +577,7 @@ function App() {
 
   const mainView = () => {
     if (cloudSession && cloudBootstrapped && !data.items.length && !activeItem) {
-      return <FirstCardStart onChoose={startFirstCard} onChoosePdf={startFirstPdfBookImport} />;
+      return <FirstCardStart onChoose={startFirstCard} />;
     }
 
     if (view === "home") {
@@ -1141,6 +1141,9 @@ function App() {
           onClose={closeItemForm}
         />
       ) : null}
+      {showFirstCardWelcome ? (
+        <FirstCardWelcomeModal onClose={() => setShowFirstCardWelcome(false)} />
+      ) : null}
       <PortraitOnlyNotice />
     </div>
   );
@@ -1160,44 +1163,115 @@ function PortraitOnlyNotice() {
 
 function FirstCardStart({
   onChoose,
-  onChoosePdf,
 }: {
   onChoose: (category: Category) => void;
-  onChoosePdf: () => void;
 }) {
-  return (
-    <main className="page first-card-page">
-      <section className="first-card-hero">
-        <div>
-          <p className="eyebrow">Primeiro arquivo</p>
-          <h1>Crie seu primeiro card</h1>
-          <p>Escolha qualquer gaveta. Em menos de um minuto você já entende como completar dados, ajustar status, nota, visibilidade e diário.</p>
-        </div>
-        <ol className="first-card-steps" aria-label="Caminho inicial">
-          <li><strong>1</strong><span>Conta criada</span></li>
-          <li><strong>2</strong><span>Primeiro card</span></li>
-          <li><strong>3</strong><span>Gavetas e app</span></li>
-        </ol>
-      </section>
+  const [page, setPage] = useState(0);
+  const isChoicePage = page === 2;
 
-      <section className="first-card-picker" aria-label="Escolher primeira gaveta">
-        <button type="button" className="first-card-option first-card-pdf" onClick={onChoosePdf}>
-          <FileText size={22} />
-          <strong>Livro por PDF</strong>
-          <small>Rascunho rápido</small>
-        </button>
-        {drawerItems.map((item) => {
-          const Icon = item.icon;
-          return (
-            <button key={item.key} type="button" className={`first-card-option drawer-${item.key}`} onClick={() => onChoose(item.key)}>
-              <Icon size={22} />
-              <strong>{item.label}</strong>
-              <small>Começar aqui</small>
+  return (
+    <main className="page first-card-page" aria-label="Introdução da Gaveteira">
+      <div className="modal-backdrop first-card-onboarding-backdrop" role="presentation">
+        <section className="modal first-card-onboarding-modal" role="dialog" aria-modal="true" aria-label="Começar na Gaveteira">
+          <div className="first-card-progress" aria-label="Etapas de apresentação">
+            {[0, 1, 2].map((step) => (
+              <span key={step} className={step === page ? "active" : step < page ? "done" : ""} />
+            ))}
+          </div>
+
+          {page === 0 ? (
+            <div className="first-card-onboarding-copy">
+              <p className="eyebrow">Bem-vindo</p>
+              <h1>O que é a Gaveteira?</h1>
+              <p>Um local para guardar e mostrar os seus gostos para o mundo. Seus jogos, livros, filmes, séries e discos. Todos guardados na sua gaveta virtual.</p>
+            </div>
+          ) : null}
+
+          {page === 1 ? (
+            <div className="first-card-onboarding-copy">
+              <p className="eyebrow">Cards</p>
+              <h1>Cada consumo ganha uma ficha</h1>
+              <p>Tudo aquilo que você consome pode ser salvo na Gaveteira como um card: uma representação do que você viu, passou, sentiu, imaginou, refletiu ou ignorou.</p>
+            </div>
+          ) : null}
+
+          {isChoicePage ? (
+            <div className="first-card-onboarding-copy">
+              <p className="eyebrow">Primeira gaveta</p>
+              <h1>O que você gostaria de guardar primeiro?</h1>
+              <div className="first-card-picker" aria-label="Escolher primeira gaveta">
+                {drawerItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <button key={item.key} type="button" className={`first-card-option drawer-${item.key}`} onClick={() => onChoose(item.key)}>
+                      <Icon size={22} />
+                      <strong>{item.label}</strong>
+                      <small>Começar aqui</small>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+
+          <footer className="modal-footer first-card-onboarding-footer">
+            <button type="button" className="ghost" onClick={() => setPage((current) => Math.max(0, current - 1))} disabled={page === 0}>
+              Voltar
             </button>
-          );
-        })}
-      </section>
+            {!isChoicePage ? (
+              <button type="button" className="primary" onClick={() => setPage((current) => Math.min(2, current + 1))}>
+                Continuar
+              </button>
+            ) : (
+              <span>Escolha uma gaveta para abrir a primeira ficha.</span>
+            )}
+          </footer>
+        </section>
+      </div>
     </main>
+  );
+}
+
+function FirstCardWelcomeModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="modal-backdrop first-card-onboarding-backdrop first-card-welcome-backdrop" role="presentation">
+      <section className="modal first-card-onboarding-modal first-card-welcome-modal" role="dialog" aria-modal="true" aria-label={"Boas-vindas \u00e0 Gaveteira"}>
+        <div className="first-card-onboarding-copy">
+          <p className="eyebrow">Tudo pronto</p>
+          <h1>{"Bem-vindo \u00e0 sua Gaveteira"}</h1>
+          <p>{"Sua primeira ficha j\u00e1 est\u00e1 guardada. A partir daqui, voc\u00ea pode circular pela casa com calma."}</p>
+        </div>
+
+        <div className="first-card-welcome-list" aria-label={"Pr\u00f3ximos caminhos"}>
+          <article>
+            <Archive size={22} />
+            <div>
+              <strong>Gavetas</strong>
+              <span>{"Voc\u00ea poder\u00e1 achar seus itens nas gavetas de jogos, livros, filmes, s\u00e9ries e discos."}</span>
+            </div>
+          </article>
+          <article>
+            <MessageSquare size={22} />
+            <div>
+              <strong>Feed</strong>
+              <span>{"Voc\u00ea poder\u00e1 ver o que os amigos est\u00e3o fazendo no feed."}</span>
+            </div>
+          </article>
+          <article>
+            <Users size={22} />
+            <div>
+              <strong>Social</strong>
+              <span>{"Voc\u00ea poder\u00e1 editar seu perfil em Social."}</span>
+            </div>
+          </article>
+        </div>
+
+        <footer className="modal-footer first-card-onboarding-footer">
+          <span>{"Bom arquivo. A Gaveteira agora \u00e9 sua."}</span>
+          <button type="button" className="primary" onClick={onClose}>{"Come\u00e7ar"}</button>
+        </footer>
+      </section>
+    </div>
   );
 }
 

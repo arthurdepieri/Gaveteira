@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.6.8-beta - Onboarding guiado - 2026-06-14
+
+Versão beta focada em deixar a primeira chegada na Gaveteira mais clara, guiada e confortável no computador e no celular.
+
+### Destaques
+
+- Pop-up inicial em três páginas explicando a Gaveteira, o conceito de cards e a escolha da primeira gaveta.
+- Tutorial obrigatório dentro da primeira ficha, separando preenchimento, status/nota/visibilidade e primeiro diário.
+- Botão de conclusão bloqueado até o usuário passar por todas as etapas da primeira ficha.
+- Mensagem final de boas-vindas após concluir a primeira ficha, apontando Gavetas, Feed e Social.
+- Cortinas opacas e animações próprias para os pop-ups do onboarding, sem mostrar a tela por trás.
+- Ajustes mobile para que os pop-ups fiquem centralizados, legíveis e com scroll seguro em telas pequenas.
+
+### Observações
+
+- Esta versão é uma subversão de experiência inicial da linha `0.6.x`, sem mudar o modelo de dados.
+- O pacote de release desta versão fica em `releases/Gaveteira-0.6.8-beta.zip`.
+
 ## 0.6.7-beta - Admin real e backend social - 2026-06-11
 
 Versão beta focada em transformar a base social da Gaveteira em uma estrutura mais confiável para publicação, administração e crescimento futuro.
