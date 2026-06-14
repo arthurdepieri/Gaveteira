@@ -1,7 +1,15 @@
 import { CulturalItem } from "../types";
 import { getTitle } from "../utils/itemHelpers";
 
-export function Cover({ item, compact = false }: { item: CulturalItem; compact?: boolean }) {
+export function Cover({
+  item,
+  compact = false,
+  onViewCover,
+}: {
+  item: CulturalItem;
+  compact?: boolean;
+  onViewCover?: () => void;
+}) {
   const title = getTitle(item);
   const initials = title
     .split(" ")
@@ -13,6 +21,18 @@ export function Cover({ item, compact = false }: { item: CulturalItem; compact?:
   return (
     <div className={`cover cover-${item.category} ${compact ? "cover-compact" : ""}`}>
       {item.coverUrl ? <img src={item.coverUrl} alt={`Capa de ${title}`} /> : <span>{initials}</span>}
+      {item.coverUrl && onViewCover ? (
+        <button
+          type="button"
+          className="cover-view-button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onViewCover();
+          }}
+        >
+          Ver capa
+        </button>
+      ) : null}
     </div>
   );
 }

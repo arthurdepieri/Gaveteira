@@ -482,11 +482,18 @@ function CoverUploadInput({
   }
 
   return (
-    <label className="local-image-upload">
-      <span>{uploading ? "Enviando capa..." : "Enviar imagem local"}</span>
-      <input type="file" accept="image/*" disabled={uploading} onChange={(event) => uploadCover(event.target.files?.[0])} />
-      {message ? <small>{message}</small> : <small>Usa Supabase Storage quando sua conta está conectada.</small>}
-    </label>
+    <>
+      <label className="local-image-upload">
+        <span>{uploading ? "Enviando capa..." : "Enviar imagem local"}</span>
+        <input type="file" accept="image/*" disabled={uploading} onChange={(event) => uploadCover(event.target.files?.[0])} />
+        {message ? <small>{message}</small> : <small>Usa Supabase Storage quando sua conta está conectada.</small>}
+      </label>
+      <label className="local-image-upload mobile-camera-upload">
+        <span>{uploading ? "Enviando foto..." : "Tirar foto para capa"}</span>
+        <input type="file" accept="image/*" capture="environment" disabled={uploading} onChange={(event) => uploadCover(event.target.files?.[0])} />
+        <small>Disponível no celular quando o navegador permite câmera.</small>
+      </label>
+    </>
   );
 }
 

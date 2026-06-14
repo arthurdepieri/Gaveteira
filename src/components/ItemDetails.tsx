@@ -1,4 +1,4 @@
-import { BookOpenText, Edit3, ExternalLink, ImageIcon, Lock, Megaphone, Plus, Search, Sparkles, Trash2, X } from "lucide-react";
+import { BookOpenText, Camera, Edit3, ExternalLink, ImageIcon, Lock, Megaphone, Plus, Search, Sparkles, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { AppSettings, CloudSession, CulturalItem, DiaryEntry, Rating, SocialVisibility } from "../types";
@@ -8,6 +8,7 @@ import { getItemVisibility, getItemVisibilityLabel, getTitle, getYear, isComplet
 import { MetadataResult, searchMetadata } from "../services/metadata";
 import { uploadStoredImage } from "../services/storage";
 import { Cover } from "./Cover";
+import { CoverViewer } from "./CoverViewer";
 import { Stars } from "./Rating";
 
 const DIARY_VISIBILITY_KEY = "gaveteira-diary-default-visibility:v1";
@@ -51,6 +52,7 @@ export function ItemDetails({
   const [activeMobileSection, setActiveMobileSection] = useState(focusDiaryId ? "Diário" : "Ficha");
   const [diaryOpen, setDiaryOpen] = useState(Boolean(focusDiaryId));
   const [coverSearchOpen, setCoverSearchOpen] = useState(false);
+  const [coverOpen, setCoverOpen] = useState(false);
   const mobileSections = ["Ficha", "Progresso", "Diário"];
   const canEditDiary = Boolean(onUpdateItem);
   const canChangeCover = Boolean(settings && onUpdateItem);
@@ -133,6 +135,7 @@ export function ItemDetails({
         </header>
 
         {diaryOpen ? <DiaryFocusPanel item={item} entries={item.diary} itemVisibility={itemVisibility} onChange={updateDiary} onClose={() => setDiaryOpen(false)} /> : null}
+        {coverOpen ? <CoverViewer item={item} onClose={() => setCoverOpen(false)} /> : null}
         {coverSearchOpen && settings ? (
           <CoverSearchPanel
             item={item}
@@ -148,7 +151,7 @@ export function ItemDetails({
         ) : null}
 
         <section className="detail-hero" data-season-theme={getSeasonalThemeId(item)}>
-          <Cover item={item} />
+          <Cover item={item} onViewCover={() => setCoverOpen(true)} />
           <div className="detail-identity">
             <span className="archive-stamp">{item.status}</span>
             <h1>{getTitle(item)}</h1>
@@ -499,6 +502,11 @@ function CoverSearchPanel({
         <span>{loading ? "Preparando imagem..." : "Enviar capa própria"}</span>
         <input type="file" accept="image/*" disabled={loading} onChange={(event) => uploadCover(event.target.files?.[0])} />
         <small>Arquivos locais vão para o Storage quando você está conectado.</small>
+      </label>
+      <label className="local-image-upload cover-local-upload mobile-camera-upload">
+        <span>{loading ? "Preparando foto..." : <><Camera size={16} /> Tirar foto para capa</>}</span>
+        <input type="file" accept="image/*" capture="environment" disabled={loading} onChange={(event) => uploadCover(event.target.files?.[0])} />
+        <small>Disponível no celular quando o navegador permite câmera.</small>
       </label>
       {error ? <p className="metadata-error">{error}</p> : null}
       {loading ? <CoverSearchSkeleton /> : null}

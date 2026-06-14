@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.6.10-beta - Capas ampliadas e acabamento das fichas - 2026-06-14
+
+Versao beta focada em melhorar a experiencia dentro das fichas e dar mais controle sobre as capas no computador e no celular.
+
+### Destaques
+
+- Visualizador de capa em tela ampliada para cards e fichas abertas.
+- Botao `Ver capa` sobre imagens de capa, com comportamento adaptado para toque no celular.
+- Entrada de camera para definir capas no celular, tanto ao criar/editar fichas quanto ao trocar capa na ficha aberta.
+- Interior das fichas padrao aproximado da linguagem visual das fichas sazonais, preservando a paleta normal.
+- Ajustes equivalentes para modo noturno nos paineis, chips, controles, blocos e diario.
+- Feed social com deduplicacao de eventos para reduzir repeticoes entre dados locais e eventos da nuvem.
+
+### Observacoes
+
+- Esta versao e uma subversao de experiencia e polimento da linha `0.6.x`, sem exigir migracao manual de dados.
+- O pacote de release desta versao fica em `releases/Gaveteira-0.6.10-beta.zip`.
+
 ## 0.6.9-beta - Fichas sazonais da Copa - 2026-06-14
 
 Versao beta focada em preparar a Gaveteira para fichas com identidade sazonal permanente, com estreia na temporada de Copa do Mundo.

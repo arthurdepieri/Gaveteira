@@ -1,40 +1,61 @@
+import { KeyboardEvent, useState } from "react";
 import { CulturalItem } from "../types";
 import { Cover } from "./Cover";
+import { CoverViewer } from "./CoverViewer";
 import { Stars } from "./Rating";
 import { getSeasonalThemeClassName, getSeasonalThemeId } from "../data/seasonalThemes";
 import { getGenre, getItemVisibility, getItemVisibilityLabel, getTitle, getYear } from "../utils/itemHelpers";
 
 export function ItemCard({ item, onOpen }: { item: CulturalItem; onOpen: () => void }) {
+  const [coverOpen, setCoverOpen] = useState(false);
   const gameTime = item.category === "games" ? item.timePlayed?.trim() || "--:--" : "";
   const progress = getProgressLabel(item);
   const diaryBadges = getDiaryBadges(item);
   const visibility = getItemVisibility(item);
 
+  function openFromKeyboard(event: KeyboardEvent<HTMLElement>) {
+    if (event.target !== event.currentTarget) return;
+    if (event.key !== "Enter" && event.key !== " ") return;
+
+    event.preventDefault();
+    onOpen();
+  }
+
   return (
-    <button className={getSeasonalThemeClassName(item, "item-card")} data-season-theme={getSeasonalThemeId(item)} onClick={onOpen}>
-      <Cover item={item} />
-      <div className="item-card-body">
-        <div className="item-card-main">
-          <div className="item-card-kicker">
-            <span>{item.status}</span>
-            {getYear(item) ? <span>{getYear(item)}</span> : null}
+    <>
+      <article
+        className={getSeasonalThemeClassName(item, "item-card")}
+        data-season-theme={getSeasonalThemeId(item)}
+        role="button"
+        tabIndex={0}
+        onClick={onOpen}
+        onKeyDown={openFromKeyboard}
+      >
+        <Cover item={item} onViewCover={() => setCoverOpen(true)} />
+        <div className="item-card-body">
+          <div className="item-card-main">
+            <div className="item-card-kicker">
+              <span>{item.status}</span>
+              {getYear(item) ? <span>{getYear(item)}</span> : null}
+            </div>
+            <span className={`visibility-pill visibility-${visibility}`}>
+              {getItemVisibilityLabel(item)}
+            </span>
+            <h3>{getTitle(item)}</h3>
+            <p>{getGenre(item) || "Gênero não arquivado"}</p>
+            {item.category === "games" ? <p className="item-card-playtime">Tempo jogado: {gameTime}</p> : null}
+            <div className={`diary-marker-row${diaryBadges.length ? "" : " is-empty"}`} aria-hidden={!diaryBadges.length}>
+              {diaryBadges.map((badge) => <span key={badge}>{badge}</span>)}
+            </div>
           </div>
-          <span className={`visibility-pill visibility-${visibility}`}>
-            {getItemVisibilityLabel(item)}
-          </span>
-          <h3>{getTitle(item)}</h3>
-          <p>{getGenre(item) || "Gênero não arquivado"}</p>
-          {item.category === "games" ? <p className="item-card-playtime">Tempo jogado: {gameTime}</p> : null}
-          <div className={`diary-marker-row${diaryBadges.length ? "" : " is-empty"}`} aria-hidden={!diaryBadges.length}>
-            {diaryBadges.map((badge) => <span key={badge}>{badge}</span>)}
+          <div className="item-card-meta">
+            <Stars value={item.rating} />
+            {progress ? <small>{progress}</small> : null}
           </div>
         </div>
-        <div className="item-card-meta">
-          <Stars value={item.rating} />
-          {progress ? <small>{progress}</small> : null}
-        </div>
-      </div>
-    </button>
+      </article>
+      {coverOpen ? <CoverViewer item={item} onClose={() => setCoverOpen(false)} /> : null}
+    </>
   );
 }
 

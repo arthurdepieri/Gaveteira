@@ -82,10 +82,9 @@ export function SocialFeedView({
   }, [acceptedFriends, session, socialItems]);
 
   const socialFeed = useMemo(() => {
-    if (cloudFeedEvents.length) return cloudFeedEvents;
     const viewerId = session?.user.id ?? "";
-    return buildSocialFeed(socialItems, viewerId)
-      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    const feed = cloudFeedEvents.length ? cloudFeedEvents : buildSocialFeed(socialItems, viewerId);
+    return dedupeFeedEvents(feed);
   }, [cloudFeedEvents, session?.user.id, socialItems]);
   const friendFeed = socialFeed.filter((event) => event.entry.ownerId !== session?.user.id);
   const myFeed = socialFeed.filter((event) => event.entry.ownerId === session?.user.id);
@@ -382,6 +381,36 @@ interface FeedEvent {
   detail: string;
   updatedAt: string;
   diaryId?: string;
+}
+
+function dedupeFeedEvents(events: FeedEvent[]) {
+  const seen = new Set<string>();
+
+  return [...events]
+    .sort((a, b) => (
+      new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+      || feedKindPriority(b.kind) - feedKindPriority(a.kind)
+      || a.text.localeCompare(b.text)
+    ))
+    .filter((event) => {
+      const key = feedEventDedupeKey(event);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}
+
+function feedEventDedupeKey(event: FeedEvent) {
+  return `${event.entry.ownerId}:${comparableKey(event.entry.item) || event.entry.id}`;
+}
+
+function feedKindPriority(kind: FeedKind) {
+  if (kind === "finished" || kind === "abandoned") return 7;
+  if (kind === "favorite") return 6;
+  if (kind === "wishlist") return 5;
+  if (kind === "diary") return 4;
+  if (kind === "opinion") return 3;
+  return 2;
 }
 
 function buildSocialFeed(entries: FamilyItem[], viewerId: string): FeedEvent[] {
