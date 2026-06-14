@@ -11,7 +11,10 @@ import { Cover } from "./Cover";
 import { Stars } from "./Rating";
 
 const DIARY_VISIBILITY_KEY = "gaveteira-diary-default-visibility:v1";
-const diaryTypes: NonNullable<DiaryEntry["type"]>[] = ["Impressão", "Citação", "Teoria", "Progresso", "Memória", "Revisita", "Opinião final"];
+type DiaryType = NonNullable<DiaryEntry["type"]>;
+type DiaryDisplayEntry = DiaryEntry & { source?: "field" };
+
+const baseDiaryTypes: DiaryType[] = ["Impressão", "Citação", "Teoria", "Progresso", "Memória", "Revisita", "Opinião final"];
 const diaryPrompts = [
   "O que te chamou atenção hoje?",
   "Você continuaria ou pausaria?",
@@ -45,20 +48,21 @@ export function ItemDetails({
   const sections = detailSections(item);
   const visibleSections = sections.filter((section) => section.fields.length);
   const year = getYear(item);
-  const [activeMobileSection, setActiveMobileSection] = useState(focusDiaryId ? "Diário" : "Resumo");
+  const [activeMobileSection, setActiveMobileSection] = useState(focusDiaryId ? "Diário" : "Ficha");
   const [diaryOpen, setDiaryOpen] = useState(Boolean(focusDiaryId));
   const [coverSearchOpen, setCoverSearchOpen] = useState(false);
-  const mobileSections = ["Resumo", ...visibleSections.map((section) => section.title), "Histórico", "Diário"];
+  const mobileSections = ["Ficha", "Progresso", "Diário"];
   const canEditDiary = Boolean(onUpdateItem);
   const canChangeCover = Boolean(settings && onUpdateItem);
   const canQuickEdit = Boolean(onUpdateItem && !ownerName);
   const visibleDiary = ownerName && !canEditDiary
     ? item.diary.filter((entry) => entry.visibility === "friends")
     : item.diary;
-  const timelineEntries = buildStoryTimeline(item, visibleDiary);
-  const summaryFields = buildDetailSummaryFields(item, visibleDiary, timelineEntries);
-  const finalSummary = buildFinalSummarySuggestion(item);
   const itemVisibility = getItemVisibility(item);
+  const diaryDisplayEntries: DiaryDisplayEntry[] = [...buildStructuredDiaryEntries(item, itemVisibility), ...visibleDiary];
+  const summaryFields = buildDetailSummaryFields(item, diaryDisplayEntries);
+  const finalSummary = buildFinalSummarySuggestion(item);
+  const diarySummary = buildDiarySummary(diaryDisplayEntries);
 
   function updateDiary(diary: DiaryEntry[]) {
     onUpdateItem?.({ ...item, diary, updatedAt: new Date().toISOString() } as CulturalItem);
@@ -66,6 +70,10 @@ export function ItemDetails({
 
   function updateVisibility(visibility: SocialVisibility) {
     onUpdateItem?.({ ...item, visibility, updatedAt: new Date().toISOString() } as CulturalItem);
+  }
+
+  function toggleVisibility() {
+    updateVisibility(itemVisibility === "private" ? "friends" : "private");
   }
 
   function updateStatus(status: string) {
@@ -124,7 +132,7 @@ export function ItemDetails({
           </div>
         </header>
 
-        {diaryOpen ? <DiaryFocusPanel entries={item.diary} itemVisibility={itemVisibility} onChange={updateDiary} onClose={() => setDiaryOpen(false)} /> : null}
+        {diaryOpen ? <DiaryFocusPanel item={item} entries={item.diary} itemVisibility={itemVisibility} onChange={updateDiary} onClose={() => setDiaryOpen(false)} /> : null}
         {coverSearchOpen && settings ? (
           <CoverSearchPanel
             item={item}
@@ -148,9 +156,15 @@ export function ItemDetails({
               {year ? <span>{year}</span> : null}
               {item.genre ? <span>{item.genre}</span> : null}
               {ownerName ? <span>{ownerName}</span> : null}
-              <span className={`visibility-pill visibility-${itemVisibility}`}>
-                {getItemVisibilityLabel(item)}
-              </span>
+              {!ownerName && onUpdateItem ? (
+                <button type="button" className={`visibility-pill detail-visibility-toggle visibility-${itemVisibility}`} onClick={toggleVisibility}>
+                  {getItemVisibilityLabel(item)}
+                </button>
+              ) : (
+                <span className={`visibility-pill visibility-${itemVisibility}`}>
+                  {getItemVisibilityLabel(item)}
+                </span>
+              )}
             </div>
             <div className="detail-rating-line">
               <Stars value={item.rating} />
@@ -177,13 +191,9 @@ export function ItemDetails({
               </div>
             ) : null}
             <div className="detail-quick-actions" aria-label="Atalhos da ficha">
-              <button type="button" className="ghost compact" onClick={() => setActiveMobileSection("Histórico")}>
-                Histórico
-                <span>{timelineEntries.length}</span>
-              </button>
-              <button type="button" className="ghost compact" onClick={() => setActiveMobileSection("Diário")}>
+              <button type="button" className="ghost compact diary-summary-trigger" onClick={() => setActiveMobileSection("Diário")}>
                 Diário
-                <span>{visibleDiary.filter((entry) => entry.text.trim()).length}</span>
+                <span>{diaryDisplayEntries.filter((entry) => entry.text.trim()).length}</span>
               </button>
               {canEditDiary ? (
                 <button
@@ -199,27 +209,30 @@ export function ItemDetails({
                 </button>
               ) : null}
             </div>
+            <button
+              type="button"
+              className="detail-diary-brief"
+              onClick={() => {
+                setActiveMobileSection("Diário");
+                if (canEditDiary) setDiaryOpen(true);
+              }}
+            >
+              <BookOpenText size={17} />
+              <span>
+                <strong>{diarySummary.title}</strong>
+                <small>{diarySummary.detail}</small>
+              </span>
+              {diarySummary.markers.length ? (
+                <em>{diarySummary.markers.join(" / ")}</em>
+              ) : null}
+            </button>
             {!ownerName ? (
               <div className={`privacy-note privacy-note-${itemVisibility}`}>
                 <p>
                   {itemVisibility === "private"
-                    ? "Esta ficha está privada e não aparece para amigos, no Feed ou nas comparações sociais."
+                    ? "Esta ficha está privada. Toque no selo de visibilidade acima para abrir aos amigos."
                     : "Esta ficha está visível para amigos. Entradas privadas do diário continuam ocultas."}
                 </p>
-                {onUpdateItem ? (
-                  <label className="detail-privacy-control">
-                    <span>Privacidade da ficha</span>
-                    <select value={itemVisibility === "private" ? "private" : "friends"} onChange={(event) => updateVisibility(event.target.value as SocialVisibility)}>
-                      <option value="friends">Visível para amigos</option>
-                      <option value="private">Privado</option>
-                    </select>
-                  </label>
-                ) : null}
-              </div>
-            ) : null}
-            {item.tags.length ? (
-              <div className="tag-row">
-                {item.tags.map((tag) => <span key={tag}>{tag}</span>)}
               </div>
             ) : null}
             {item.links.length ? (
@@ -248,7 +261,7 @@ export function ItemDetails({
           ))}
         </nav>
 
-        <section className={`archive-block detail-summary-panel detail-mobile-panel ${activeMobileSection === "Resumo" ? "active" : ""}`}>
+        <section className={`archive-block detail-summary-panel detail-mobile-panel ${activeMobileSection === "Ficha" ? "active" : ""}`}>
           <div className="archive-block-heading">
             <h3>Resumo</h3>
             <span>{categoryLabels[item.category]}</span>
@@ -265,7 +278,7 @@ export function ItemDetails({
 
         <section className="detail-section-grid">
           {visibleSections.map((section) => (
-            <section key={section.title} className={`archive-block detail-mobile-panel ${activeMobileSection === section.title ? "active" : ""}`}>
+            <section key={section.title} className={`archive-block detail-mobile-panel ${mobileSectionForDetailBlock(section.title) === activeMobileSection ? "active" : ""}`}>
               <h3>{section.title}</h3>
               <div className="detail-grid">
                 {section.fields.map(([label, value]) => (
@@ -279,21 +292,6 @@ export function ItemDetails({
           ))}
         </section>
 
-        <section className={`archive-block detail-mobile-panel ${activeMobileSection === "Histórico" ? "active" : ""}`}>
-          <h3>Histórico</h3>
-          {timelineEntries.length ? (
-            <div className="timeline-list">
-              {timelineEntries.map((event) => (
-                <div className={`timeline-entry ${event.kind === "diary" ? "timeline-entry-diary" : ""}`} key={event.id}>
-                  <span>{event.date || "Data não registrada"}</span>
-                  <strong>{event.label}</strong>
-                  {event.text ? <p>{event.text}</p> : null}
-                </div>
-              ))}
-            </div>
-          ) : <p className="empty">O histórico desta ficha ainda está em branco.</p>}
-        </section>
-
         <section className={`archive-block detail-mobile-panel ${activeMobileSection === "Diário" ? "active" : ""}`}>
           <div className="archive-block-heading">
             <h3>Diário</h3>
@@ -304,11 +302,11 @@ export function ItemDetails({
               </button>
             ) : null}
           </div>
-          {visibleDiary.length ? (
+          {diaryDisplayEntries.length ? (
             <div className="diary-note-grid">
-              {visibleDiary.map((entry) => (
-                <article key={entry.id} className={`diary-note-card diary-note-${entry.visibility === "friends" ? "friends" : "private"} ${focusDiaryId === entry.id ? "diary-note-highlight" : ""}`}>
-                  <strong>{entry.date || "Data não registrada"}</strong>
+              {diaryDisplayEntries.map((entry) => (
+                <article key={entry.id} className={`diary-note-card diary-note-${entry.visibility === "friends" ? "friends" : "private"} ${entry.source === "field" ? "diary-note-archive" : ""} ${focusDiaryId === entry.id ? "diary-note-highlight" : ""}`}>
+                  <strong>{entry.source === "field" ? "Da ficha" : entry.date || "Data não registrada"}</strong>
                   <em>{entry.type ?? "Impressão"}</em>
                   <span className="diary-visibility-badge">
                     {entry.visibility === "friends" ? <Megaphone size={13} /> : <Lock size={13} />}
@@ -334,17 +332,20 @@ export function ItemDetails({
 }
 
 function DiaryFocusPanel({
+  item,
   entries,
   itemVisibility,
   onChange,
   onClose,
 }: {
+  item: CulturalItem;
   entries: DiaryEntry[];
   itemVisibility: ReturnType<typeof getItemVisibility>;
   onChange: (entries: DiaryEntry[]) => void;
   onClose: () => void;
 }) {
   const [defaultVisibility, setDefaultVisibility] = useState<DiaryEntry["visibility"]>(() => loadDiaryVisibility());
+  const availableDiaryTypes = getDiaryTypesForItem(item);
   const update = (id: string, patch: Partial<DiaryEntry>) => {
     if (patch.visibility) {
       localStorage.setItem(DIARY_VISIBILITY_KEY, patch.visibility);
@@ -360,7 +361,7 @@ function DiaryFocusPanel({
         date: new Date().toISOString().slice(0, 10),
         text: "",
         visibility: defaultVisibility,
-        type: "Impressão",
+        type: availableDiaryTypes[0] ?? "Impressão",
       },
       ...entries,
     ]);
@@ -391,7 +392,7 @@ function DiaryFocusPanel({
             <div className="diary-focus-meta">
               <input type="date" value={entry.date} onChange={(event) => update(entry.id, { date: event.target.value })} />
               <select value={entry.type ?? "Impressão"} onChange={(event) => update(entry.id, { type: event.target.value as DiaryEntry["type"] })}>
-                {diaryTypes.map((type) => <option key={type}>{type}</option>)}
+                {withCurrentDiaryType(availableDiaryTypes, entry.type).map((type) => <option key={type}>{type}</option>)}
               </select>
               <select value={entry.visibility ?? "private"} onChange={(event) => update(entry.id, { visibility: event.target.value as DiaryEntry["visibility"] })}>
                 <option value="private">Privado</option>
@@ -535,6 +536,76 @@ function loadDiaryVisibility(): DiaryEntry["visibility"] {
   return saved === "friends" ? "friends" : "private";
 }
 
+function getDiaryTypesForItem(item: CulturalItem): DiaryType[] {
+  const categoryTypes: Record<CulturalItem["category"], DiaryType[]> = {
+    games: ["Comentário", "Motivo de abandono", "Dificuldade percebida"],
+    books: ["Frases favoritas", "Resumo pessoal", "Opinião final", "Motivo de abandono"],
+    albums: ["Músicas favoritas", "Músicas puladas", "Comentário"],
+    movies: ["Comentário", "Opinião final"],
+    series: ["Comentário", "Sinopse", "Opinião final"],
+  };
+
+  return [...new Set([...baseDiaryTypes, ...categoryTypes[item.category]])];
+}
+
+function withCurrentDiaryType(types: DiaryType[], current?: DiaryEntry["type"]) {
+  return current && !types.includes(current) ? [current, ...types] : types;
+}
+
+function buildStructuredDiaryEntries(item: CulturalItem, itemVisibility: SocialVisibility): DiaryDisplayEntry[] {
+  const visibility = itemVisibility === "private" ? "private" : "friends";
+  const date = item.updatedAt?.slice(0, 10) || "";
+  const makeEntry = (type: DiaryType, text: unknown): DiaryDisplayEntry | null => {
+    const value = text === undefined || text === null ? "" : String(text).trim();
+    if (!value) return null;
+
+    return {
+      id: `field-${item.id}-${type}`,
+      date,
+      type,
+      text: value,
+      visibility,
+      source: "field",
+    };
+  };
+
+  const fields: Array<[DiaryType, unknown]> = item.category === "games"
+    ? [["Dificuldade percebida", item.perceivedDifficulty], ["Comentário", item.notes], ["Motivo de abandono", item.abandonmentReason]]
+    : item.category === "books"
+      ? [["Frases favoritas", item.favoriteQuotes], ["Resumo pessoal", item.personalSummary], ["Opinião final", item.finalOpinion], ["Motivo de abandono", item.abandonmentReason]]
+      : item.category === "albums"
+        ? [["Músicas favoritas", item.favoriteTracks], ["Músicas puladas", item.skippedTracks], ["Comentário", item.comments]]
+        : item.category === "movies"
+          ? [["Comentário", item.comments]]
+          : [["Comentário", item.comments]];
+
+  return fields.map(([type, value]) => makeEntry(type, value)).filter(Boolean) as DiaryDisplayEntry[];
+}
+
+function mobileSectionForDetailBlock(title: string) {
+  return title === "Progresso" ? "Progresso" : "Ficha";
+}
+
+function buildDiarySummary(diary: DiaryDisplayEntry[]) {
+  const notes = diary.filter((entry) => entry.text.trim());
+  const latest = notes
+    .slice()
+    .sort((a, b) => new Date(b.date || "").getTime() - new Date(a.date || "").getTime())[0];
+  const markers = [...new Set(notes.map((entry) => entry.type).filter(Boolean))].slice(0, 3) as string[];
+
+  return {
+    title: notes.length ? `${notes.length} ${notes.length === 1 ? "nota" : "notas"} no diário` : "Diário pronto para a primeira nota",
+    detail: latest?.date ? `Última entrada em ${formatShortDate(latest.date)}` : "Impressões, citações e memórias ficam guardadas aqui.",
+    markers,
+  };
+}
+
+function formatShortDate(date: string) {
+  const parsed = new Date(`${date}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return date;
+  return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit" }).format(parsed);
+}
+
 function QuickStarRating({
   value,
   onChange,
@@ -572,25 +643,6 @@ function QuickStarRating({
   );
 }
 
-function buildStoryTimeline(item: CulturalItem, diary: DiaryEntry[]) {
-  return [
-    ...item.timeline.map((event) => ({
-      id: event.id,
-      date: event.date,
-      label: event.type,
-      text: event.note ?? "",
-      kind: "event" as const,
-    })),
-    ...diary.filter((entry) => entry.text.trim()).map((entry) => ({
-      id: `diary-${entry.id}`,
-      date: entry.date,
-      label: `Escrevi uma nota / ${entry.type ?? "Impressão"}`,
-      text: entry.text.length > 140 ? `${entry.text.slice(0, 140)}...` : entry.text,
-      kind: "diary" as const,
-    })),
-  ].sort((a, b) => new Date(a.date || "1900-01-01").getTime() - new Date(b.date || "1900-01-01").getTime());
-}
-
 function buildFinalSummarySuggestion(item: CulturalItem) {
   const notes = item.diary.filter((entry) => entry.text.trim());
   if (!isCompleted(item) || notes.length < 5 || hasFinalOpinion(item)) return null;
@@ -623,7 +675,7 @@ function applyFinalSummary(item: CulturalItem, summary: string): CulturalItem {
   return { ...item, notes: summary, updatedAt };
 }
 
-function buildDetailSummaryFields(item: CulturalItem, diary: DiaryEntry[], timelineEntries: ReturnType<typeof buildStoryTimeline>): Array<[string, string]> {
+function buildDetailSummaryFields(item: CulturalItem, diary: DiaryDisplayEntry[]): Array<[string, string]> {
   const diaryCount = diary.filter((entry) => entry.text.trim()).length;
   return visibleFields([
     ["Status", item.status],
@@ -632,8 +684,6 @@ function buildDetailSummaryFields(item: CulturalItem, diary: DiaryEntry[], timel
     ["Gênero", item.genre],
     ["Progresso", getProgressSnapshot(item)],
     ["Diário", diaryCount ? `${diaryCount} ${diaryCount === 1 ? "entrada" : "entradas"}` : "Nenhuma nota"],
-    ["Histórico", timelineEntries.length ? `${timelineEntries.length} ${timelineEntries.length === 1 ? "evento" : "eventos"}` : "Ainda em branco"],
-    ["Visibilidade", getItemVisibilityLabel(item)],
   ]);
 }
 
@@ -666,8 +716,6 @@ function detailSections(item: CulturalItem): Array<{ title: string; fields: Arra
     return [
       { title: "Ficha técnica", fields: visibleFields([["Plataforma", item.platform], ["Desenvolvedora", item.developer], ["Publicadora", item.publisher], ["Ano de lançamento", item.releaseYear], ["Gênero", item.genre]]) },
       { title: "Progresso", fields: visibleFields([["Status", item.status], ["Início", item.startDate], ["Conclusão/abandono", item.endDate], ["Tempo jogado", item.timePlayed], ["Conclusão", item.completionType]]) },
-      { title: "Avaliação", fields: visibleFields([["Nota", item.rating ? `${item.rating}/5` : ""], ["Dificuldade percebida", item.perceivedDifficulty]]) },
-      { title: "Notas pessoais", fields: visibleFields([["Comentários/anotações", item.notes], ["Motivo de abandono", item.abandonmentReason]]) },
     ];
   }
 
@@ -675,8 +723,6 @@ function detailSections(item: CulturalItem): Array<{ title: string; fields: Arra
     return [
       { title: "Ficha técnica", fields: visibleFields([["Autor", item.author], ["Editora", item.publisher], ["Ano de publicação", item.publicationYear], ["Gênero", item.genre], ["Formato", item.format], ["Páginas", item.pages]]) },
       { title: "Progresso", fields: visibleFields([["Status", item.status], ["Início", item.startDate], ["Conclusão/abandono", item.endDate], ["Página atual", item.currentPage]]) },
-      { title: "Avaliação", fields: visibleFields([["Nota", item.rating ? `${item.rating}/5` : ""], ["Opinião final", item.finalOpinion]]) },
-      { title: "Notas pessoais", fields: visibleFields([["Frases favoritas", item.favoriteQuotes], ["Resumo pessoal", item.personalSummary], ["Motivo de abandono", item.abandonmentReason]]) },
     ];
   }
 
@@ -684,8 +730,6 @@ function detailSections(item: CulturalItem): Array<{ title: string; fields: Arra
     return [
       { title: "Ficha técnica", fields: visibleFields([["Artista", item.artist], ["Ano de lançamento", item.releaseYear], ["Gênero", item.genre]]) },
       { title: "Progresso", fields: visibleFields([["Status", item.status], ["Data em que ouvi", item.listenedDate], ["Vezes ouvido", item.listenCount], ["Escuta", item.listenMode]]) },
-      { title: "Avaliação", fields: visibleFields([["Nota", item.rating ? `${item.rating}/5` : ""], ["Músicas favoritas", item.favoriteTracks], ["Músicas puladas", item.skippedTracks]]) },
-      { title: "Notas pessoais", fields: visibleFields([["Comentários", item.comments]]) },
     ];
   }
 
@@ -693,16 +737,12 @@ function detailSections(item: CulturalItem): Array<{ title: string; fields: Arra
     return [
       { title: "Ficha técnica", fields: visibleFields([["Ano", item.year], ["Gênero", item.genre], ["Direção", item.director], ["Duração", item.runtimeMinutes ? `${item.runtimeMinutes} min` : ""]]) },
       { title: "Progresso", fields: visibleFields([["Status", item.status], ["Início", item.startDate], ["Conclusão", item.endDate]]) },
-      { title: "Avaliação", fields: visibleFields([["Nota", item.rating ? `${item.rating}/5` : ""]]) },
-      { title: "Notas pessoais", fields: visibleFields([["Comentários", item.comments]]) },
     ];
   }
 
   return [
     { title: "Ficha técnica", fields: visibleFields([["Ano", item.year], ["Gênero", item.genre]]) },
     { title: "Progresso", fields: visibleFields([["Status", item.status], ["Início", item.startDate], ["Conclusão", item.endDate], ["Temporada atual", item.currentSeason], ["Episódio atual", item.currentEpisode], ["Acompanhamento", item.trackingStatus]]) },
-    { title: "Avaliação", fields: visibleFields([["Nota", item.rating ? `${item.rating}/5` : ""]]) },
-    { title: "Notas pessoais", fields: visibleFields([["Sinopse", item.comments]]) },
   ];
 }
 

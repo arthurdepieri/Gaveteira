@@ -23,7 +23,7 @@ export interface DiaryEntry {
   date: string;
   text: string;
   visibility?: "private" | "friends";
-  type?: "Impressão" | "Citação" | "Teoria" | "Progresso" | "Memória" | "Revisita" | "Opinião final";
+  type?: "Impressão" | "Citação" | "Teoria" | "Progresso" | "Memória" | "Revisita" | "Opinião final" | "Comentário" | "Motivo de abandono" | "Músicas favoritas" | "Músicas puladas" | "Frases favoritas" | "Resumo pessoal" | "Dificuldade percebida" | "Sinopse";
 }
 
 export interface ExternalLink {

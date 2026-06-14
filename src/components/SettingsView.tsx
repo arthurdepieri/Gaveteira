@@ -1,11 +1,11 @@
-import { Cloud, Download, GitMerge, KeyRound, Moon, RotateCcw, ShieldCheck, Sun, Trash2, Upload } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Cloud, Download, GitMerge, KeyRound, Loader2, Moon, RefreshCw, RotateCcw, ShieldCheck, Sun, Trash2, Upload } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { AppData, AppSettings, Category, CloudSession, CulturalItem } from "../types";
 import { categoryLabels } from "../data/catalog";
 import { parseImportedData } from "../storage/localStore";
 import { createSafetySnapshot, loadSafetySnapshots, removeSafetySnapshot, SafetySnapshot, snapshotReasonLabel } from "../storage/snapshots";
 import { getMetadataProviders } from "../services/metadata";
-import { fetchMyItems } from "../services/supabaseCloud";
+import { checkCloudReadiness, CloudReadinessReport, CloudReadinessStatus, fetchMyItems } from "../services/supabaseCloud";
 import { getWorkKey } from "../utils/itemHelpers";
 import { withoutLegacyDemoItems } from "../utils/legacyDemoItems";
 
@@ -50,6 +50,9 @@ export function SettingsView({
   const [importPreview, setImportPreview] = useState<BackupPreview | null>(null);
   const [backupHistory, setBackupHistory] = useState<BackupHistoryEntry[]>(() => loadBackupHistory());
   const [snapshots, setSnapshots] = useState<SafetySnapshot[]>(() => loadSafetySnapshots());
+  const [readinessReport, setReadinessReport] = useState<CloudReadinessReport | null>(null);
+  const [readinessLoading, setReadinessLoading] = useState(false);
+  const [readinessError, setReadinessError] = useState("");
   const providers = getMetadataProviders(data.settings);
   const accountName = useMemo(() => backupAccountName(session), [session]);
   const exportItemCount = backupScope === "local"
@@ -61,6 +64,24 @@ export function SettingsView({
   useEffect(() => {
     setSnapshots(loadSafetySnapshots());
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    runCloudReadinessCheck(
+      (report) => {
+        if (!cancelled) setReadinessReport(report);
+      },
+      (message) => {
+        if (!cancelled) setReadinessError(message);
+      },
+      () => !cancelled,
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [settings.cloud?.supabaseUrl, settings.cloud?.supabaseAnonKey, session?.accessToken]);
 
   function importFile(file?: File) {
     if (!file) return;
@@ -96,6 +117,24 @@ export function SettingsView({
       return null;
     } finally {
       setLoadingCloud(false);
+    }
+  }
+
+  async function runCloudReadinessCheck(
+    onReport: (report: CloudReadinessReport) => void = setReadinessReport,
+    onError: (message: string) => void = setReadinessError,
+    canUpdate: () => boolean = () => true,
+  ) {
+    setReadinessLoading(true);
+    onError("");
+
+    try {
+      const report = await checkCloudReadiness(settings, session);
+      if (canUpdate()) onReport(report);
+    } catch (error) {
+      if (canUpdate()) onError(error instanceof Error ? error.message : "Não consegui verificar a nuvem agora.");
+    } finally {
+      if (canUpdate()) setReadinessLoading(false);
     }
   }
 
@@ -334,10 +373,85 @@ export function SettingsView({
           </div>
         </div>
 
+        <div className="setting-panel wide">
+          <div className="cloud-readiness-header">
+            <div>
+              <h2>Prontidão da nuvem</h2>
+              <p>Um raio-x rápido para saber se a nuvem da Gaveteira está pronta para salvar fichas, imagens e buscas automáticas.</p>
+            </div>
+            <button className="ghost" type="button" onClick={() => runCloudReadinessCheck()} disabled={readinessLoading}>
+              {readinessLoading ? <Loader2 size={16} className="spin" /> : <RefreshCw size={16} />}
+              Verificar de novo
+            </button>
+          </div>
+
+          <div className={`cloud-readiness-summary cloud-readiness-${readinessReport?.status ?? "unknown"}`}>
+            {readinessIcon(readinessReport?.status ?? "unknown", readinessLoading)}
+            <div>
+              <strong>{readinessLoading && !readinessReport ? "Verificando a nuvem..." : readinessReport?.message ?? "Ainda não verificamos a nuvem."}</strong>
+              <span>{readinessReport ? `Última verificação: ${formatDateTime(readinessReport.checkedAt)}` : "O diagnóstico aparece aqui assim que responder."}</span>
+            </div>
+          </div>
+
+          <div className="cloud-readiness-grid">
+            {(readinessReport?.checks ?? emptyReadinessChecks()).map((check) => (
+              <article key={check.id} className={`cloud-readiness-check cloud-readiness-${check.status}`}>
+                <div className="cloud-readiness-check-title">
+                  {readinessIcon(check.status, readinessLoading && !readinessReport)}
+                  <strong>{check.title}</strong>
+                </div>
+                <p>{check.message}</p>
+                {check.detail ? <small>{check.detail}</small> : null}
+              </article>
+            ))}
+          </div>
+          {readinessError ? <p className="form-error">{readinessError}</p> : null}
+        </div>
+
         <StatusManager data={data} onUpdateData={onUpdateData} />
       </section>
     </main>
   );
+}
+
+function emptyReadinessChecks(): CloudReadinessReport["checks"] {
+  return [
+    {
+      id: "schema",
+      title: "Banco de dados",
+      status: "unknown",
+      message: "Aguardando verificação.",
+      detail: "Vou conferir se o schema.sql foi aplicado.",
+    },
+    {
+      id: "rpc",
+      title: "Ações da nuvem",
+      status: "unknown",
+      message: "Aguardando verificação.",
+      detail: "Vou conferir se as ações internas da Gaveteira existem.",
+    },
+    {
+      id: "storage",
+      title: "Imagens",
+      status: "unknown",
+      message: "Aguardando verificação.",
+      detail: "Vou procurar o espaço usado por capas e avatares.",
+    },
+    {
+      id: "metadata-search",
+      title: "Busca automática",
+      status: "unknown",
+      message: "Aguardando verificação.",
+      detail: "Vou chamar a busca metadata-search sem alterar suas fichas.",
+    },
+  ];
+}
+
+function readinessIcon(status: CloudReadinessStatus, loading = false) {
+  if (loading) return <Loader2 size={17} className="spin" />;
+  if (status === "ready") return <CheckCircle2 size={17} />;
+  if (status === "attention") return <AlertTriangle size={17} />;
+  return <Cloud size={17} />;
 }
 
 function StatusManager({ data, onUpdateData }: { data: AppData; onUpdateData: (patch: Partial<AppData>) => void }) {

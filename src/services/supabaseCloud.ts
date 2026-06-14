@@ -136,8 +136,86 @@ interface SocialFeedRpcRow {
   created_at: string;
 }
 
+export type CloudReadinessStatus = "ready" | "attention" | "unknown";
+
+export interface CloudReadinessCheck {
+  id: "schema" | "rpc" | "storage" | "metadata-search";
+  title: string;
+  status: CloudReadinessStatus;
+  message: string;
+  detail?: string;
+}
+
+export interface CloudReadinessReport {
+  status: CloudReadinessStatus;
+  message: string;
+  checkedAt: string;
+  checks: CloudReadinessCheck[];
+}
+
 export function isCloudConfigured(settings: AppSettings) {
   return Boolean(settings.cloud?.supabaseUrl && settings.cloud?.supabaseAnonKey);
+}
+
+export async function checkCloudReadiness(settings: AppSettings, session: CloudSession | null): Promise<CloudReadinessReport> {
+  const checkedAt = new Date().toISOString();
+
+  try {
+    const { supabaseUrl, supabaseAnonKey } = requireCloudSettings(settings);
+
+    if (!session?.accessToken) {
+      const checks = cloudReadinessIds().map((id) => ({
+        id,
+        title: cloudReadinessTitle(id),
+        status: "unknown" as const,
+        message: "Entre na sua conta para eu testar esta parte por dentro.",
+        detail: "A URL e a anon key existem, mas os testes seguros precisam de uma sessão ativa.",
+      }));
+
+      return {
+        status: "unknown",
+        message: "A conexão básica está preenchida. Falta entrar na conta para conferir o restante.",
+        checkedAt,
+        checks,
+      };
+    }
+
+    await ensureFreshSession(settings, session);
+
+    const checks = await Promise.all([
+      checkSchemaReadiness(supabaseUrl, supabaseAnonKey, session),
+      checkRpcReadiness(supabaseUrl, supabaseAnonKey, session),
+      checkStorageReadiness(supabaseUrl, supabaseAnonKey, session),
+      checkMetadataSearchReadiness(supabaseUrl, supabaseAnonKey, session),
+    ]);
+    const readyCount = checks.filter((check) => check.status === "ready").length;
+    const needsAttention = checks.some((check) => check.status === "attention");
+    const hasUnknown = checks.some((check) => check.status === "unknown");
+
+    return {
+      status: needsAttention ? "attention" : hasUnknown ? "unknown" : "ready",
+      message: needsAttention
+        ? `${readyCount}/${checks.length} partes prontas. Veja abaixo o que precisa de atenção.`
+        : hasUnknown
+          ? `${readyCount}/${checks.length} partes prontas. Uma parte não respondeu com clareza.`
+          : "Nuvem pronta para sincronizar fichas, imagens e buscas automáticas.",
+      checkedAt,
+      checks,
+    };
+  } catch (error) {
+    return {
+      status: "attention",
+      message: error instanceof Error ? error.message : "Não consegui verificar a nuvem agora.",
+      checkedAt,
+      checks: cloudReadinessIds().map((id) => ({
+        id,
+        title: cloudReadinessTitle(id),
+        status: "unknown",
+        message: "Não testado.",
+        detail: "Corrija a conexão da nuvem e tente novamente.",
+      })),
+    };
+  }
 }
 
 export function loadCloudSession(): CloudSession | null {
@@ -952,6 +1030,219 @@ async function upsertProfile(settings: AppSettings, session: CloudSession, profi
   }
 
   return profileFromRow(rows[0] ?? row, session.user.email);
+}
+
+async function checkSchemaReadiness(supabaseUrl: string, supabaseAnonKey: string, session: CloudSession): Promise<CloudReadinessCheck> {
+  const probes = [
+    "/rest/v1/profiles?select=id,email,username,role&limit=1",
+    "/rest/v1/cultural_items?select=id,owner_id,item,updated_at&limit=1",
+    "/rest/v1/friend_requests?select=id,status&limit=1",
+    "/rest/v1/sync_changes?select=id,status&limit=1",
+  ];
+  const results = await Promise.all(probes.map((path) => readinessRequest(supabaseUrl, supabaseAnonKey, session, path, { method: "GET" })));
+  const missing = results.find((result) => !result.response.ok && isMissingCloudPart(result.message));
+
+  if (missing) {
+    return {
+      id: "schema",
+      title: cloudReadinessTitle("schema"),
+      status: "attention",
+      message: "O banco ainda não parece com a versão 0.6.7.",
+      detail: "Abra o Supabase SQL Editor e rode o conteúdo de supabase/schema.sql. Depois volte aqui e teste de novo.",
+    };
+  }
+
+  const blocked = results.find((result) => !result.response.ok);
+  if (blocked) {
+    return {
+      id: "schema",
+      title: cloudReadinessTitle("schema"),
+      status: "unknown",
+      message: "Encontrei o banco, mas ele não deixou conferir todas as tabelas.",
+      detail: friendlyReadinessMessage(blocked.message),
+    };
+  }
+
+  return {
+    id: "schema",
+    title: cloudReadinessTitle("schema"),
+    status: "ready",
+    message: "As tabelas principais responderam.",
+    detail: "Perfis, fichas, amizades e fila de envio parecem criados.",
+  };
+}
+
+async function checkRpcReadiness(supabaseUrl: string, supabaseAnonKey: string, session: CloudSession): Promise<CloudReadinessCheck> {
+  const probes = [
+    { name: "get_social_items", body: {} },
+    { name: "get_curated_recommendations", body: {} },
+    { name: "get_social_feed", body: { feed_limit: 1 } },
+    { name: "get_admin_overview", body: {} },
+  ];
+  const results = await Promise.all(probes.map((probe) => readinessRequest(
+    supabaseUrl,
+    supabaseAnonKey,
+    session,
+    `/rest/v1/rpc/${probe.name}`,
+    {
+      method: "POST",
+      body: JSON.stringify(probe.body),
+    },
+  ).then((result) => ({ ...result, name: probe.name }))));
+  const missing = results.filter((result) => !result.response.ok && isMissingCloudPart(result.message));
+
+  if (missing.length) {
+    return {
+      id: "rpc",
+      title: cloudReadinessTitle("rpc"),
+      status: "attention",
+      message: "Algumas ações internas da nuvem não foram encontradas.",
+      detail: `Não encontrei: ${missing.map((result) => result.name).join(", ")}. Se você já rodou o schema.sql, rode notify pgrst, 'reload schema'; no SQL Editor e teste de novo.`,
+    };
+  }
+
+  return {
+    id: "rpc",
+    title: cloudReadinessTitle("rpc"),
+    status: "ready",
+    message: "As ações internas da nuvem responderam.",
+    detail: "Feed social, curadoria e visão de admin parecem instalados. A sincronização avançada é conferida quando uma ficha é enviada.",
+  };
+}
+
+async function checkStorageReadiness(supabaseUrl: string, supabaseAnonKey: string, session: CloudSession): Promise<CloudReadinessCheck> {
+  const result = await readinessRequest(supabaseUrl, supabaseAnonKey, session, "/storage/v1/object/list/gaveteira-images", {
+    method: "POST",
+    body: JSON.stringify({
+      limit: 1,
+      offset: 0,
+      prefix: session.user.id,
+    }),
+  });
+
+  if (result.response.ok) {
+    return {
+      id: "storage",
+      title: cloudReadinessTitle("storage"),
+      status: "ready",
+      message: "O espaço de imagens foi encontrado.",
+      detail: "O bucket gaveteira-images respondeu ao app.",
+    };
+  }
+
+  if (result.response.status === 404 || isMissingCloudPart(result.message)) {
+    return {
+      id: "storage",
+      title: cloudReadinessTitle("storage"),
+      status: "attention",
+      message: "Não encontrei o espaço de imagens.",
+      detail: "Confira se existe um bucket público chamado gaveteira-images no Supabase Storage.",
+    };
+  }
+
+  return {
+    id: "storage",
+    title: cloudReadinessTitle("storage"),
+    status: "unknown",
+    message: "Não deu para confirmar o espaço de imagens.",
+    detail: friendlyReadinessMessage(result.message),
+  };
+}
+
+async function checkMetadataSearchReadiness(supabaseUrl: string, supabaseAnonKey: string, session: CloudSession): Promise<CloudReadinessCheck> {
+  const result = await readinessRequest(supabaseUrl, supabaseAnonKey, session, "/functions/v1/metadata-search", {
+    method: "POST",
+    body: JSON.stringify({ category: "books", query: "gaveteira readiness" }),
+  });
+
+  if (result.response.ok) {
+    return {
+      id: "metadata-search",
+      title: cloudReadinessTitle("metadata-search"),
+      status: "ready",
+      message: "A busca automática respondeu.",
+      detail: "A Edge Function metadata-search está publicada e aceitando chamadas do app.",
+    };
+  }
+
+  if (result.response.status === 404 || isMissingCloudPart(result.message)) {
+    return {
+      id: "metadata-search",
+      title: cloudReadinessTitle("metadata-search"),
+      status: "attention",
+      message: "A busca automática da nuvem não foi encontrada.",
+      detail: "Publique supabase/functions/metadata-search no Supabase e confira as chaves de APIs usadas por ela.",
+    };
+  }
+
+  return {
+    id: "metadata-search",
+    title: cloudReadinessTitle("metadata-search"),
+    status: "unknown",
+    message: "A busca automática existe, mas respondeu com erro.",
+    detail: friendlyReadinessMessage(result.message),
+  };
+}
+
+async function readinessRequest(
+  supabaseUrl: string,
+  supabaseAnonKey: string,
+  session: CloudSession,
+  path: string,
+  init: RequestInit,
+) {
+  const response = await safeFetch(`${supabaseUrl}${path}`, {
+    ...init,
+    headers: {
+      apikey: supabaseAnonKey,
+      Authorization: `Bearer ${session.accessToken}`,
+      "Content-Type": "application/json",
+      ...(init.headers ?? {}),
+    },
+  });
+  const json = await response.json().catch(() => ({}));
+  return { response, json, message: errorMessage(json, response.statusText || "Não consegui verificar essa parte.") };
+}
+
+function cloudReadinessIds(): Array<CloudReadinessCheck["id"]> {
+  return ["schema", "rpc", "storage", "metadata-search"];
+}
+
+function cloudReadinessTitle(id: CloudReadinessCheck["id"]) {
+  const labels: Record<CloudReadinessCheck["id"], string> = {
+    schema: "Banco de dados",
+    rpc: "Ações da nuvem",
+    storage: "Imagens",
+    "metadata-search": "Busca automática",
+  };
+
+  return labels[id];
+}
+
+function isMissingCloudPart(message: string) {
+  const normalized = message.toLowerCase();
+  return normalized.includes("schema cache")
+    || normalized.includes("could not find")
+    || normalized.includes("does not exist")
+    || normalized.includes("not found")
+    || normalized.includes("not exist")
+    || normalized.includes("relation ")
+    || normalized.includes("function ");
+}
+
+function friendlyReadinessMessage(message: string) {
+  const normalized = message.toLowerCase();
+
+  if (normalized.includes("jwt") || normalized.includes("token") || normalized.includes("sess")) {
+    return "Sua sessão pode ter expirado. Saia da conta, entre de novo e teste novamente.";
+  }
+
+  if (normalized.includes("permission") || normalized.includes("row-level security") || normalized.includes("not allowed")) {
+    return "O Supabase respondeu, mas bloqueou a consulta. Confira as permissões criadas pelo schema.sql.";
+  }
+
+  if (message && message !== "OK") return message;
+  return "Tente novamente em instantes. Se repetir, confira o painel do Supabase.";
 }
 
 async function authRequest(settings: AppSettings, path: string, body: unknown): Promise<SupabaseAuthResponse> {
