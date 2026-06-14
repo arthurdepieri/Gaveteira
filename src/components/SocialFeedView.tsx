@@ -87,10 +87,6 @@ export function SocialFeedView({
     return buildSocialFeed(socialItems, viewerId)
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   }, [cloudFeedEvents, session?.user.id, socialItems]);
-  const diaryFeed = useMemo(() => {
-    const backendDiary = cloudFeedEvents.filter((event) => event.kind === "diary").slice(0, 8);
-    return backendDiary.length ? backendDiary : buildDiaryFeed(socialItems, session?.user.id ?? "").slice(0, 8);
-  }, [cloudFeedEvents, session?.user.id, socialItems]);
   const friendFeed = socialFeed.filter((event) => event.entry.ownerId !== session?.user.id);
   const myFeed = socialFeed.filter((event) => event.entry.ownerId === session?.user.id);
   const visibleFeed = (feedScope === "friends" ? friendFeed : myFeed).slice(0, 12);
@@ -258,29 +254,6 @@ export function SocialFeedView({
               onSave={() => saveFromFeed(event)}
             />
           )) : <p className="empty">{feedScope === "friends" ? "Quando seus amigos mexerem nas gavetas, o movimento aparece aqui." : "Suas próximas fichas e alterações ficam registradas aqui."}</p>}
-        </div>
-      </section>
-
-      <section className="setting-panel social-diary-corner">
-        <div className="section-heading split">
-          <div className="section-heading">
-            <MessageSquare size={20} />
-            <h2>Canto do diário</h2>
-          </div>
-          <span className="soft-label">notas públicas</span>
-        </div>
-        <div className="social-feed-list">
-          {loading && !feedLoaded ? <FeedSkeletonList compact /> : diaryFeed.length ? diaryFeed.map((event) => (
-            <FeedEventCard
-              key={event.id}
-              event={event}
-              saved={savedWorkKeys.has(comparableKey(event.entry.item))}
-              saving={savingEventId === event.id}
-              viewerId={session.user.id}
-              onOpen={() => openFeedEvent(event)}
-              onSave={() => saveFromFeed(event)}
-            />
-          )) : <p className="empty">Quando alguém tornar uma página de diário pública, ela aparece aqui separada do restante do Feed.</p>}
         </div>
       </section>
 
@@ -483,27 +456,6 @@ function cloudFeedText(kind: CloudSocialFeedEvent["eventType"], actor: string, t
   return `${actor} adicionou ${title}.`;
 }
 
-function buildDiaryFeed(entries: FamilyItem[], viewerId: string): FeedEvent[] {
-  return entries.flatMap((entry) => {
-    if (entry.item.visibility === "private") return [];
-
-    const actor = entry.ownerId === viewerId ? "Você" : entry.ownerName;
-    const title = getTitle(entry.item) || "uma ficha";
-
-    return entry.item.diary
-      .filter((diary) => diary.visibility === "friends" && diary.text.trim())
-      .map((diary) => ({
-        id: `feed-${entry.ownerId}-${entry.id}-diary-${diary.id}`,
-        kind: "diary" as FeedKind,
-        entry,
-        text: `${actor} escreveu no diário de ${title}.`,
-        detail: `${diary.type ?? "Impressão"} / ${diary.text.length > 110 ? `${diary.text.slice(0, 110)}...` : diary.text}`,
-        updatedAt: diary.date || entry.updatedAt,
-        diaryId: diary.id,
-      }));
-  });
-}
-
 function buildSocialComparisons(groups: OwnerGroup[], viewerId: string) {
   const entries = groups.flatMap((group) => group.entries).filter((entry) => entry.item.visibility !== "private");
   const byWork = groupComparableEntries(entries);
@@ -580,7 +532,7 @@ function createWishlistCopy(source: CulturalItem): CulturalItem {
     category: source.category,
     status: defaultStatuses[source.category][0],
     visibility: "friends" as const,
-    tags: [...source.tags],
+    tags: [],
     coverUrl: source.coverUrl,
     links: [],
     timeline: [],

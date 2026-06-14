@@ -109,7 +109,6 @@ export function isCategory(value: string): value is Category {
 export function isEmptyCulturalItem(item: CulturalItem) {
   const hasSharedInfo =
     Boolean(item.coverUrl?.trim()) ||
-    item.tags.some((tag) => tag.trim()) ||
     item.links.some((link) => link.label.trim() || link.url.trim()) ||
     item.timeline.some((event) => event.date.trim() || event.note?.trim()) ||
     item.diary.some((entry) => entry.text.trim()) ||

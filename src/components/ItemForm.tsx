@@ -1,18 +1,18 @@
 ﻿import { ImageIcon, Search, Sparkles, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { AppSettings, Category, CloudSession, CulturalItem, DiaryEntry, ExternalLink, Rating, SocialVisibility, TimelineEvent } from "../types";
+import { AppSettings, Category, CloudSession, CulturalItem, DiaryEntry, ExternalLink, Rating, SocialVisibility } from "../types";
 import { categoryLabels } from "../data/catalog";
 import { createSeasonalThemeStamp } from "../data/seasonalThemes";
 import { getProviderHint, MetadataResult, searchMetadata } from "../services/metadata";
 import { uploadStoredImage } from "../services/storage";
 import { getTitle, uid } from "../utils/itemHelpers";
 import { RatingInput } from "./Rating";
-import { TagInput } from "./TagInput";
 
 type MutableItem = CulturalItem & Record<string, unknown>;
 const DIARY_VISIBILITY_KEY = "gaveteira-diary-default-visibility:v1";
-const diaryTypes: NonNullable<DiaryEntry["type"]>[] = ["Impressão", "Citação", "Teoria", "Progresso", "Memória", "Revisita", "Opinião final"];
+type DiaryType = NonNullable<DiaryEntry["type"]>;
+const baseDiaryTypes: DiaryType[] = ["Impressão", "Citação", "Teoria", "Progresso", "Memória", "Revisita", "Opinião final"];
 const diaryPrompts = [
   "O que te chamou atenção hoje?",
   "Você continuaria ou pausaria?",
@@ -65,14 +65,34 @@ export function ItemForm({
 }) {
   const draft = item as MutableItem;
   const [tutorialStep, setTutorialStep] = useState(0);
+  const [formStep, setFormStep] = useState(0);
   const update = (patch: Record<string, unknown>) => onSave({ ...item, ...patch, updatedAt: new Date().toISOString() } as CulturalItem);
   const tutorialActive = showFirstCardTutorial;
+  const activeStep = tutorialActive ? tutorialStep : formStep;
   const tutorialComplete = !tutorialActive || tutorialStep === firstCardTutorialSteps.length - 1;
+  const formComplete = formStep === cardFormSteps.length - 1;
+  const canClose = tutorialActive ? tutorialComplete : true;
   const advanceFirstCardTutorial = () => {
     if (tutorialStep === 1 && !item.diary.length) {
       update({ diary: [createBlankDiaryEntry(loadDiaryVisibility())] });
     }
     setTutorialStep((current) => Math.min(firstCardTutorialSteps.length - 1, current + 1));
+  };
+  const advanceFormStep = () => {
+    if (formStep === 1 && !item.diary.length) {
+      update({ diary: [createBlankDiaryEntry(loadDiaryVisibility())] });
+    }
+    setFormStep((current) => Math.min(cardFormSteps.length - 1, current + 1));
+  };
+  const finishOrAdvance = () => {
+    if (tutorialActive) {
+      if (tutorialComplete) onClose();
+      else advanceFirstCardTutorial();
+      return;
+    }
+
+    if (formComplete) onClose();
+    else advanceFormStep();
   };
   const categoryFields = (
     <>
@@ -104,9 +124,8 @@ export function ItemForm({
       <small>{item.visibility === "private" ? "Só você vê esta ficha na área social." : "Amigos podem ver a ficha; o diário ainda respeita a privacidade de cada entrada."}</small>
     </Field>
   );
-  const coverTagsFields = (
-    <MobileFieldGroup title="Capa e tags">
-      {visibilityField}
+  const coverField = (
+    <MobileFieldGroup title="Capa">
       <Field label="Capa ou poster">
         <input value={item.coverUrl ?? ""} onChange={(event) => update({ coverUrl: event.target.value })} placeholder="URL da imagem" />
         <CoverUploadInput
@@ -115,9 +134,6 @@ export function ItemForm({
           cloudSession={cloudSession}
           onUploaded={(coverUrl) => update({ coverUrl })}
         />
-      </Field>
-      <Field label="Tags">
-        <TagInput value={item.tags} onChange={(tags) => update({ tags })} />
       </Field>
     </MobileFieldGroup>
   );
@@ -139,7 +155,7 @@ export function ItemForm({
             <p className="eyebrow">{categoryLabels[item.category]}</p>
             <h2>{getTitle(item) || "Nova ficha"}</h2>
           </div>
-          <button type="button" className="icon-button" onClick={onClose} aria-label="Fechar" disabled={!tutorialComplete}>
+          <button type="button" className="icon-button" onClick={onClose} aria-label="Fechar" disabled={!canClose}>
             <X size={20} />
           </button>
         </header>
@@ -176,43 +192,50 @@ export function ItemForm({
               <MobileFormSection title="Diário" open>
                 <section className="form-section first-card-diary-step">
                   <h3>Primeiro diário</h3>
-                  <DiaryEditor entries={item.diary} onChange={(diary) => update({ diary })} />
+                  <DiaryEditor category={item.category} entries={item.diary} onChange={(diary) => update({ diary })} />
                 </section>
               </MobileFormSection>
             ) : null}
           </>
         ) : (
           <>
-            <MobileFormSection title="Dados básicos" open>
-              {metadataLookup}
+            <CardFormStepper step={formStep} onSelect={setFormStep} />
 
-              <div className="form-grid">
-                {categoryFields}
-                {statusRatingFields}
-                {coverTagsFields}
-              </div>
-            </MobileFormSection>
+            {formStep === 0 ? (
+              <MobileFormSection title="Ficha" open>
+                {metadataLookup}
 
-            <MobileFormSection title="Links">
-              <section className="form-section">
-                <h3>Links externos</h3>
-                <RepeatingLinks links={item.links} onChange={(links) => update({ links })} />
-              </section>
-            </MobileFormSection>
+                <div className="form-grid">
+                  {categoryFields}
+                  {coverField}
+                </div>
 
-            <MobileFormSection title="Histórico">
-              <section className="form-section">
-                <h3>Histórico</h3>
-                <TimelineEditor events={item.timeline} onChange={(timeline) => update({ timeline })} />
-              </section>
-            </MobileFormSection>
+                <section className="form-section">
+                  <h3>Links externos</h3>
+                  <RepeatingLinks links={item.links} onChange={(links) => update({ links })} />
+                </section>
+              </MobileFormSection>
+            ) : null}
 
-            <MobileFormSection title="Diário">
-              <section className="form-section">
-                <h3>Diário</h3>
-                <DiaryEditor entries={item.diary} onChange={(diary) => update({ diary })} />
-              </section>
-            </MobileFormSection>
+            {formStep === 1 ? (
+              <MobileFormSection title="Status e visibilidade" open>
+                <div className="form-grid">
+                  {statusRatingFields}
+                  <MobileFieldGroup title="Visibilidade">
+                    {visibilityField}
+                  </MobileFieldGroup>
+                </div>
+              </MobileFormSection>
+            ) : null}
+
+            {formStep === 2 ? (
+              <MobileFormSection title="Diário" open>
+                <section className="form-section">
+                  <h3>Diário</h3>
+                  <DiaryEditor category={item.category} entries={item.diary} onChange={(diary) => update({ diary })} />
+                </section>
+              </MobileFormSection>
+            ) : null}
           </>
         )}
 
@@ -221,9 +244,16 @@ export function ItemForm({
             <Trash2 size={16} />
             Remover ficha
           </button>
-          <button type="button" className="primary" onClick={tutorialComplete ? onClose : advanceFirstCardTutorial}>
-            {tutorialComplete ? "Concluir" : "Próxima etapa"}
-          </button>
+          <div className="modal-footer-actions">
+            {!tutorialActive && activeStep > 0 ? (
+              <button type="button" className="ghost" onClick={() => setFormStep((current) => Math.max(0, current - 1))}>
+                Voltar
+              </button>
+            ) : null}
+            <button type="button" className="primary" onClick={finishOrAdvance}>
+              {(tutorialActive ? tutorialComplete : formComplete) ? "Concluir" : "Próxima etapa"}
+            </button>
+          </div>
         </footer>
       </form>
     </div>
@@ -247,6 +277,40 @@ const firstCardTutorialSteps = [
     description: "Abra uma primeira entrada para guardar uma impressão, citação, memória ou opinião inicial.",
   },
 ];
+
+const cardFormSteps = [
+  { eyebrow: "Etapa 1 de 3", title: "Ficha" },
+  { eyebrow: "Etapa 2 de 3", title: "Status e visibilidade" },
+  { eyebrow: "Etapa 3 de 3", title: "Diário" },
+];
+
+function CardFormStepper({ step, onSelect }: { step: number; onSelect: (step: number) => void }) {
+  const current = cardFormSteps[step];
+
+  return (
+    <section className="card-form-stepper" aria-label="Etapas da ficha">
+      <div className="card-form-stepper-copy">
+        <p className="eyebrow">{current.eyebrow}</p>
+        <strong>{current.title}</strong>
+      </div>
+      <div className="card-form-stepper-tabs" role="tablist" aria-label="Etapas da ficha">
+        {cardFormSteps.map((entry, index) => (
+          <button
+            key={entry.title}
+            type="button"
+            className={index === step ? "active" : index < step ? "done" : ""}
+            onClick={() => onSelect(index)}
+            role="tab"
+            aria-selected={index === step}
+          >
+            <span>{index + 1}</span>
+            {entry.title}
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
 
 function FirstCardTutorial({
   step,
@@ -479,10 +543,6 @@ function MobileFieldGroup({ title, children }: { title: string; children: ReactN
   );
 }
 
-function TextareaField({ label, value, onChange }: { label: string; value?: unknown; onChange: (value: string) => void }) {
-  return <Field label={label}><textarea value={String(value ?? "")} onChange={(event) => onChange(event.target.value)} /></Field>;
-}
-
 function numberValue(value: FormDataEntryValue | null) {
   return value === "" || value === null ? undefined : Number(value);
 }
@@ -502,12 +562,6 @@ function GameFields({ item, update }: { item: MutableItem; update: (patch: Recor
         <Field label="Início"><input type="date" value={String(item.startDate ?? "")} onChange={(e) => update({ startDate: e.target.value })} /></Field>
         <Field label="Conclusão ou abandono"><input type="date" value={String(item.endDate ?? "")} onChange={(e) => update({ endDate: e.target.value })} /></Field>
         <Field label="Tempo jogado"><input value={String(item.timePlayed ?? "")} onChange={(e) => update({ timePlayed: e.target.value })} /></Field>
-        <Field label="Conclusão"><select value={String(item.completionType ?? "")} onChange={(e) => update({ completionType: e.target.value })}><option value="">Selecione</option><option>Zerou</option><option>Platinou</option><option>Terminou a história</option><option>Não terminou</option></select></Field>
-      </MobileFieldGroup>
-      <MobileFieldGroup title="Avaliação e notas">
-        <Field label="Dificuldade percebida"><input value={String(item.perceivedDifficulty ?? "")} onChange={(e) => update({ perceivedDifficulty: e.target.value })} /></Field>
-        <TextareaField label="Motivo de abandono" value={item.abandonmentReason} onChange={(value) => update({ abandonmentReason: value })} />
-        <TextareaField label="Comentários/anotações" value={item.notes} onChange={(value) => update({ notes: value })} />
       </MobileFieldGroup>
     </>
   );
@@ -530,12 +584,6 @@ function BookFields({ item, update }: { item: MutableItem; update: (patch: Recor
         <Field label="Número de páginas"><input type="number" value={String(item.pages ?? "")} onChange={(e) => update({ pages: numberValue(e.target.value) })} /></Field>
         <Field label="Página atual"><input type="number" value={String(item.currentPage ?? "")} onChange={(e) => update({ currentPage: numberValue(e.target.value) })} /></Field>
       </MobileFieldGroup>
-      <MobileFieldGroup title="Notas">
-        <TextareaField label="Frases favoritas" value={item.favoriteQuotes} onChange={(value) => update({ favoriteQuotes: value })} />
-        <TextareaField label="Resumo pessoal" value={item.personalSummary} onChange={(value) => update({ personalSummary: value })} />
-        <TextareaField label="Opinião final" value={item.finalOpinion} onChange={(value) => update({ finalOpinion: value })} />
-        <TextareaField label="Motivo de abandono" value={item.abandonmentReason} onChange={(value) => update({ abandonmentReason: value })} />
-      </MobileFieldGroup>
     </>
   );
 }
@@ -553,11 +601,6 @@ function AlbumFields({ item, update }: { item: MutableItem; update: (patch: Reco
         <Field label="Data em que ouvi"><input type="date" value={String(item.listenedDate ?? "")} onChange={(e) => update({ listenedDate: e.target.value })} /></Field>
         <Field label="Vezes ouvido"><input type="number" value={String(item.listenCount ?? "")} onChange={(e) => update({ listenCount: numberValue(e.target.value) })} /></Field>
         <Field label="Escuta"><select value={String(item.listenMode ?? "")} onChange={(e) => update({ listenMode: e.target.value })}><option value="">Selecione</option><option>Inteiro</option><option>Parcialmente</option></select></Field>
-      </MobileFieldGroup>
-      <MobileFieldGroup title="Notas">
-        <TextareaField label="Músicas favoritas" value={item.favoriteTracks} onChange={(value) => update({ favoriteTracks: value })} />
-        <TextareaField label="Músicas puladas" value={item.skippedTracks} onChange={(value) => update({ skippedTracks: value })} />
-        <TextareaField label="Comentários" value={item.comments} onChange={(value) => update({ comments: value })} />
       </MobileFieldGroup>
     </>
   );
@@ -577,9 +620,6 @@ function MovieFields({ item, update }: { item: MutableItem; update: (patch: Reco
         <Field label="Início"><input type="date" value={String(item.startDate ?? "")} onChange={(e) => update({ startDate: e.target.value })} /></Field>
         <Field label="Conclusão"><input type="date" value={String(item.endDate ?? "")} onChange={(e) => update({ endDate: e.target.value })} /></Field>
       </MobileFieldGroup>
-      <MobileFieldGroup title="Notas">
-        <TextareaField label="Comentários" value={item.comments} onChange={(value) => update({ comments: value })} />
-      </MobileFieldGroup>
     </>
   );
 }
@@ -598,9 +638,6 @@ function SeriesFields({ item, update }: { item: MutableItem; update: (patch: Rec
         <Field label="Temporada atual"><input type="number" value={String(item.currentSeason ?? "")} onChange={(e) => update({ currentSeason: numberValue(e.target.value) })} /></Field>
         <Field label="Episódio atual"><input type="number" value={String(item.currentEpisode ?? "")} onChange={(e) => update({ currentEpisode: numberValue(e.target.value) })} /></Field>
         <Field label="Acompanhamento"><select value={String(item.trackingStatus ?? "")} onChange={(e) => update({ trackingStatus: e.target.value })}><option value="">Selecione</option><option>Em dia</option><option>Atrasado</option><option>Pausado</option><option>Finalizada</option></select></Field>
-      </MobileFieldGroup>
-      <MobileFieldGroup title="Notas">
-        <TextareaField label="Sinopse" value={item.comments} onChange={(value) => update({ comments: value })} />
       </MobileFieldGroup>
     </>
   );
@@ -622,27 +659,9 @@ function RepeatingLinks({ links, onChange }: { links: ExternalLink[]; onChange: 
   );
 }
 
-function TimelineEditor({ events, onChange }: { events: TimelineEvent[]; onChange: (events: TimelineEvent[]) => void }) {
-  const update = (id: string, patch: Partial<TimelineEvent>) => onChange(events.map((event) => event.id === id ? { ...event, ...patch } : event));
-  return (
-    <div className="repeat-list">
-      {events.map((entry) => (
-        <div className="repeat-row timeline-row" key={entry.id}>
-          <input type="date" value={entry.date} onChange={(e) => update(entry.id, { date: e.target.value })} />
-          <select value={entry.type} onChange={(e) => update(entry.id, { type: e.target.value as TimelineEvent["type"] })}>
-            {["Comecei", "Pausei", "Voltei", "Terminei", "Abandonei", "Revi", "Reli", "Rejoguei", "Reouvi", "Outro"].map((type) => <option key={type}>{type}</option>)}
-          </select>
-          <input value={entry.note ?? ""} onChange={(e) => update(entry.id, { note: e.target.value })} placeholder="Observação" />
-          <button type="button" className="icon-button" onClick={() => onChange(events.filter((event) => event.id !== entry.id))}><X size={16} /></button>
-        </div>
-      ))}
-      <button type="button" className="ghost" onClick={() => onChange([...events, { id: uid("event"), date: new Date().toISOString().slice(0, 10), type: "Outro" }])}>Registrar evento</button>
-    </div>
-  );
-}
-
-function DiaryEditor({ entries, onChange }: { entries: DiaryEntry[]; onChange: (entries: DiaryEntry[]) => void }) {
+function DiaryEditor({ category, entries, onChange }: { category: Category; entries: DiaryEntry[]; onChange: (entries: DiaryEntry[]) => void }) {
   const [defaultVisibility, setDefaultVisibility] = useState<DiaryEntry["visibility"]>(() => loadDiaryVisibility());
+  const availableDiaryTypes = getDiaryTypesForCategory(category);
   const update = (id: string, patch: Partial<DiaryEntry>) => {
     if (patch.visibility) {
       localStorage.setItem(DIARY_VISIBILITY_KEY, patch.visibility);
@@ -659,7 +678,7 @@ function DiaryEditor({ entries, onChange }: { entries: DiaryEntry[]; onChange: (
         <div className="diary-row" key={entry.id}>
           <input type="date" value={entry.date} onChange={(e) => update(entry.id, { date: e.target.value })} />
           <select value={entry.type ?? "Impressão"} onChange={(e) => update(entry.id, { type: e.target.value as DiaryEntry["type"] })}>
-            {diaryTypes.map((type) => <option key={type}>{type}</option>)}
+            {withCurrentDiaryType(availableDiaryTypes, entry.type).map((type) => <option key={type}>{type}</option>)}
           </select>
           <select value={entry.visibility ?? "private"} onChange={(e) => update(entry.id, { visibility: e.target.value as DiaryEntry["visibility"] })}>
             <option value="private">Privado</option>
@@ -672,6 +691,22 @@ function DiaryEditor({ entries, onChange }: { entries: DiaryEntry[]; onChange: (
       <button type="button" className="ghost" onClick={() => onChange([...entries, createBlankDiaryEntry(defaultVisibility)])}>Nova entrada</button>
     </div>
   );
+}
+
+function getDiaryTypesForCategory(category: Category): DiaryType[] {
+  const categoryTypes: Record<Category, DiaryType[]> = {
+    games: ["Dificuldade percebida", "Motivo de abandono", "Comentário"],
+    books: ["Frases favoritas", "Resumo pessoal", "Opinião final", "Motivo de abandono"],
+    albums: ["Músicas favoritas", "Músicas puladas", "Comentário"],
+    movies: ["Comentário", "Opinião final"],
+    series: ["Comentário", "Sinopse", "Opinião final"],
+  };
+
+  return [...new Set([...baseDiaryTypes, ...categoryTypes[category]])];
+}
+
+function withCurrentDiaryType(types: DiaryType[], current?: DiaryEntry["type"]) {
+  return current && !types.includes(current) ? [current, ...types] : types;
 }
 
 function createBlankDiaryEntry(visibility: DiaryEntry["visibility"]): DiaryEntry {

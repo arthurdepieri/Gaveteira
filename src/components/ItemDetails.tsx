@@ -689,7 +689,7 @@ function buildDetailSummaryFields(item: CulturalItem, diary: DiaryDisplayEntry[]
 
 function getProgressSnapshot(item: CulturalItem) {
   if (item.category === "games") {
-    return item.timePlayed || item.completionType || item.platform || "";
+    return item.timePlayed || item.platform || "";
   }
 
   if (item.category === "books") {
@@ -715,7 +715,7 @@ function detailSections(item: CulturalItem): Array<{ title: string; fields: Arra
   if (item.category === "games") {
     return [
       { title: "Ficha técnica", fields: visibleFields([["Plataforma", item.platform], ["Desenvolvedora", item.developer], ["Publicadora", item.publisher], ["Ano de lançamento", item.releaseYear], ["Gênero", item.genre]]) },
-      { title: "Progresso", fields: visibleFields([["Status", item.status], ["Início", item.startDate], ["Conclusão/abandono", item.endDate], ["Tempo jogado", item.timePlayed], ["Conclusão", item.completionType]]) },
+      { title: "Progresso", fields: visibleFields([["Status", item.status], ["Início", item.startDate], ["Conclusão/abandono", item.endDate], ["Tempo jogado", item.timePlayed]]) },
     ];
   }
 

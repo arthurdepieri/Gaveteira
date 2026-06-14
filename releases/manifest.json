@@ -1,6 +1,13 @@
 {
-  "latest": "0.6.8-beta",
+  "latest": "0.6.9-beta",
   "releases": [
+    {
+      "version": "0.6.9-beta",
+      "date": "2026-06-14",
+      "title": "Fichas sazonais da Copa",
+      "notes": "Versao beta focada em preparar a Gaveteira para fichas com identidade sazonal permanente, com estreia na temporada de Copa do Mundo.\n\n### Destaques\n\n- Sistema de temas sazonais por periodo, preservando a aparencia das fichas criadas durante a promocao mesmo depois que ela terminar.\n- Tema `Copa do Mundo 2026` aplicado automaticamente as fichas criadas entre 14/06/2026 e 20/07/2026.\n- Cards da Copa com bola de futebol, campo no corpo do card, gradiente proprio e adaptacao especifica para celular.\n- Ficha aberta da Copa com fundo tematico, cores proprias e ajustes para modo noturno.\n- Estrutura de pastas para elementos sazonais, promocoes e modelos de screenshot.\n- Utilitario de screenshot com Playwright para gerar capturas locais dos cards e da interface.\n\n### Observacoes\n\n- Esta versao e uma subversao visual e estrutural da linha `0.6.x`, sem exigir migracao manual de dados.\n- O pacote de release desta versao fica em `releases/Gaveteira-0.6.9-beta.zip`.",
+      "archivePath": "releases/Gaveteira-0.6.9-beta.zip"
+    },
     {
       "version": "0.6.8-beta",
       "date": "2026-06-14",

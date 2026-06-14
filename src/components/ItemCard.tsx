@@ -25,11 +25,6 @@ export function ItemCard({ item, onOpen }: { item: CulturalItem; onOpen: () => v
           <h3>{getTitle(item)}</h3>
           <p>{getGenre(item) || "Gênero não arquivado"}</p>
           {item.category === "games" ? <p className="item-card-playtime">Tempo jogado: {gameTime}</p> : null}
-          <div className="tag-row">
-            {item.tags.slice(0, 3).map((tag) => (
-              <span key={tag}>{tag}</span>
-            ))}
-          </div>
           <div className={`diary-marker-row${diaryBadges.length ? "" : " is-empty"}`} aria-hidden={!diaryBadges.length}>
             {diaryBadges.map((badge) => <span key={badge}>{badge}</span>)}
           </div>

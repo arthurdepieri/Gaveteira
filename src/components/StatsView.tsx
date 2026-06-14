@@ -37,7 +37,6 @@ export function StatsView({ items }: { items: CulturalItem[] }) {
       <section className="stats-layout">
         <Panel title="Concluídos por ano" data={stats.completedByYear} />
         <Panel title="Concluídos por mês" data={stats.completedByMonth} />
-        <Panel title="Tags mais usadas" data={stats.tags} />
       </section>
 
       <section className="section">
@@ -81,7 +80,6 @@ export function StatsView({ items }: { items: CulturalItem[] }) {
                 <strong>{entry.average ? entry.average.toFixed(1) : "--"}</strong>
               </div>
               <MiniList title="Gêneros" entries={entry.genres} />
-              <MiniList title="Tags" entries={entry.tags} />
               <div className="category-favorites">
                 <span>Melhores avaliados</span>
                 {entry.favorites.length ? entry.favorites.map((item) => (
@@ -170,7 +168,6 @@ function buildCategoryStats(category: Category, items: CulturalItem[]) {
     abandoned: categoryItems.filter((item) => item.status.toLowerCase().includes("abandon")).length,
     average,
     genres: topEntries(categoryItems.flatMap(getGenres)),
-    tags: topEntries(categoryItems.flatMap((item) => item.tags)),
     favorites: [...categoryItems].filter((item) => getRating(item) > 0).sort((a, b) => getRating(b) - getRating(a)).slice(0, 3),
   };
 }

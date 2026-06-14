@@ -941,10 +941,7 @@ export function FamilyView({
                           ))}
                         </div>
 
-                        <div className="social-tag-columns">
-                          <TagCloud title="Tags mais usadas" tags={selectedProfile.topTags} />
-                          <TagCloud title="Gêneros mais recorrentes" tags={selectedProfile.topGenres} />
-                        </div>
+                        <GenreCloud title="Gêneros mais recorrentes" genres={selectedProfile.topGenres} />
                       </>
                     ) : null}
 
@@ -1133,12 +1130,12 @@ function ProfileMetric({ label, value }: { label: string; value: string | number
   );
 }
 
-function TagCloud({ title, tags }: { title: string; tags: string[] }) {
+function GenreCloud({ title, genres }: { title: string; genres: string[] }) {
   return (
     <section>
       <h3>{title}</h3>
       <div className="tag-row">
-        {tags.length ? tags.map((tag) => <span key={tag}>{tag}</span>) : <p className="empty">Ainda sem marcas recorrentes.</p>}
+        {genres.length ? genres.map((genre) => <span key={genre}>{genre}</span>) : <p className="empty">Ainda sem gêneros recorrentes.</p>}
       </div>
     </section>
   );
@@ -1198,7 +1195,6 @@ function buildMemberProfile(group: OwnerGroup) {
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
     .slice(0, 5);
   const topCategory = favoriteCategories || (topCategoryEntry?.count ? categoryLabels[topCategoryEntry.category] : "--");
-  const topTags = topEntries(entries.flatMap((entry) => entry.item.tags || []), 8);
   const topGenres = topEntries(entries.flatMap((entry) => getGenres(entry.item)), 8);
   const summaryParts = [
     group.profile?.bio,
@@ -1215,7 +1211,6 @@ function buildMemberProfile(group: OwnerGroup) {
     wishlist,
     topCategory,
     topGenre,
-    topTags,
     topGenres,
     categoryCards,
     favorites,

@@ -1,6 +1,6 @@
 {
   "name": "gaveteira-da-vida",
-  "version": "0.6.8-beta",
+  "version": "0.6.9-beta",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,14 +8,17 @@
     "duel": "vite --host 127.0.0.1 --open /experiments/gaveteira-duel/",
     "build": "node scripts/sync-pwa-version.mjs && tsc && vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "release": "node scripts/release.mjs"
+    "release": "node scripts/release.mjs",
+    "screenshot": "node scripts/capture-gaveteira-screenshot.mjs",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
+    "lucide-react": "^0.468.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "lucide-react": "^0.468.0"
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^5.0.0",

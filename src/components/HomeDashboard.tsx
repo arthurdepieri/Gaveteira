@@ -1,4 +1,4 @@
-import { Archive, BookOpen, CheckCircle2, Circle, Clock3, Disc3, Film, Gamepad2, Heart, Library, Lightbulb, ListChecks, MessageSquare, RefreshCw, Sparkles, Tv, Users } from "lucide-react";
+import { Archive, BookOpen, CheckCircle2, Circle, Clock3, Disc3, Film, Gamepad2, Library, Lightbulb, ListChecks, MessageSquare, RefreshCw, Sparkles, Tv, Users } from "lucide-react";
 import type { ElementType } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { AppSettings, Category, CloudSession, CulturalItem, FamilyItem } from "../types";
@@ -49,11 +49,7 @@ export function HomeDashboard({
   const [socialLoading, setSocialLoading] = useState(false);
   const [socialError, setSocialError] = useState("");
   const stats = buildStats(items);
-  const latestItems = [...items].sort((a, b) => dateTime(b.createdAt || b.updatedAt) - dateTime(a.createdAt || a.updatedAt)).slice(0, 5);
-  const recentFavorites = [...items]
-    .filter((item) => getRating(item) >= 4)
-    .sort((a, b) => dateTime(b.updatedAt) - dateTime(a.updatedAt) || getRating(b) - getRating(a))
-    .slice(0, 5);
+  const latestItems = [...items].sort((a, b) => dateTime(b.createdAt || b.updatedAt) - dateTime(a.createdAt || a.updatedAt)).slice(0, 3);
   const suggestions = buildSuggestions(items);
   const friendActivity = useMemo(() => buildFriendActivity(socialItems, session?.user.id ?? ""), [socialItems, session?.user.id]);
   const checklist = buildOnboardingChecklist({ items, connectedToFamily, profileReady, favoriteDrawersReady, syncSkipped });
@@ -258,14 +254,6 @@ export function HomeDashboard({
           empty="Nenhuma ficha nova na mesa ainda."
           onOpenItem={onOpenItem}
           metaFor={(item) => [categoryLabels[item.category], item.status].join(" / ")}
-        />
-        <HomeShelf
-          title="Favoritos recentes"
-          icon={Heart}
-          items={recentFavorites}
-          empty="Suas fichas mais queridas vão aparecer aqui."
-          onOpenItem={onOpenItem}
-          metaFor={(item) => [categoryLabels[item.category], item.rating ? `${item.rating}/5` : ""].filter(Boolean).join(" / ")}
         />
         <FriendActivityShelf
           connected={connectedToFamily}
@@ -817,7 +805,7 @@ function buildFriendActivity(entries: FamilyItem[], viewerId: string): FriendAct
   return entries
     .filter((entry) => entry.ownerId !== viewerId && entry.item.visibility !== "private")
     .sort((a, b) => dateTime(b.updatedAt) - dateTime(a.updatedAt))
-    .slice(0, 5)
+    .slice(0, 3)
     .map((entry) => ({
       entry,
       text: friendActivityText(entry),

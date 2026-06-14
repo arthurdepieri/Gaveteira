@@ -1573,6 +1573,42 @@ button:disabled {
 .drawer-wishlist { background: linear-gradient(180deg, #9a7b34, #6c5524); }
 .drawer-progress { background: linear-gradient(180deg, #3d7565, #2b5147); }
 
+.home-drawers-panel .drawer {
+  min-height: 74px;
+  color: var(--wood-dark);
+  border: 1px solid #dec79b;
+  border-left: 5px solid var(--brass);
+  background: #fffdf8;
+  box-shadow: none;
+}
+
+.home-drawers-panel .drawer::before {
+  display: none;
+}
+
+.home-drawers-panel .drawer:hover {
+  border-color: var(--brass);
+  background: #fff4da;
+  box-shadow: 0 8px 18px rgba(83, 57, 30, 0.1);
+}
+
+.home-drawers-panel .drawer small {
+  color: var(--muted);
+}
+
+.home-drawers-panel .drawer-handle {
+  color: #fff8ec;
+  background: var(--wood);
+}
+
+.home-drawers-panel .drawer-games { border-left-color: #865f3e; }
+.home-drawers-panel .drawer-books { border-left-color: #71624b; }
+.home-drawers-panel .drawer-albums { border-left-color: #8c4f63; }
+.home-drawers-panel .drawer-movies { border-left-color: #436d77; }
+.home-drawers-panel .drawer-series { border-left-color: #5e7152; }
+.home-drawers-panel .drawer-wishlist { border-left-color: #9a7b34; }
+.home-drawers-panel .drawer-progress { border-left-color: #3d7565; }
+
 .section, .stat-panel, .setting-panel {
   margin-top: 18px;
   padding: 22px;
@@ -1704,7 +1740,7 @@ h2, h3 {
 
 .home-live-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 14px;
   margin-top: 18px;
 }
@@ -2320,6 +2356,13 @@ button.danger {
   gap: 7px;
 }
 
+.modal-footer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .form-mobile-section > summary {
   display: none;
 }
@@ -2481,6 +2524,7 @@ button.danger {
 :root[data-theme="dark"] .first-card-onboarding-modal,
 :root[data-theme="dark"] .first-card-option,
 :root[data-theme="dark"] .first-card-steps li,
+:root[data-theme="dark"] .card-form-stepper,
 :root[data-theme="dark"] .first-card-tutorial,
 :root[data-theme="dark"] .first-card-tutorial li,
 :root[data-theme="dark"] .hero,
@@ -2621,6 +2665,7 @@ button.danger {
 :root[data-theme="dark"] .social-recommendation-card,
 :root[data-theme="dark"] .comparison-card,
 :root[data-theme="dark"] .curation-filter-row button,
+:root[data-theme="dark"] .card-form-stepper-tabs button,
 :root[data-theme="dark"] .feed-action-row button,
 :root[data-theme="dark"] .feed-action-row span {
   color: var(--ink);
@@ -2629,12 +2674,15 @@ button.danger {
 }
 
 :root[data-theme="dark"] .first-card-progress span,
+:root[data-theme="dark"] .card-form-stepper-tabs span,
 :root[data-theme="dark"] .first-card-tutorial-steps span {
   background: #5a4733;
 }
 
 :root[data-theme="dark"] .first-card-progress span.active,
 :root[data-theme="dark"] .first-card-progress span.done,
+:root[data-theme="dark"] .card-form-stepper-tabs button.active span,
+:root[data-theme="dark"] .card-form-stepper-tabs button.done span,
 :root[data-theme="dark"] .first-card-tutorial-steps span.active,
 :root[data-theme="dark"] .first-card-tutorial-steps span.done {
   background: var(--green);
@@ -2784,6 +2832,23 @@ button.danger {
     #201a15;
 }
 
+:root[data-theme="dark"] .home-drawers-panel .drawer {
+  color: var(--ink);
+  border-color: var(--line);
+  background: #241d17;
+}
+
+:root[data-theme="dark"] .home-drawers-panel .drawer:hover {
+  border-color: var(--brass);
+  background: #2e251b;
+}
+
+:root[data-theme="dark"] .home-drawers-panel .drawer-handle {
+  color: #f5ead8;
+  border-color: var(--line);
+  background: #17120f;
+}
+
 :root[data-theme="dark"] .shelf-item,
 :root[data-theme="dark"] .continue-featured,
 :root[data-theme="dark"] .home-shelf-item,
@@ -2899,6 +2964,70 @@ button.danger {
 
 .first-card-form-modal {
   animation: onboarding-modal-in 320ms cubic-bezier(0.19, 1, 0.22, 1) both;
+}
+
+.card-form-stepper {
+  display: grid;
+  gap: 12px;
+  margin: 12px 0 4px;
+  padding: 14px;
+  border: 1px solid rgba(52, 107, 93, 0.22);
+  background:
+    linear-gradient(90deg, rgba(52, 107, 93, 0.035) 1px, transparent 1px) 0 0 / 18px 18px,
+    #f8f4eb;
+  border-radius: 8px;
+}
+
+.card-form-stepper-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.card-form-stepper-copy strong {
+  color: var(--ink);
+  font-size: 1.02rem;
+}
+
+.card-form-stepper-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.card-form-stepper-tabs button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 8px 10px;
+  color: var(--muted);
+  border: 1px solid rgba(52, 107, 93, 0.18);
+  background: rgba(255, 253, 248, 0.82);
+  border-radius: 8px;
+  font-weight: 900;
+}
+
+.card-form-stepper-tabs button:hover,
+.card-form-stepper-tabs button.active {
+  color: var(--green);
+  border-color: rgba(52, 107, 93, 0.42);
+  background: #fffdf8;
+}
+
+.card-form-stepper-tabs button.done {
+  color: var(--wood-dark);
+}
+
+.card-form-stepper-tabs span {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  color: #fff8ec;
+  background: var(--green);
+  border-radius: 999px;
+  font-size: 0.78rem;
 }
 
 .first-card-tutorial {
@@ -6317,6 +6446,19 @@ button.danger {
     grid-template-columns: 1fr;
   }
 
+  .card-form-stepper {
+    padding: 12px;
+  }
+
+  .card-form-stepper-tabs {
+    grid-template-columns: 1fr;
+  }
+
+  .card-form-stepper-tabs button {
+    justify-content: flex-start;
+    min-height: 40px;
+  }
+
   .first-card-tutorial-actions {
     justify-content: stretch;
   }
@@ -6546,6 +6688,12 @@ button.danger {
     border-top: 1px solid var(--line);
     background: rgba(255, 250, 241, 0.97);
     box-shadow: 0 -12px 24px rgba(47, 35, 24, 0.12);
+  }
+
+  .modal-footer-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
   }
 
   .category-choice-modal {
@@ -7785,8 +7933,7 @@ body {
 }
 
 .social-curation-panel,
-.social-comparison-panel,
-.social-diary-corner {
+.social-comparison-panel {
   background: var(--surface-subtle);
 }
 
@@ -7830,7 +7977,6 @@ body {
 
 :root[data-theme="dark"] .social-curation-panel,
 :root[data-theme="dark"] .social-comparison-panel,
-:root[data-theme="dark"] .social-diary-corner,
 :root[data-theme="dark"] .detail-live-controls,
 :root[data-theme="dark"] .privacy-note,
 :root[data-theme="dark"] .api-ready,
@@ -9088,5 +9234,503 @@ body {
 
   .first-card-welcome-modal .first-card-onboarding-footer > span {
     text-align: center;
+  }
+}
+
+.season-theme-copa-do-mundo-2026 {
+  --card-bg: #fff8d8;
+  --card-body-bg: #fffdf2;
+  --card-text: #20231a;
+  --card-title: #174a2e;
+  --card-muted: #68684f;
+  --card-border: #1f6fb2;
+  --card-accent: #f2c94c;
+  --card-kicker: #188a4a;
+  --card-tag-bg: #f8f1bf;
+  --card-cover-a: #1f6fb2;
+  --card-cover-b: #188a4a;
+  --card-open-bg: #1f6fb2;
+  --football-grass: #2f7d3f;
+  --football-line: #f8f7df;
+  --football-ball: #f7f3e8;
+  --football-ball-line: #1c1b18;
+  --card-football-opacity: 0.8;
+  --sheet-football-opacity: 0.8;
+  --card-shadow-alpha: 0.12;
+  --sheet-bg: #fff8d8;
+  --sheet-panel: #fffdf2;
+  --sheet-text: #20231a;
+  --sheet-title: #174a2e;
+  --sheet-muted: #68684f;
+  --sheet-border: #1f6fb2;
+  --sheet-section-bg: #f8f1bf;
+  --sheet-accent: #1f6fb2;
+  --sheet-warning: #d3463f;
+  --sheet-chip-bg: #f8f1bf;
+  --sheet-cover-a: #1f6fb2;
+  --sheet-cover-b: #188a4a;
+  --sheet-shadow-alpha: 0.13;
+  --football-ball-file: url("/seasonal-elements/promocoes/copa-do-mundo-2026/elementos/soccer-ball-svgrepo-com.svg");
+  --football-card-field-file: url("/seasonal-elements/promocoes/copa-do-mundo-2026/elementos/Campo.jpg");
+  --football-field-file: url("/seasonal-elements/promocoes/copa-do-mundo-2026/elementos/campo-de-futebol.jpg");
+}
+
+.season-theme-copa-do-mundo-2026.item-card {
+  color: var(--card-text);
+  border-color: color-mix(in srgb, var(--card-border) 76%, #ffffff 24%);
+  background:
+    linear-gradient(180deg, rgba(255, 253, 242, 0.02), rgba(255, 253, 242, 0.06)),
+    var(--football-grass);
+  box-shadow: 0 10px 24px rgba(31, 111, 178, var(--card-shadow-alpha));
+}
+
+.season-theme-copa-do-mundo-2026.item-card::before {
+  content: "";
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 4;
+  width: clamp(44px, 21%, 70px);
+  aspect-ratio: 1;
+  border: 0;
+  border-radius: 999px;
+  background:
+    linear-gradient(135deg, rgba(31, 111, 178, 0.28), rgba(24, 138, 74, 0.22) 58%, rgba(242, 201, 76, 0.2)),
+    var(--football-ball-file) center / cover no-repeat,
+    var(--football-ball);
+  opacity: 1;
+  box-shadow: 0 4px 10px rgba(32, 35, 26, 0.16);
+}
+
+.season-theme-copa-do-mundo-2026.item-card::after {
+  color: #fffdf2;
+  background: var(--card-open-bg);
+}
+
+.season-theme-copa-do-mundo-2026.item-card > .cover {
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--card-cover-a) 86%, #ffffff 14%), var(--card-cover-b));
+}
+
+.season-theme-copa-do-mundo-2026 .item-card-body {
+  color: #fffdf2;
+  background:
+    linear-gradient(135deg, rgba(31, 111, 178, 0.7), rgba(24, 138, 74, 0.72)),
+    var(--football-card-field-file) center bottom / cover no-repeat,
+    var(--football-grass);
+}
+
+.season-theme-copa-do-mundo-2026.item-card h3 {
+  color: #fffdf2;
+  text-shadow: 0 1px 3px rgba(7, 16, 26, 0.38);
+}
+
+.season-theme-copa-do-mundo-2026.item-card p,
+.season-theme-copa-do-mundo-2026 .item-card-kicker {
+  color: rgba(255, 253, 242, 0.78);
+  text-shadow: 0 1px 2px rgba(7, 16, 26, 0.3);
+}
+
+.season-theme-copa-do-mundo-2026 .item-card-kicker span:first-child,
+.season-theme-copa-do-mundo-2026 .item-card-meta small,
+.season-theme-copa-do-mundo-2026.item-card p.item-card-playtime {
+  color: #fff1a8;
+}
+
+.season-theme-copa-do-mundo-2026 .visibility-pill,
+.season-theme-copa-do-mundo-2026 .diary-marker-row span {
+  color: var(--card-title);
+  border-color: rgba(31, 111, 178, 0.34);
+  background: var(--card-tag-bg);
+}
+
+.season-theme-copa-do-mundo-2026.archive-sheet {
+  position: relative;
+  color: var(--sheet-text);
+  border-color: color-mix(in srgb, var(--sheet-border) 66%, #ffffff 34%);
+  background:
+    linear-gradient(180deg, rgba(255, 248, 216, 0.84), rgba(255, 248, 216, 0.9)),
+    var(--football-field-file) center top / cover no-repeat,
+    var(--sheet-bg);
+  box-shadow: 0 18px 40px rgba(31, 111, 178, var(--sheet-shadow-alpha));
+}
+
+.season-theme-copa-do-mundo-2026.archive-sheet::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(248, 247, 223, 0.34) 1px, transparent 1px) 0 0 / 24px 24px;
+  opacity: 0.45;
+}
+
+.season-theme-copa-do-mundo-2026.archive-sheet > * {
+  position: relative;
+  z-index: 1;
+}
+
+.season-theme-copa-do-mundo-2026 .modal-header,
+.season-theme-copa-do-mundo-2026 .modal-footer {
+  border-color: rgba(31, 111, 178, 0.24);
+}
+
+.season-theme-copa-do-mundo-2026 .eyebrow,
+.season-theme-copa-do-mundo-2026 .modal-header h2 {
+  color: var(--sheet-title);
+}
+
+.season-theme-copa-do-mundo-2026 .detail-hero {
+  color: var(--sheet-text);
+  border-color: color-mix(in srgb, var(--sheet-border) 66%, #ffffff 34%);
+  background:
+    linear-gradient(135deg, rgba(255, 253, 242, 0.9), rgba(248, 241, 191, 0.86));
+}
+
+.season-theme-copa-do-mundo-2026 .detail-hero .cover {
+  border-color: var(--football-line);
+  background: linear-gradient(135deg, var(--sheet-cover-a), var(--sheet-cover-b));
+}
+
+.season-theme-copa-do-mundo-2026 .archive-stamp {
+  color: #fffdf2;
+  background: var(--sheet-warning);
+  border-color: var(--football-line);
+  box-shadow: 0 0 0 1px var(--sheet-warning);
+}
+
+.season-theme-copa-do-mundo-2026 .detail-identity h1 {
+  color: var(--sheet-title);
+}
+
+.season-theme-copa-do-mundo-2026 .detail-summary span,
+.season-theme-copa-do-mundo-2026 .detail-summary .detail-visibility-toggle,
+.season-theme-copa-do-mundo-2026 .detail-quick-actions button,
+.season-theme-copa-do-mundo-2026 .detail-diary-brief,
+.season-theme-copa-do-mundo-2026 .privacy-note {
+  color: var(--sheet-title);
+  border-color: rgba(31, 111, 178, 0.28);
+  background: var(--sheet-chip-bg);
+}
+
+.season-theme-copa-do-mundo-2026 .detail-rating-line,
+.season-theme-copa-do-mundo-2026 .detail-rating-line strong,
+.season-theme-copa-do-mundo-2026 .detail-diary-brief small,
+.season-theme-copa-do-mundo-2026 .detail-diary-brief em,
+.season-theme-copa-do-mundo-2026 .privacy-note p {
+  color: var(--sheet-muted);
+}
+
+.season-theme-copa-do-mundo-2026 .detail-live-controls,
+.season-theme-copa-do-mundo-2026 .archive-block,
+.season-theme-copa-do-mundo-2026 .diary-focus-panel,
+.season-theme-copa-do-mundo-2026 .cover-search-panel {
+  color: var(--sheet-text);
+  border-color: rgba(31, 111, 178, 0.28);
+  background:
+    linear-gradient(90deg, rgba(31, 111, 178, 0.08) 1px, transparent 1px) 0 0 / 18px 18px,
+    var(--sheet-section-bg);
+}
+
+.season-theme-copa-do-mundo-2026 .detail-summary-tile,
+.season-theme-copa-do-mundo-2026 .detail-field,
+.season-theme-copa-do-mundo-2026 .diary-note-card,
+.season-theme-copa-do-mundo-2026 .timeline-entry {
+  color: var(--sheet-text);
+  border-color: rgba(31, 111, 178, 0.24);
+  background: var(--sheet-panel);
+}
+
+.season-theme-copa-do-mundo-2026 .archive-block h3,
+.season-theme-copa-do-mundo-2026 .archive-block-heading h3,
+.season-theme-copa-do-mundo-2026 .detail-summary-tile strong,
+.season-theme-copa-do-mundo-2026 .detail-field strong,
+.season-theme-copa-do-mundo-2026 .diary-note-card strong {
+  color: var(--sheet-title);
+}
+
+.season-theme-copa-do-mundo-2026 .archive-block h3::before {
+  background: var(--sheet-accent);
+}
+
+.season-theme-copa-do-mundo-2026 input,
+.season-theme-copa-do-mundo-2026 select,
+.season-theme-copa-do-mundo-2026 textarea,
+.season-theme-copa-do-mundo-2026 .search-field {
+  color: var(--sheet-text);
+  border-color: rgba(31, 111, 178, 0.34);
+  background: var(--sheet-panel);
+}
+
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 {
+  --card-bg: #10243a;
+  --card-body-bg: #132f44;
+  --card-text: #f7f0dd;
+  --card-title: #fff1a8;
+  --card-muted: #c7d5bd;
+  --card-border: #2f8ed2;
+  --card-accent: #f2c94c;
+  --card-kicker: #8ae0a2;
+  --card-tag-bg: #173f42;
+  --card-open-bg: #188a4a;
+  --sheet-bg: #0d1c2c;
+  --sheet-panel: rgba(19, 47, 68, 0.92);
+  --sheet-text: #f7f0dd;
+  --sheet-title: #fff1a8;
+  --sheet-muted: #c7d5bd;
+  --sheet-border: #2f8ed2;
+  --sheet-section-bg: rgba(16, 45, 49, 0.92);
+  --sheet-accent: #42bf72;
+  --sheet-warning: #e85d4f;
+  --sheet-chip-bg: #173f42;
+  --sheet-shadow-alpha: 0.32;
+  --card-football-opacity: 0.72;
+  --sheet-football-opacity: 0.54;
+}
+
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026.item-card {
+  color: var(--card-text);
+  border-color: rgba(47, 142, 210, 0.58);
+  background:
+    linear-gradient(180deg, rgba(7, 16, 26, 0.08), rgba(7, 16, 26, 0.22)),
+    #0f5a38;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+}
+
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .item-card-body {
+  color: var(--card-text);
+  background:
+    linear-gradient(135deg, rgba(14, 53, 84, 0.74), rgba(12, 78, 48, 0.76)),
+    var(--football-card-field-file) center bottom / cover no-repeat,
+    #0f5a38;
+}
+
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026.item-card h3 {
+  color: var(--card-title);
+}
+
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026.item-card p,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .item-card-kicker {
+  color: var(--card-muted);
+}
+
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .item-card-kicker span:first-child,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .item-card-meta small,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026.item-card p.item-card-playtime {
+  color: var(--card-kicker);
+}
+
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .visibility-pill,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .diary-marker-row span {
+  color: var(--card-title);
+  border-color: rgba(242, 201, 76, 0.28);
+  background: var(--card-tag-bg);
+}
+
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026.archive-sheet {
+  color: var(--sheet-text);
+  border-color: rgba(47, 142, 210, 0.5);
+  background:
+    linear-gradient(180deg, rgba(9, 20, 32, 0.82), rgba(13, 28, 44, 0.94)),
+    var(--football-field-file) center top / cover no-repeat,
+    var(--sheet-bg);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, var(--sheet-shadow-alpha));
+}
+
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026.archive-sheet::before {
+  background:
+    linear-gradient(90deg, rgba(248, 247, 223, 0.08) 1px, transparent 1px) 0 0 / 24px 24px;
+  opacity: 0.32;
+}
+
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .modal-header,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .modal-footer {
+  border-color: rgba(47, 142, 210, 0.28);
+}
+
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .detail-hero {
+  color: var(--sheet-text);
+  border-color: rgba(47, 142, 210, 0.42);
+  background:
+    linear-gradient(135deg, rgba(19, 47, 68, 0.92), rgba(16, 69, 47, 0.86));
+}
+
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .detail-live-controls,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .archive-block,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .diary-focus-panel,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .cover-search-panel {
+  color: var(--sheet-text);
+  border-color: rgba(47, 142, 210, 0.34);
+  background:
+    linear-gradient(90deg, rgba(242, 201, 76, 0.045) 1px, transparent 1px) 0 0 / 18px 18px,
+    var(--sheet-section-bg);
+}
+
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .detail-summary-tile,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .detail-field,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .diary-note-card,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .timeline-entry,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .metadata-result,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .cover-search-result,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .diary-summary-assist,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .local-image-upload {
+  color: var(--sheet-text);
+  border-color: rgba(47, 142, 210, 0.28);
+  background: var(--sheet-panel);
+}
+
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .detail-summary span,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .detail-summary .detail-visibility-toggle,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .detail-quick-actions button,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .detail-diary-brief,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .privacy-note,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .detail-mobile-tabs button,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .detail-links a,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .modal-actions .ghost,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .ghost,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .quick-star-clear {
+  color: var(--sheet-title);
+  border-color: rgba(242, 201, 76, 0.28);
+  background: var(--sheet-chip-bg);
+}
+
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .primary,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .detail-mobile-tabs button.active,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .quick-star-hit:hover,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .quick-star-hit.active {
+  color: #07101a;
+  border-color: rgba(138, 224, 162, 0.72);
+  background: var(--sheet-accent);
+}
+
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .danger,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .danger-soft {
+  color: #fff7ef;
+  border-color: rgba(232, 93, 79, 0.48);
+  background: rgba(232, 93, 79, 0.22);
+}
+
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .icon-button {
+  color: var(--sheet-title);
+  border-color: rgba(242, 201, 76, 0.28);
+  background: rgba(7, 16, 26, 0.72);
+}
+
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .archive-stamp {
+  color: #fff7ef;
+  border-color: rgba(255, 247, 239, 0.72);
+  background: var(--sheet-warning);
+  box-shadow: 0 0 0 1px rgba(232, 93, 79, 0.72);
+}
+
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .stars,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .detail-rating-line .stars,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .quick-star-wrap .filled,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .quick-star-wrap .half {
+  color: var(--card-accent);
+}
+
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .archive-block-heading > span,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .detail-summary-tile span,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .detail-field span,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .diary-note-card em,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .diary-note-card p,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .diary-summary-assist p,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .metadata-result small,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .cover-search-result small,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .local-image-upload small,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .empty {
+  color: var(--sheet-muted);
+}
+
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .archive-block h3,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .archive-block-heading h3,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .detail-summary-tile strong,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .detail-field strong,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .diary-note-card strong,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .diary-summary-assist strong,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .cover-search-result strong,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .metadata-result strong,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .local-image-upload span {
+  color: var(--sheet-title);
+}
+
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .diary-visibility-badge,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .diary-note-friends .diary-visibility-badge {
+  color: var(--card-kicker);
+  border-color: rgba(138, 224, 162, 0.32);
+  background: rgba(22, 82, 55, 0.66);
+}
+
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .diary-note-private .diary-visibility-badge {
+  color: var(--sheet-title);
+  border-color: rgba(242, 201, 76, 0.28);
+  background: rgba(242, 201, 76, 0.12);
+}
+
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .quick-star-buttons {
+  color: var(--sheet-title);
+  border-color: rgba(242, 201, 76, 0.24);
+  background: rgba(7, 16, 26, 0.58);
+}
+
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .cover-search-result > span,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .metadata-cover {
+  color: var(--sheet-muted);
+  background: rgba(7, 16, 26, 0.72);
+}
+
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 input,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 select,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 textarea,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .search-field {
+  color: var(--sheet-text);
+  border-color: rgba(47, 142, 210, 0.34);
+  background: rgba(7, 16, 26, 0.82);
+}
+
+@media (max-width: 760px) {
+  .season-theme-copa-do-mundo-2026.item-card {
+    border-color: rgba(31, 111, 178, 0.48);
+  }
+
+  .season-theme-copa-do-mundo-2026.item-card::before {
+    top: 6px;
+    right: auto;
+    left: 6px;
+    width: 30px;
+    box-shadow: 0 3px 8px rgba(7, 16, 26, 0.2);
+  }
+
+  .season-theme-copa-do-mundo-2026 .item-card-body {
+    background:
+      linear-gradient(90deg, rgba(31, 111, 178, 0.82), rgba(24, 138, 74, 0.82)),
+      var(--football-card-field-file) center 58% / 120% auto no-repeat,
+      var(--football-grass);
+  }
+
+  .season-theme-copa-do-mundo-2026 .visibility-pill {
+    max-width: min(100%, 176px);
+    overflow: hidden;
+    padding: 3px 7px;
+    font-size: 0.66rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .season-theme-copa-do-mundo-2026.item-card h3,
+  .season-theme-copa-do-mundo-2026.item-card p {
+    max-width: 100%;
+  }
+
+  :root[data-theme="dark"] .season-theme-copa-do-mundo-2026.item-card {
+    border-color: rgba(47, 142, 210, 0.64);
+  }
+
+  :root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .item-card-body {
+    background:
+      linear-gradient(90deg, rgba(14, 53, 84, 0.84), rgba(12, 78, 48, 0.84)),
+      var(--football-card-field-file) center 58% / 120% auto no-repeat,
+      #0f5a38;
   }
 }

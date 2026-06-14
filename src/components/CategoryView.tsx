@@ -106,7 +106,7 @@ export function CategoryView({
 
   const filtered = baseItems.filter((item) => {
     const search = filters.search.toLowerCase();
-    const matchesSearch = !search || getTitle(item).toLowerCase().includes(search) || item.tags.some((tag) => tag.toLowerCase().includes(search));
+    const matchesSearch = !search || getTitle(item).toLowerCase().includes(search);
     const matchesYear = !filters.year || String(getYear(item) ?? "") === filters.year;
     const matchesStatus = !filters.status || item.status === filters.status;
     const matchesGenre = !filters.genre || getGenres(item).includes(filters.genre);
@@ -143,7 +143,7 @@ export function CategoryView({
       <section className="filters">
         <label className="search-field">
           <Search size={16} />
-          <input value={filters.search} onChange={(event) => onFiltersChange({ ...filters, search: event.target.value })} placeholder="Buscar por nome ou tag" />
+          <input value={filters.search} onChange={(event) => onFiltersChange({ ...filters, search: event.target.value })} placeholder="Buscar por nome" />
         </label>
         <select value={filters.year} onChange={(event) => onFiltersChange({ ...filters, year: event.target.value })}>
           <option value="">Ano</option>

@@ -5,9 +5,18 @@ export interface SeasonalThemeDefinition {
   label: string;
   startsAt: string;
   endsAt: string;
+  assetPath?: string;
 }
 
-export const seasonalThemes: SeasonalThemeDefinition[] = [];
+export const seasonalThemes: SeasonalThemeDefinition[] = [
+  {
+    id: "copa-do-mundo-2026",
+    label: "Copa do Mundo 2026",
+    startsAt: "2026-06-14T00:00:00-03:00",
+    endsAt: "2026-07-20T23:59:59-03:00",
+    assetPath: "/seasonal-elements/promocoes/copa-do-mundo-2026/elementos/",
+  },
+];
 
 export function createSeasonalThemeStamp(date = new Date()): SeasonalThemeStamp | undefined {
   const activeTheme = findActiveSeasonalTheme(date);
