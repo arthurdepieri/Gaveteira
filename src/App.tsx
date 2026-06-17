@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ElementType } from "react";
-import { AlertTriangle, Archive, BarChart3, BookOpen, CheckCircle2, ChevronDown, CloudOff, Disc3, Download, FileText, Film, Gamepad2, Home, Library, ListChecks, Loader2, LogIn, LogOut, MessageSquare, RefreshCw, RotateCcw, Settings, Share, Tv, UserCheck, UserPlus, Users, WifiOff, X } from "lucide-react";
+import { AlertTriangle, Archive, Award, BarChart3, BookOpen, CheckCircle2, ChevronDown, CloudOff, Disc3, Download, FileText, Film, Gamepad2, Home, Library, ListChecks, Loader2, LogIn, LogOut, MessageSquare, Palette, RefreshCw, RotateCcw, Settings, Share, ShieldCheck, Tv, UserCheck, UserPlus, Users, WifiOff, X } from "lucide-react";
 import { AppData, AppSettings, BookItem, Category, CloudSession, CulturalItem, ViewKey } from "./types";
 import { createEmptyData, loadData, saveData } from "./storage/localStore";
 import { createSafetySnapshot, snapshotIfRuntimeChanged } from "./storage/snapshots";
@@ -13,6 +13,8 @@ import { StatsView } from "./components/StatsView";
 import { SettingsView } from "./components/SettingsView";
 import { FamilyView } from "./components/FamilyView";
 import { SocialFeedView } from "./components/SocialFeedView";
+import { AdminView } from "./components/AdminView";
+import type { AdminPage } from "./components/AdminView";
 import { AuthGate } from "./components/AuthGate";
 import { consumeOAuthRedirectSession, consumePasswordRecoverySession, deleteMyItem, fetchMyItems, fetchMyProfile, isSessionExpiredError, loadCloudSession, saveCloudSession, upsertMyItem } from "./services/supabaseCloud";
 import { withSharedCloudSettings } from "./config/sharedCloud";
@@ -109,7 +111,7 @@ function App() {
   const [syncRetryTick, setSyncRetryTick] = useState(0);
   const [isOnline, setIsOnline] = useState(() => typeof navigator === "undefined" ? true : navigator.onLine);
   const [syncQueue, setSyncQueue] = useState<SyncQueueEntry[]>(() => loadSyncQueue(loadPendingDeletes()));
-  const [socialSection, setSocialSection] = useState<"profile" | "friends" | "admin">("profile");
+  const [socialSection, setSocialSection] = useState<"profile" | "friends">("profile");
   const [mobileDrawersOpen, setMobileDrawersOpen] = useState(false);
   const [addPickerOpen, setAddPickerOpen] = useState(false);
   const [firstCardTutorial, setFirstCardTutorial] = useState(false);
@@ -608,7 +610,7 @@ function App() {
   }
 
   const mainView = () => {
-    if (cloudSession && cloudBootstrapped && !data.items.length && !activeItem) {
+    if (view === "home" && cloudSession && cloudBootstrapped && !data.items.length && !activeItem) {
       return <FirstCardStart onChoose={startFirstCard} />;
     }
 
@@ -657,6 +659,16 @@ function App() {
         />
       );
     }
+    if (view === "adminDesign" || view === "adminCuration") {
+      return (
+        <AdminView
+          settings={effectiveSettings}
+          session={cloudSession}
+          page={view === "adminDesign" ? "design" : "curation"}
+          onPageChange={selectAdminPage}
+        />
+      );
+    }
     if (view === "settings") {
       return (
         <SettingsView
@@ -694,12 +706,17 @@ function App() {
     setMobileDrawersOpen(false);
   }
 
-  function selectSocial(nextSection: "profile" | "friends" | "admin") {
-    if (nextSection === "admin" && cloudSession?.profile?.role !== "admin") {
-      nextSection = "profile";
-    }
+  function selectSocial(nextSection: "profile" | "friends") {
     setSocialSection(nextSection);
     selectView("family");
+  }
+
+  function selectAdminPage(nextPage: AdminPage) {
+    if (cloudSession?.profile?.role !== "admin") {
+      selectView("home");
+      return;
+    }
+    selectView(nextPage === "design" ? "adminDesign" : "adminCuration");
   }
 
   async function installApp() {
@@ -1028,14 +1045,27 @@ function App() {
                 <UserPlus size={18} />
                 <span>Amigos</span>
               </button>
-              {cloudSession?.profile?.role === "admin" ? (
-                <button className={view === "family" && socialSection === "admin" ? "active" : ""} onClick={() => selectSocial("admin")}>
-                  <UserCheck size={18} />
-                  <span>Admin</span>
-                </button>
-              ) : null}
             </div>
           </div>
+          {cloudSession?.profile?.role === "admin" ? (
+            <div className={`drawer-nav ${view === "adminDesign" || view === "adminCuration" ? "active" : ""}`}>
+              <button className="drawer-nav-trigger" type="button" onClick={() => selectAdminPage(view === "adminCuration" ? "curation" : "design")}>
+                <ShieldCheck size={18} />
+                <span>Admin</span>
+                <ChevronDown size={16} />
+              </button>
+              <div className="drawer-nav-menu">
+                <button className={view === "adminDesign" ? "active" : ""} onClick={() => selectAdminPage("design")}>
+                  <Palette size={18} />
+                  <span>Design sazonal</span>
+                </button>
+                <button className={view === "adminCuration" ? "active" : ""} onClick={() => selectAdminPage("curation")}>
+                  <Award size={18} />
+                  <span>Membros e curadoria</span>
+                </button>
+              </div>
+            </div>
+          ) : null}
           {secondaryNavItems.map((item) => {
             const Icon = item.icon;
             const active = view === item.key;
@@ -1082,6 +1112,12 @@ function App() {
           <Users size={20} />
           <span>Social</span>
         </button>
+        {cloudSession?.profile?.role === "admin" ? (
+          <button type="button" className={view === "adminDesign" || view === "adminCuration" ? "active" : ""} onClick={() => selectAdminPage(view === "adminCuration" ? "curation" : "design")}>
+            <ShieldCheck size={20} />
+            <span>Admin</span>
+          </button>
+        ) : null}
         <button type="button" className={view === "settings" ? "active" : ""} onClick={() => selectView("settings")}>
           <Settings size={20} />
           <span>Config</span>

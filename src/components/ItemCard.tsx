@@ -1,4 +1,5 @@
-import { KeyboardEvent, useState } from "react";
+import type { CSSProperties, KeyboardEvent } from "react";
+import { useState } from "react";
 import { CulturalItem } from "../types";
 import { Cover } from "./Cover";
 import { CoverViewer } from "./CoverViewer";
@@ -6,7 +7,7 @@ import { Stars } from "./Rating";
 import { getSeasonalThemeClassName, getSeasonalThemeId } from "../data/seasonalThemes";
 import { getGenre, getItemVisibility, getItemVisibilityLabel, getTitle, getYear } from "../utils/itemHelpers";
 
-export function ItemCard({ item, onOpen }: { item: CulturalItem; onOpen: () => void }) {
+export function ItemCard({ item, onOpen, seasonalStyle }: { item: CulturalItem; onOpen: () => void; seasonalStyle?: CSSProperties }) {
   const [coverOpen, setCoverOpen] = useState(false);
   const gameTime = item.category === "games" ? item.timePlayed?.trim() || "--:--" : "";
   const progress = getProgressLabel(item);
@@ -26,6 +27,7 @@ export function ItemCard({ item, onOpen }: { item: CulturalItem; onOpen: () => v
       <article
         className={getSeasonalThemeClassName(item, "item-card")}
         data-season-theme={getSeasonalThemeId(item)}
+        style={seasonalStyle}
         role="button"
         tabIndex={0}
         onClick={onOpen}

@@ -1,4 +1,5 @@
 import { BookOpenText, Camera, Edit3, ExternalLink, ImageIcon, Lock, Megaphone, Plus, Search, Sparkles, Trash2, X } from "lucide-react";
+import type { CSSProperties } from "react";
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { AppSettings, CloudSession, CulturalItem, DiaryEntry, Rating, SocialVisibility } from "../types";
@@ -34,6 +35,8 @@ export function ItemDetails({
   onUpdateItem,
   onDelete,
   onClose,
+  seasonalStyle,
+  seasonalClassName = "",
 }: {
   item: CulturalItem;
   ownerName?: string;
@@ -45,6 +48,8 @@ export function ItemDetails({
   onUpdateItem?: (item: CulturalItem) => void;
   onDelete?: (id: string) => void;
   onClose: () => void;
+  seasonalStyle?: CSSProperties;
+  seasonalClassName?: string;
 }) {
   const sections = detailSections(item);
   const visibleSections = sections.filter((section) => section.fields.length);
@@ -97,7 +102,7 @@ export function ItemDetails({
 
   return createPortal(
     <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <article className={getSeasonalThemeClassName(item, "modal detail-modal archive-sheet")} data-season-theme={getSeasonalThemeId(item)}>
+      <article className={`${getSeasonalThemeClassName(item, "modal detail-modal archive-sheet")} ${seasonalClassName}`.trim()} data-season-theme={getSeasonalThemeId(item)} style={seasonalStyle}>
         <header className="modal-header">
           <div>
             <p className="eyebrow">{categoryLabels[item.category]}{ownerName ? ` / ${ownerName}` : ""}</p>

@@ -1,5 +1,5 @@
 export type Category = "games" | "books" | "albums" | "movies" | "series";
-export type ViewKey = Category | "home" | "wishlist" | "progress" | "feed" | "stats" | "family" | "settings";
+export type ViewKey = Category | "home" | "wishlist" | "progress" | "feed" | "stats" | "family" | "adminDesign" | "adminCuration" | "settings";
 export type SocialVisibility = "private" | "friends" | "group" | "public";
 export type ProfileRole = "user" | "admin";
 

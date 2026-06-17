@@ -4580,72 +4580,51 @@ button.danger {
 
 .cover-viewer-backdrop {
   z-index: 80;
-  padding: 18px;
-  background: rgba(18, 14, 10, 0.82);
+  padding: 16px;
+  background: rgba(7, 7, 7, 0.86);
 }
 
 .cover-viewer-modal {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  gap: 14px;
-  width: min(920px, 100%);
-  max-height: min(92dvh, 980px);
-  padding: 16px;
-  color: var(--ink);
-  border: 1px solid var(--line-soft);
-  background:
-    linear-gradient(90deg, rgba(184, 135, 55, 0.04) 1px, transparent 1px) 0 0 / 24px 24px,
-    var(--paper);
-  border-radius: 8px;
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.32);
+  position: relative;
+  overflow: auto;
+  width: min(92vw, 980px);
+  height: min(92dvh, 980px);
+  overscroll-behavior: contain;
+  scrollbar-color: rgba(255, 255, 255, 0.38) transparent;
 }
 
-.cover-viewer-modal header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.cover-viewer-modal h2 {
-  margin: 0;
-  font-size: clamp(1.2rem, 3vw, 2rem);
-}
-
-.cover-viewer-download {
-  text-decoration: none;
-}
-
-.cover-viewer-frame {
-  display: grid;
-  place-items: center;
-  min-height: 0;
-  padding: 12px;
-  border: 1px solid var(--line-soft);
-  background: rgba(33, 29, 24, 0.08);
-  border-radius: 8px;
-}
-
-.cover-viewer-frame img {
+.cover-viewer-modal img {
   display: block;
-  max-width: 100%;
-  max-height: calc(92dvh - 132px);
-  object-fit: contain;
-  border-radius: 4px;
-  box-shadow: 0 14px 34px rgba(33, 29, 24, 0.24);
+  width: max-content;
+  max-width: none;
+  height: auto;
+  min-width: min-content;
+  margin: auto;
+  border-radius: 3px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.38);
 }
 
-:root[data-theme="dark"] .cover-viewer-modal {
-  color: var(--ink);
-  border-color: rgba(213, 166, 83, 0.24);
-  background:
-    linear-gradient(90deg, rgba(213, 166, 83, 0.035) 1px, transparent 1px) 0 0 / 24px 24px,
-    var(--paper);
+.cover-viewer-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  min-height: 40px;
+  padding: 0;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(0, 0, 0, 0.52);
+  border-radius: 999px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
 }
 
-:root[data-theme="dark"] .cover-viewer-frame {
-  border-color: rgba(213, 166, 83, 0.18);
-  background: rgba(0, 0, 0, 0.2);
+.cover-viewer-close:hover,
+.cover-viewer-close:focus-visible {
+  background: rgba(0, 0, 0, 0.74);
 }
 
 .large-avatar {
@@ -6171,7 +6150,7 @@ button.danger {
     left: 10px;
     z-index: 9;
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(48px, 1fr));
     gap: 4px;
     padding: 7px;
     border: 1px solid rgba(94, 60, 39, 0.18);
@@ -9227,31 +9206,21 @@ body {
   }
 
   .cover-viewer-modal {
-    width: 100%;
-    max-height: 96dvh;
-    padding: 10px;
+    width: calc(100vw - 16px);
+    height: calc(96dvh - 16px);
   }
 
-  .cover-viewer-modal header {
-    align-items: start;
+  .cover-viewer-modal img {
+    width: auto;
+    max-width: none;
   }
 
-  .cover-viewer-modal .modal-actions {
-    gap: 6px;
-  }
-
-  .cover-viewer-download {
-    min-height: 34px;
-    padding: 7px 9px;
-    font-size: 0.78rem;
-  }
-
-  .cover-viewer-frame {
-    padding: 8px;
-  }
-
-  .cover-viewer-frame img {
-    max-height: calc(96dvh - 118px);
+  .cover-viewer-close {
+    top: 6px;
+    right: 6px;
+    width: 38px;
+    height: 38px;
+    min-height: 38px;
   }
 
   .detail-modal {
@@ -9504,6 +9473,823 @@ body {
 
   .first-card-welcome-modal .first-card-onboarding-footer > span {
     text-align: center;
+  }
+}
+
+.seasonal-lab {
+  display: grid;
+  gap: 16px;
+  padding-top: 4px;
+  border-top: 1px dashed var(--line);
+}
+
+.seasonal-lab-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 240px);
+  gap: 14px;
+  align-items: stretch;
+  padding: 18px;
+  color: var(--ink);
+  border: 1px solid rgba(52, 107, 93, 0.26);
+  background:
+    linear-gradient(90deg, rgba(52, 107, 93, 0.055) 1px, transparent 1px) 0 0 / 18px 18px,
+    linear-gradient(135deg, rgba(255, 253, 248, 0.96), rgba(232, 243, 237, 0.74));
+  border-radius: 8px;
+}
+
+.seasonal-lab-hero h2,
+.seasonal-lab-hero p {
+  margin: 0;
+}
+
+.seasonal-lab-hero h2 {
+  margin-top: 2px;
+  color: var(--wood-dark);
+  font-size: clamp(1.55rem, 3vw, 2.3rem);
+  line-height: 1.05;
+}
+
+.seasonal-lab-hero p:not(.eyebrow) {
+  max-width: 720px;
+  margin-top: 8px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.seasonal-lab-status {
+  display: grid;
+  align-content: center;
+  gap: 6px;
+  min-height: 112px;
+  padding: 14px;
+  color: #fffaf1;
+  background:
+    linear-gradient(135deg, rgba(49, 95, 132, 0.94), rgba(52, 107, 93, 0.94));
+  border-radius: 8px;
+  box-shadow: 0 12px 24px rgba(38, 74, 80, 0.16);
+}
+
+.seasonal-lab-status span,
+.seasonal-lab-status small {
+  color: rgba(255, 250, 241, 0.78);
+  font-weight: 900;
+}
+
+.seasonal-lab-status span {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+
+.seasonal-lab-status strong {
+  font-size: 1.35rem;
+  line-height: 1.05;
+}
+
+.seasonal-lab-toolbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.seasonal-model-picker,
+.seasonal-file-field,
+.seasonal-color-field {
+  display: grid;
+  gap: 6px;
+}
+
+.seasonal-model-picker span,
+.seasonal-color-field span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.seasonal-lab-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.1fr) minmax(260px, 0.9fr);
+  gap: 12px;
+}
+
+.seasonal-editor-panel {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+  padding: 16px;
+  border: 1px solid var(--line);
+  background: #fffdf8;
+  border-radius: 8px;
+}
+
+.seasonal-detail-editor {
+  grid-column: 1 / -1;
+}
+
+.seasonal-color-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.seasonal-control-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.seasonal-color-field {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  background: #fff4da;
+  border-radius: 8px;
+}
+
+.seasonal-color-field input[type="color"] {
+  width: 100%;
+  min-height: 36px;
+  padding: 2px;
+}
+
+.seasonal-color-field input:not([type="color"]) {
+  min-height: 32px;
+  font-size: 0.82rem;
+}
+
+.seasonal-range-field {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  background: #fff4da;
+  border-radius: 8px;
+}
+
+.seasonal-range-field > span {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.seasonal-range-field strong {
+  color: var(--wood-dark);
+  white-space: nowrap;
+}
+
+.seasonal-range-field input[type="range"] {
+  width: 100%;
+  accent-color: var(--green);
+}
+
+.seasonal-add-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.seasonal-seal-editor,
+.seasonal-detail-list {
+  display: grid;
+  gap: 10px;
+}
+
+.seasonal-seal-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.seasonal-seal-list button,
+.seasonal-seal-list span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 5px 9px;
+  color: #174a2e;
+  border: 1px solid rgba(52, 107, 93, 0.22);
+  background: #e9f2df;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.seasonal-seal-list button:hover {
+  border-color: var(--green);
+}
+
+.seasonal-detail-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.8fr) minmax(160px, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.seasonal-preview-panel {
+  --card-bg: #1f6fb2;
+  --card-body-bg: #188a4a;
+  --card-text: #fffdf2;
+  --card-title: #fffdf2;
+  --card-muted: rgba(255, 253, 242, 0.78);
+  --card-border: #f2c94c;
+  --card-accent: #f2c94c;
+  --card-kicker: #f2c94c;
+  --card-tag-bg: #fff8d8;
+  --card-cover-a: #1f6fb2;
+  --card-cover-b: #188a4a;
+  --card-open-bg: #f2c94c;
+  --sheet-bg: #fff8d8;
+  --sheet-panel: #fffdf2;
+  --sheet-text: #20231a;
+  --sheet-title: #174a2e;
+  --sheet-muted: #68684f;
+  --sheet-border: #f2c94c;
+  --sheet-section-bg: #f8f1bf;
+  --sheet-accent: #f2c94c;
+  --sheet-warning: #188a4a;
+  --sheet-chip-bg: #f8f1bf;
+  --sheet-cover-a: #1f6fb2;
+  --sheet-cover-b: #188a4a;
+  --lab-card-image: none;
+  --lab-detail-image: none;
+  --lab-card-image-opacity: 0.78;
+  --lab-card-image-size: 110%;
+  --lab-card-image-position: 50% 68%;
+  --lab-card-ornament-size: 64px;
+  --lab-card-body-contrast: 0.74;
+  --lab-sheet-image-opacity: 0.36;
+  --lab-sheet-image-size: 110%;
+  --lab-sheet-image-position: 50% 30%;
+  --lab-sheet-cover-width: 180px;
+  --lab-sheet-panel-alpha: 0.86;
+  --lab-sheet-panel-bg: rgba(255, 253, 242, 0.86);
+  --lab-sheet-title-scale: 1;
+  --lab-sheet-density: 1;
+  --lab-radius: 8px;
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  color: var(--sheet-text);
+  border: 1px solid color-mix(in srgb, var(--sheet-border) 58%, #ffffff 42%);
+  background:
+    linear-gradient(135deg, rgba(255, 250, 241, 0.94), rgba(255, 253, 248, 0.82));
+  border-radius: 8px;
+}
+
+.seasonal-preview-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.62fr) minmax(320px, 1fr);
+  gap: 14px;
+  align-items: stretch;
+}
+
+.seasonal-card-stage,
+.seasonal-sheet-preview {
+  min-width: 0;
+}
+
+.seasonal-card-stage {
+  display: grid;
+  align-content: start;
+  padding: 12px;
+  border: 1px solid rgba(184, 135, 55, 0.26);
+  background:
+    linear-gradient(90deg, rgba(184, 135, 55, 0.05) 1px, transparent 1px) 0 0 / 18px 18px,
+    #fffaf1;
+  border-radius: 8px;
+}
+
+.seasonal-card-frame {
+  position: relative;
+  max-width: 420px;
+}
+
+.seasonal-preview-panel .season-theme.item-card {
+  color: var(--card-text);
+  border-color: color-mix(in srgb, var(--card-border) 72%, #ffffff 28%);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--card-bg) 90%, #ffffff 10%), var(--card-body-bg));
+  border-radius: var(--lab-radius);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--card-border) 24%, transparent 76%);
+}
+
+.seasonal-preview-panel .season-theme.item-card > .cover {
+  background:
+    linear-gradient(135deg, var(--card-cover-a), var(--card-cover-b));
+}
+
+.seasonal-preview-panel .season-theme .item-card-body {
+  color: var(--card-text);
+  background:
+    linear-gradient(135deg, rgb(31 111 178 / var(--lab-card-body-contrast)), rgb(24 138 74 / var(--lab-card-body-contrast))),
+    var(--lab-card-image) var(--lab-card-image-position) / var(--lab-card-image-size) no-repeat,
+    var(--card-body-bg);
+}
+
+.seasonal-preview-panel .season-theme.item-card h3 {
+  color: var(--card-title);
+  text-shadow: 0 1px 3px rgba(7, 16, 26, 0.34);
+}
+
+.seasonal-preview-panel .season-theme.item-card p,
+.seasonal-preview-panel .season-theme .item-card-kicker {
+  color: var(--card-muted);
+}
+
+.seasonal-preview-panel .season-theme .item-card-kicker span:first-child,
+.seasonal-preview-panel .season-theme .item-card-meta small,
+.seasonal-preview-panel .season-theme.item-card p.item-card-playtime {
+  color: var(--card-kicker);
+}
+
+.seasonal-preview-panel .season-theme .visibility-pill,
+.seasonal-preview-panel .season-theme .diary-marker-row span {
+  color: var(--sheet-title);
+  border-color: color-mix(in srgb, var(--card-border) 34%, transparent 66%);
+  background: var(--card-tag-bg);
+}
+
+.seasonal-sheet-preview {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(130px, var(--lab-sheet-cover-width)) minmax(0, 1fr);
+  gap: 18px;
+  align-items: stretch;
+  min-height: 300px;
+  padding: 18px;
+  color: var(--sheet-text);
+  border: 1px solid color-mix(in srgb, var(--sheet-border) 54%, #ffffff 46%);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--sheet-bg) 86%, #ffffff 14%), rgba(255, 255, 255, 0.54)), var(--sheet-bg);
+  border-radius: var(--lab-radius);
+  box-shadow: 0 14px 30px color-mix(in srgb, var(--sheet-border) 16%, transparent 84%);
+}
+
+.seasonal-sheet-preview::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--sheet-border) 16%, transparent 84%) 1px, transparent 1px) 0 0 / 22px 22px;
+  opacity: 0.52;
+}
+
+.seasonal-preview-panel.pattern-rays .seasonal-sheet-preview::before,
+.detail-modal.archive-sheet.season-theme.pattern-rays:not(.season-theme-copa-do-mundo-2026)::before {
+  background:
+    repeating-linear-gradient(18deg, color-mix(in srgb, var(--sheet-border) 16%, transparent 84%) 0 2px, transparent 2px 18px);
+}
+
+.seasonal-preview-panel.pattern-paper .seasonal-sheet-preview::before,
+.detail-modal.archive-sheet.season-theme.pattern-paper:not(.season-theme-copa-do-mundo-2026)::before {
+  background:
+    linear-gradient(color-mix(in srgb, var(--sheet-border) 13%, transparent 87%) 1px, transparent 1px) 0 0 / 100% 26px,
+    linear-gradient(90deg, color-mix(in srgb, var(--sheet-border) 8%, transparent 92%) 1px, transparent 1px) 0 0 / 22px 22px;
+}
+
+.seasonal-sheet-preview::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: var(--lab-detail-image) var(--lab-sheet-image-position) / var(--lab-sheet-image-size) no-repeat;
+  opacity: var(--lab-sheet-image-opacity);
+}
+
+.seasonal-sheet-preview > * {
+  position: relative;
+  z-index: 2;
+}
+
+.seasonal-sheet-preview.sheet-layout-poster {
+  grid-template-columns: 1fr;
+}
+
+.seasonal-sheet-preview.sheet-layout-poster .seasonal-sheet-media {
+  grid-template-columns: minmax(120px, var(--lab-sheet-cover-width)) minmax(0, 1fr);
+  align-items: center;
+}
+
+.seasonal-sheet-preview.sheet-layout-editorial {
+  grid-template-columns: minmax(0, 1fr) minmax(130px, var(--lab-sheet-cover-width));
+}
+
+.seasonal-sheet-preview.sheet-layout-editorial .seasonal-sheet-media {
+  order: 2;
+}
+
+.seasonal-sheet-media {
+  display: grid;
+  gap: 10px;
+  align-content: center;
+}
+
+.seasonal-sheet-media .cover {
+  min-height: 210px;
+  width: min(100%, var(--lab-sheet-cover-width));
+  background: linear-gradient(135deg, var(--sheet-cover-a), var(--sheet-cover-b));
+  border-radius: var(--lab-radius);
+}
+
+.seasonal-sheet-media > span {
+  justify-self: start;
+  padding: 6px 9px;
+  color: #fffaf1;
+  border: 1px solid rgba(255, 250, 241, 0.72);
+  background: var(--sheet-warning);
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.seasonal-sheet-body {
+  display: grid;
+  gap: calc(10px * var(--lab-sheet-density));
+  align-content: center;
+  min-width: 0;
+  padding: calc(4px * var(--lab-sheet-density));
+}
+
+.seasonal-sheet-body h3 {
+  margin: 0;
+  color: var(--sheet-title);
+  font-size: calc(clamp(1.55rem, 3vw, 2.6rem) * var(--lab-sheet-title-scale));
+  line-height: 1.02;
+  overflow-wrap: anywhere;
+}
+
+.seasonal-sheet-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.seasonal-sheet-summary span {
+  color: var(--sheet-title);
+  border-color: color-mix(in srgb, var(--sheet-border) 26%, transparent 74%);
+  background: var(--sheet-chip-bg);
+}
+
+.seasonal-sheet-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+}
+
+.seasonal-sheet-details span {
+  display: grid;
+  gap: 3px;
+  min-height: 58px;
+  padding: calc(9px * var(--lab-sheet-density));
+  border: 1px solid color-mix(in srgb, var(--sheet-border) 24%, transparent 76%);
+  background: var(--lab-sheet-panel-bg);
+  border-radius: var(--lab-radius);
+}
+
+.seasonal-sheet-details small {
+  color: var(--sheet-muted);
+  font-weight: 900;
+}
+
+.seasonal-sheet-details strong {
+  color: var(--sheet-title);
+}
+
+.seasonal-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.seasonal-overlay-image {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  width: var(--lab-card-ornament-size);
+  aspect-ratio: 1;
+  border: 1px solid rgba(255, 250, 241, 0.56);
+  border-radius: 999px;
+  background:
+    linear-gradient(135deg, rgba(255, 250, 241, 0.72), rgba(255, 250, 241, 0.12)),
+    var(--lab-card-image) center / cover no-repeat,
+    var(--card-accent);
+  opacity: var(--lab-card-image-opacity);
+  box-shadow: 0 8px 16px rgba(33, 29, 24, 0.18);
+}
+
+.seasonal-sheet-preview .seasonal-overlay-image {
+  right: 14px;
+  top: 14px;
+  width: 86px;
+  background:
+    linear-gradient(135deg, rgba(255, 250, 241, 0.72), rgba(255, 250, 241, 0.14)),
+    var(--lab-detail-image) center / cover no-repeat,
+    var(--sheet-accent);
+}
+
+.seasonal-overlay-seals {
+  position: absolute;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  max-width: calc(100% - 20px);
+}
+
+.seasonal-overlay.seal-placement-bottom-left .seasonal-overlay-seals {
+  left: 10px;
+  bottom: 10px;
+}
+
+.seasonal-overlay.seal-placement-bottom-right .seasonal-overlay-seals {
+  right: 10px;
+  bottom: 10px;
+  justify-content: flex-end;
+}
+
+.seasonal-overlay.seal-placement-top-left .seasonal-overlay-seals {
+  top: 10px;
+  left: 10px;
+}
+
+.seasonal-overlay.seal-placement-top-right .seasonal-overlay-seals {
+  top: 10px;
+  right: 10px;
+  justify-content: flex-end;
+}
+
+.seasonal-overlay-seals span {
+  padding: 4px 7px;
+  color: var(--sheet-title);
+  border: 1px solid color-mix(in srgb, var(--card-border) 34%, transparent 66%);
+  background: color-mix(in srgb, var(--card-tag-bg) 86%, #ffffff 14%);
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 900;
+  box-shadow: 0 4px 10px rgba(33, 29, 24, 0.08);
+}
+
+.seasonal-overlay.compact .seasonal-overlay-seals {
+  max-width: calc(100% - 16px);
+}
+
+.seasonal-overlay.compact.seal-placement-bottom-left .seasonal-overlay-seals {
+  left: 8px;
+  bottom: 8px;
+}
+
+.seasonal-overlay.compact.seal-placement-bottom-right .seasonal-overlay-seals {
+  right: 8px;
+  bottom: 8px;
+}
+
+.seasonal-overlay.compact.seal-placement-top-left .seasonal-overlay-seals {
+  top: 8px;
+  left: 8px;
+}
+
+.seasonal-overlay.compact.seal-placement-top-right .seasonal-overlay-seals {
+  top: 8px;
+  right: 8px;
+}
+
+.detail-modal.archive-sheet.season-theme:not(.season-theme-copa-do-mundo-2026) {
+  position: relative;
+  overflow: hidden;
+  color: var(--sheet-text);
+  border-color: color-mix(in srgb, var(--sheet-border) 58%, #ffffff 42%);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--sheet-bg) 88%, #ffffff 12%), rgba(255, 255, 255, 0.58)),
+    var(--sheet-bg);
+  border-radius: var(--lab-radius, 8px);
+  box-shadow: 0 18px 44px color-mix(in srgb, var(--sheet-border) 18%, transparent 82%);
+}
+
+.detail-modal.archive-sheet.season-theme:not(.season-theme-copa-do-mundo-2026)::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--sheet-border) 12%, transparent 88%) 1px, transparent 1px) 0 0 / 22px 22px;
+  opacity: 0.42;
+}
+
+.detail-modal.archive-sheet.season-theme:not(.season-theme-copa-do-mundo-2026)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: var(--lab-detail-image) var(--lab-sheet-image-position) / var(--lab-sheet-image-size) no-repeat;
+  opacity: var(--lab-sheet-image-opacity);
+}
+
+.detail-modal.archive-sheet.season-theme:not(.season-theme-copa-do-mundo-2026) > * {
+  position: relative;
+  z-index: 2;
+}
+
+.detail-modal.archive-sheet.season-theme:not(.season-theme-copa-do-mundo-2026) .modal-header,
+.detail-modal.archive-sheet.season-theme:not(.season-theme-copa-do-mundo-2026) .modal-footer {
+  color: var(--sheet-text);
+  border-color: color-mix(in srgb, var(--sheet-border) 28%, transparent 72%);
+  background: color-mix(in srgb, var(--sheet-bg) 88%, #ffffff 12%);
+}
+
+.detail-modal.archive-sheet.season-theme:not(.season-theme-copa-do-mundo-2026) .eyebrow,
+.detail-modal.archive-sheet.season-theme:not(.season-theme-copa-do-mundo-2026) .modal-header h2,
+.detail-modal.archive-sheet.season-theme:not(.season-theme-copa-do-mundo-2026) .detail-identity h1 {
+  color: var(--sheet-title);
+}
+
+.detail-modal.archive-sheet.season-theme:not(.season-theme-copa-do-mundo-2026) .detail-identity h1 {
+  font-size: calc(clamp(2rem, 5vw, 4.2rem) * var(--lab-sheet-title-scale));
+}
+
+.detail-modal.archive-sheet.season-theme:not(.season-theme-copa-do-mundo-2026) .detail-hero {
+  grid-template-columns: minmax(130px, var(--lab-sheet-cover-width)) minmax(0, 1fr);
+  gap: calc(18px * var(--lab-sheet-density));
+  color: var(--sheet-text);
+  border-color: color-mix(in srgb, var(--sheet-border) 38%, transparent 62%);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--sheet-panel) 82%, transparent 18%), color-mix(in srgb, var(--sheet-bg) 72%, transparent 28%)),
+    var(--lab-sheet-panel-bg);
+  border-radius: var(--lab-radius, 8px);
+}
+
+.detail-modal.archive-sheet.season-theme.sheet-layout-poster:not(.season-theme-copa-do-mundo-2026) .detail-hero {
+  grid-template-columns: 1fr;
+}
+
+.detail-modal.archive-sheet.season-theme.sheet-layout-poster:not(.season-theme-copa-do-mundo-2026) .detail-hero .cover {
+  width: min(100%, var(--lab-sheet-cover-width));
+}
+
+.detail-modal.archive-sheet.season-theme.sheet-layout-editorial:not(.season-theme-copa-do-mundo-2026) .detail-hero {
+  grid-template-columns: minmax(0, 1fr) minmax(130px, var(--lab-sheet-cover-width));
+}
+
+.detail-modal.archive-sheet.season-theme.sheet-layout-editorial:not(.season-theme-copa-do-mundo-2026) .detail-hero .cover {
+  order: 2;
+}
+
+.detail-modal.archive-sheet.season-theme:not(.season-theme-copa-do-mundo-2026) .detail-hero .cover {
+  max-width: var(--lab-sheet-cover-width);
+  border-radius: var(--lab-radius, 8px);
+  background: linear-gradient(135deg, var(--sheet-cover-a), var(--sheet-cover-b));
+}
+
+.detail-modal.archive-sheet.season-theme:not(.season-theme-copa-do-mundo-2026) .archive-stamp,
+.detail-modal.archive-sheet.season-theme:not(.season-theme-copa-do-mundo-2026) .primary {
+  color: #fffaf1;
+  border-color: color-mix(in srgb, var(--sheet-warning) 72%, #ffffff 28%);
+  background: var(--sheet-warning);
+}
+
+.detail-modal.archive-sheet.season-theme:not(.season-theme-copa-do-mundo-2026) .detail-summary span,
+.detail-modal.archive-sheet.season-theme:not(.season-theme-copa-do-mundo-2026) .detail-summary .detail-visibility-toggle,
+.detail-modal.archive-sheet.season-theme:not(.season-theme-copa-do-mundo-2026) .detail-quick-actions button,
+.detail-modal.archive-sheet.season-theme:not(.season-theme-copa-do-mundo-2026) .detail-diary-brief,
+.detail-modal.archive-sheet.season-theme:not(.season-theme-copa-do-mundo-2026) .privacy-note {
+  color: var(--sheet-title);
+  border-color: color-mix(in srgb, var(--sheet-border) 28%, transparent 72%);
+  background: var(--sheet-chip-bg);
+  border-radius: var(--lab-radius, 8px);
+}
+
+.detail-modal.archive-sheet.season-theme:not(.season-theme-copa-do-mundo-2026) .detail-rating-line,
+.detail-modal.archive-sheet.season-theme:not(.season-theme-copa-do-mundo-2026) .detail-rating-line strong,
+.detail-modal.archive-sheet.season-theme:not(.season-theme-copa-do-mundo-2026) .detail-diary-brief small,
+.detail-modal.archive-sheet.season-theme:not(.season-theme-copa-do-mundo-2026) .detail-diary-brief em,
+.detail-modal.archive-sheet.season-theme:not(.season-theme-copa-do-mundo-2026) .privacy-note p {
+  color: var(--sheet-muted);
+}
+
+.detail-modal.archive-sheet.season-theme:not(.season-theme-copa-do-mundo-2026) .detail-live-controls,
+.detail-modal.archive-sheet.season-theme:not(.season-theme-copa-do-mundo-2026) .archive-block,
+.detail-modal.archive-sheet.season-theme:not(.season-theme-copa-do-mundo-2026) .diary-focus-panel,
+.detail-modal.archive-sheet.season-theme:not(.season-theme-copa-do-mundo-2026) .cover-search-panel {
+  color: var(--sheet-text);
+  border-color: color-mix(in srgb, var(--sheet-border) 28%, transparent 72%);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--sheet-border) 8%, transparent 92%) 1px, transparent 1px) 0 0 / 18px 18px,
+    var(--sheet-section-bg);
+  border-radius: var(--lab-radius, 8px);
+}
+
+.detail-modal.archive-sheet.season-theme:not(.season-theme-copa-do-mundo-2026) .detail-summary-tile,
+.detail-modal.archive-sheet.season-theme:not(.season-theme-copa-do-mundo-2026) .detail-field,
+.detail-modal.archive-sheet.season-theme:not(.season-theme-copa-do-mundo-2026) .diary-note-card,
+.detail-modal.archive-sheet.season-theme:not(.season-theme-copa-do-mundo-2026) .timeline-entry {
+  color: var(--sheet-text);
+  border-color: color-mix(in srgb, var(--sheet-border) 24%, transparent 76%);
+  background: var(--lab-sheet-panel-bg);
+  border-radius: var(--lab-radius, 8px);
+}
+
+.detail-modal.archive-sheet.season-theme:not(.season-theme-copa-do-mundo-2026) .archive-block h3,
+.detail-modal.archive-sheet.season-theme:not(.season-theme-copa-do-mundo-2026) .archive-block-heading h3,
+.detail-modal.archive-sheet.season-theme:not(.season-theme-copa-do-mundo-2026) .detail-summary-tile strong,
+.detail-modal.archive-sheet.season-theme:not(.season-theme-copa-do-mundo-2026) .detail-field strong,
+.detail-modal.archive-sheet.season-theme:not(.season-theme-copa-do-mundo-2026) .diary-note-card strong {
+  color: var(--sheet-title);
+}
+
+:root[data-theme="dark"] .seasonal-lab-hero,
+:root[data-theme="dark"] .seasonal-editor-panel,
+:root[data-theme="dark"] .seasonal-card-stage,
+:root[data-theme="dark"] .seasonal-preview-panel {
+  color: var(--ink);
+  border-color: var(--line);
+  background:
+    linear-gradient(90deg, rgba(213, 166, 83, 0.035) 1px, transparent 1px) 0 0 / 18px 18px,
+    #241d17;
+}
+
+:root[data-theme="dark"] .seasonal-lab-hero h2,
+:root[data-theme="dark"] .seasonal-editor-panel h3,
+:root[data-theme="dark"] .seasonal-preview-panel h3 {
+  color: #fff3df;
+}
+
+:root[data-theme="dark"] .seasonal-lab-hero p:not(.eyebrow),
+:root[data-theme="dark"] .seasonal-model-picker span,
+:root[data-theme="dark"] .seasonal-color-field span {
+  color: var(--muted);
+}
+
+:root[data-theme="dark"] .seasonal-color-field,
+:root[data-theme="dark"] .seasonal-range-field,
+:root[data-theme="dark"] .seasonal-seal-list button,
+:root[data-theme="dark"] .seasonal-seal-list span {
+  color: #f1d7aa;
+  border-color: #695238;
+  background: #30251b;
+}
+
+:root[data-theme="dark"] .seasonal-range-field > span {
+  color: var(--muted);
+}
+
+:root[data-theme="dark"] .seasonal-range-field strong {
+  color: #fff3df;
+}
+
+:root[data-theme="dark"] .seasonal-sheet-preview {
+  color: var(--sheet-text);
+  border-color: color-mix(in srgb, var(--sheet-border) 52%, transparent 48%);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--sheet-bg) 82%, #17120e 18%), rgba(10, 8, 6, 0.48)),
+    var(--lab-detail-image) center / cover no-repeat,
+    var(--sheet-bg);
+}
+
+@media (max-width: 920px) {
+  .seasonal-lab-hero,
+  .seasonal-lab-toolbar,
+  .seasonal-lab-grid,
+  .seasonal-preview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .seasonal-lab-toolbar .button-row {
+    justify-content: start;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 760px) {
+  .seasonal-lab-hero,
+  .seasonal-editor-panel,
+  .seasonal-preview-panel {
+    padding: 12px;
+  }
+
+  .seasonal-color-grid,
+  .seasonal-control-grid,
+  .seasonal-sheet-preview,
+  .seasonal-detail-row,
+  .seasonal-add-row {
+    grid-template-columns: 1fr;
+  }
+
+  .seasonal-sheet-media .cover {
+    min-height: 160px;
+  }
+
+  .seasonal-sheet-preview .seasonal-overlay-image {
+    width: 58px;
   }
 }
 
@@ -9818,6 +10604,19 @@ body {
   border-color: rgba(47, 142, 210, 0.28);
 }
 
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026.detail-modal > .modal-header {
+  color: var(--sheet-text);
+  border-color: rgba(47, 142, 210, 0.28);
+  background:
+    linear-gradient(90deg, rgba(47, 142, 210, 0.08) 1px, transparent 1px) 0 0 / 24px 24px,
+    linear-gradient(135deg, rgba(19, 47, 68, 0.96), rgba(16, 69, 47, 0.92));
+}
+
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026.detail-modal > .modal-header .eyebrow,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026.detail-modal > .modal-header h2 {
+  color: var(--sheet-title);
+}
+
 :root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .detail-hero {
   color: var(--sheet-text);
   border-color: rgba(47, 142, 210, 0.42);
@@ -9834,6 +10633,18 @@ body {
   background:
     linear-gradient(90deg, rgba(242, 201, 76, 0.045) 1px, transparent 1px) 0 0 / 18px 18px,
     var(--sheet-section-bg);
+}
+
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .detail-live-controls label > span,
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .detail-live-controls > div > span {
+  color: var(--sheet-muted);
+}
+
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .detail-live-controls select {
+  color: var(--sheet-text);
+  border-color: rgba(47, 142, 210, 0.46);
+  background:
+    linear-gradient(135deg, rgba(19, 47, 68, 0.96), rgba(9, 25, 38, 0.94));
 }
 
 :root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .detail-summary-tile,
@@ -9864,6 +10675,12 @@ body {
   background: var(--sheet-chip-bg);
 }
 
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .quick-star-clear {
+  color: var(--sheet-title) !important;
+  border-color: rgba(242, 201, 76, 0.34) !important;
+  background: var(--sheet-chip-bg) !important;
+}
+
 :root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .primary,
 :root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .detail-mobile-tabs button.active,
 :root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .quick-star-hit:hover,
@@ -9876,8 +10693,14 @@ body {
 :root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .danger,
 :root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .danger-soft {
   color: #fff7ef;
-  border-color: rgba(232, 93, 79, 0.48);
-  background: rgba(232, 93, 79, 0.22);
+  border-color: rgba(232, 93, 79, 0.58);
+  background: rgba(211, 70, 63, 0.58);
+}
+
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .danger-soft {
+  color: #fff7ef !important;
+  border-color: rgba(232, 93, 79, 0.58) !important;
+  background: rgba(211, 70, 63, 0.36) !important;
 }
 
 :root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .icon-button {
@@ -9940,8 +10763,13 @@ body {
 
 :root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .quick-star-buttons {
   color: var(--sheet-title);
-  border-color: rgba(242, 201, 76, 0.24);
-  background: rgba(7, 16, 26, 0.58);
+  border-color: rgba(242, 201, 76, 0.36);
+  background:
+    linear-gradient(135deg, rgba(19, 47, 68, 0.74), rgba(16, 69, 47, 0.68));
+}
+
+:root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .quick-star-wrap {
+  color: rgba(242, 201, 76, 0.44);
 }
 
 :root[data-theme="dark"] .season-theme-copa-do-mundo-2026 .cover-search-result > span,
