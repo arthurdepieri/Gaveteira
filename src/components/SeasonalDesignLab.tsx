@@ -55,10 +55,15 @@ interface SeasonalDesignDraft {
   coverStart: string;
   coverEnd: string;
   badgeLabel: string;
+  imageUrl: string;
   detailImageUrl: string;
   pattern: SeasonalPattern;
   sheetLayout: SeasonalSheetLayout;
   sealPlacement: SeasonalSealPlacement;
+  cardImageOpacity: number;
+  cardImageSize: number;
+  cardImagePositionX: number;
+  cardImagePositionY: number;
   cardOrnamentSize: number;
   cardBodyContrast: number;
   sheetImageOpacity: number;
@@ -178,10 +183,10 @@ export function SeasonalDesignLab() {
     await navigator.clipboard?.writeText(payload).catch(() => undefined);
   }
 
-  async function uploadImage(file: File | undefined) {
+  async function uploadImage(file: File | undefined, target: "imageUrl" | "detailImageUrl") {
     if (!file) return;
     const dataUrl = await readFileAsDataUrl(file);
-    updateDraft({ detailImageUrl: dataUrl });
+    updateDraft({ [target]: dataUrl } as Pick<SeasonalDesignDraft, typeof target>);
   }
 
   return (
@@ -280,12 +285,20 @@ export function SeasonalDesignLab() {
           </div>
           <div className="form-grid">
             <label className="field wide">
+              <span>Imagem decorativa do card</span>
+              <input value={activeDraft.imageUrl} onChange={(event) => updateDraft({ imageUrl: event.target.value })} placeholder="/seasonal-elements/..." />
+            </label>
+            <label className="field wide seasonal-file-field">
+              <span>Enviar decoracao do card</span>
+              <input type="file" accept="image/*" onChange={(event) => uploadImage(event.target.files?.[0], "imageUrl")} />
+            </label>
+            <label className="field wide">
               <span>Imagem da ficha</span>
               <input value={activeDraft.detailImageUrl} onChange={(event) => updateDraft({ detailImageUrl: event.target.value })} placeholder="/seasonal-elements/..." />
             </label>
             <label className="field wide seasonal-file-field">
               <span>Enviar imagem da ficha</span>
-              <input type="file" accept="image/*" onChange={(event) => uploadImage(event.target.files?.[0])} />
+              <input type="file" accept="image/*" onChange={(event) => uploadImage(event.target.files?.[0], "detailImageUrl")} />
             </label>
             <label className="field">
               <span>Selo principal</span>
@@ -314,6 +327,10 @@ export function SeasonalDesignLab() {
             <h3>Card</h3>
           </div>
           <div className="seasonal-control-grid">
+            <RangeField label="Decoracao" value={activeDraft.cardImageOpacity} min={0} max={1} step={0.05} suffix="opacidade" onChange={(value) => updateDraft({ cardImageOpacity: value })} />
+            <RangeField label="Tam. decor." value={activeDraft.cardImageSize} min={70} max={180} step={5} suffix="%" onChange={(value) => updateDraft({ cardImageSize: value })} />
+            <RangeField label="Decor. X" value={activeDraft.cardImagePositionX} min={0} max={100} step={1} suffix="%" onChange={(value) => updateDraft({ cardImagePositionX: value })} />
+            <RangeField label="Decor. Y" value={activeDraft.cardImagePositionY} min={0} max={100} step={1} suffix="%" onChange={(value) => updateDraft({ cardImagePositionY: value })} />
             <RangeField label="Ornamento" value={activeDraft.cardOrnamentSize} min={32} max={120} step={2} suffix="px" onChange={(value) => updateDraft({ cardOrnamentSize: value })} />
             <RangeField label="Contraste" value={activeDraft.cardBodyContrast} min={0.2} max={0.95} step={0.05} suffix="" onChange={(value) => updateDraft({ cardBodyContrast: value })} />
           </div>
@@ -570,10 +587,15 @@ function createDefaultDraft(id = "copa-do-mundo-2026-lab"): SeasonalDesignDraft 
     coverStart: "#1f6fb2",
     coverEnd: "#188a4a",
     badgeLabel: "Edicao limitada",
+    imageUrl: "/seasonal-elements/promocoes/copa-do-mundo-2026/elementos/soccer-ball-svgrepo-com.svg",
     detailImageUrl: "/seasonal-elements/promocoes/copa-do-mundo-2026/elementos/campo-de-futebol.jpg",
     pattern: "pitch",
     sheetLayout: "split",
     sealPlacement: "bottom-left",
+    cardImageOpacity: 0.78,
+    cardImageSize: 110,
+    cardImagePositionX: 50,
+    cardImagePositionY: 68,
     cardOrnamentSize: 64,
     cardBodyContrast: 0.74,
     sheetImageOpacity: 0.36,
@@ -587,7 +609,7 @@ function createDefaultDraft(id = "copa-do-mundo-2026-lab"): SeasonalDesignDraft 
     cornerRadius: 8,
     seals: ["Campanha 2026", "Ativo por periodo", "Nao publicado"],
     details: [
-      { id: "detail-card", label: "Card", value: "sem imagem propria; usa a capa da gaveta" },
+      { id: "detail-card", label: "Card", value: "decoracao sazonal; capa vem da gaveta" },
       { id: "detail-sheet", label: "Ficha", value: "folha clara com fundo de estadio" },
       { id: "detail-exit", label: "Saida", value: "retirar apos a final" },
     ],
@@ -706,11 +728,11 @@ function seasonalStyle(draft: SeasonalDesignDraft) {
     "--sheet-chip-bg": colorMix(draft.sheetBackground, draft.accentColor, 0.2),
     "--sheet-cover-a": draft.coverStart,
     "--sheet-cover-b": draft.coverEnd,
-    "--lab-card-image": "none",
+    "--lab-card-image": draft.imageUrl ? `url("${cssEscapeUrl(draft.imageUrl)}")` : "none",
     "--lab-detail-image": draft.detailImageUrl ? `url("${cssEscapeUrl(draft.detailImageUrl)}")` : "none",
-    "--lab-card-image-opacity": 0,
-    "--lab-card-image-size": "100%",
-    "--lab-card-image-position": "50% 50%",
+    "--lab-card-image-opacity": draft.cardImageOpacity,
+    "--lab-card-image-size": `${draft.cardImageSize}%`,
+    "--lab-card-image-position": `${draft.cardImagePositionX}% ${draft.cardImagePositionY}%`,
     "--lab-card-ornament-size": `${draft.cardOrnamentSize}px`,
     "--lab-card-body-contrast": draft.cardBodyContrast,
     "--lab-sheet-image-opacity": draft.sheetImageOpacity,
