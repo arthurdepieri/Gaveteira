@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { ElementType } from "react";
 import { AlertTriangle, Archive, BarChart3, BookOpen, CheckCircle2, ChevronDown, CloudOff, Disc3, Download, FileText, Film, Gamepad2, Home, Library, ListChecks, Loader2, LogIn, LogOut, MessageSquare, RefreshCw, RotateCcw, Settings, Share, Tv, UserCheck, UserPlus, Users, WifiOff, X } from "lucide-react";
 import { AppData, AppSettings, BookItem, Category, CloudSession, CulturalItem, ViewKey } from "./types";
-import { loadData, saveData } from "./storage/localStore";
+import { createEmptyData, loadData, saveData } from "./storage/localStore";
 import { createSafetySnapshot, snapshotIfRuntimeChanged } from "./storage/snapshots";
 import { categoryLabels } from "./data/catalog";
 import { HomeDashboard } from "./components/HomeDashboard";
@@ -90,7 +90,9 @@ const drawerItems: Array<{ key: Category; label: string; icon: ElementType }> = 
 ];
 
 function App() {
-  const [data, setData] = useState<AppData>(() => loadData());
+  const [data, setData] = useState<AppData>(() => createEmptyData());
+  const [storageReady, setStorageReady] = useState(false);
+  const [storageError, setStorageError] = useState("");
   const [view, setView] = useState<ViewKey>("home");
   const [filters, setFilters] = useState<Filters>(emptyFilters);
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
@@ -141,11 +143,34 @@ function App() {
   const activeTheme = useMemo(() => resolveTheme(effectiveSettings.theme, systemPrefersDark), [effectiveSettings.theme, systemPrefersDark]);
 
   useEffect(() => {
-    dataRef.current = data;
-    saveData(data);
-  }, [data]);
+    let cancelled = false;
+
+    loadData()
+      .then((storedData) => {
+        if (cancelled) return;
+        dataRef.current = storedData;
+        setData(storedData);
+        setStorageReady(true);
+      })
+      .catch((error) => {
+        console.warn("Could not load local data.", error);
+        if (!cancelled) setStorageError(error instanceof Error ? error.message : "Nao consegui abrir o armazenamento local.");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
+    if (!storageReady) return;
+    dataRef.current = data;
+    saveData(data).catch((error) => console.warn("Could not save local data.", error));
+  }, [data, storageReady]);
+
+  useEffect(() => {
+    if (!storageReady) return;
+
     let cancelled = false;
 
     async function protectRuntimeChange() {
@@ -153,9 +178,13 @@ function App() {
         const response = await fetch(`/pwa-version.json?t=${Date.now()}`, { cache: "no-store" });
         const payload = response.ok ? await response.json() as { version?: string } : {};
         if (cancelled) return;
-        snapshotIfRuntimeChanged(dataRef.current, payload.version || "local-dev");
+        await snapshotIfRuntimeChanged(dataRef.current, payload.version || "local-dev");
       } catch {
-        if (!cancelled) snapshotIfRuntimeChanged(dataRef.current, "local-dev");
+        if (!cancelled) {
+          await snapshotIfRuntimeChanged(dataRef.current, "local-dev").catch((error) => {
+            console.warn("Could not create runtime-change snapshot.", error);
+          });
+        }
       }
     }
 
@@ -164,7 +193,7 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [storageReady]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = activeTheme;
@@ -237,7 +266,7 @@ function App() {
   }, [cloudSession]);
 
   useEffect(() => {
-    if (oauthRedirectHandledRef.current || !effectiveSettings.cloud?.supabaseUrl || !effectiveSettings.cloud?.supabaseAnonKey) return;
+    if (!storageReady || oauthRedirectHandledRef.current || !effectiveSettings.cloud?.supabaseUrl || !effectiveSettings.cloud?.supabaseAnonKey) return;
     oauthRedirectHandledRef.current = true;
 
     consumePasswordRecoverySession(effectiveSettings)
@@ -271,7 +300,7 @@ function App() {
           detail: error instanceof Error ? error.message : "Tente entrar novamente.",
         });
       });
-  }, [effectiveSettings]);
+  }, [effectiveSettings, storageReady]);
 
   useEffect(() => {
     const standaloneQuery = window.matchMedia("(display-mode: standalone)");
@@ -317,6 +346,8 @@ function App() {
   }, [syncQueue]);
 
   useEffect(() => {
+    if (!storageReady) return;
+
     if (!cloudSession) {
       setBootstrappedCloudScope("");
       if (syncStatus.kind !== "expired") {
@@ -374,9 +405,10 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, [cloudBootstrapped, cloudScopeKey, cloudSession, effectiveSettings, syncRetryTick]);
+  }, [cloudBootstrapped, cloudScopeKey, cloudSession, effectiveSettings, storageReady, syncRetryTick]);
 
   useEffect(() => {
+    if (!storageReady) return;
     if (!cloudSession || !cloudBootstrapped) return;
     if (!syncQueue.length) return;
 
@@ -397,7 +429,7 @@ function App() {
     }, AUTO_SYNC_DELAY_MS);
 
     return () => window.clearTimeout(timeoutId);
-  }, [cloudSession, cloudBootstrapped, syncPayloadKey, syncRetryTick, syncQueue.length, syncStatus.kind, queueCounts, isOnline, lastSyncedAt]);
+  }, [cloudSession, cloudBootstrapped, syncPayloadKey, syncRetryTick, syncQueue.length, syncStatus.kind, queueCounts, isOnline, lastSyncedAt, storageReady]);
 
   useEffect(() => {
     function retrySync() {
@@ -590,7 +622,6 @@ function App() {
           onOpenItem={openItemDetails}
           onAddItem={requestAddItem}
           onOpenFamily={() => selectView("family")}
-          onOpenFeed={() => selectView("feed")}
           connectedToFamily={Boolean(cloudSession)}
           profileReady={Boolean(cloudSession?.profile?.displayName)}
           favoriteDrawersReady={Boolean(cloudSession?.profile?.favoriteCategories?.length)}
@@ -687,13 +718,13 @@ function App() {
     localStorage.setItem(INSTALL_DISMISSED_KEY, "true");
   }
 
-  function applyPwaUpdate() {
-    createSafetySnapshot(dataRef.current, "version-change", {
+  async function applyPwaUpdate() {
+    await createSafetySnapshot(dataRef.current, "version-change", {
       appVersion: pwaUpdateNotice?.version || "atualização PWA",
       label: pwaUpdateNotice?.version
         ? `Antes de aplicar a atualização ${pwaUpdateNotice.version}`
         : "Antes de aplicar atualização do app",
-    });
+    }).catch((error) => console.warn("Could not create update snapshot.", error));
     window.dispatchEvent(new CustomEvent("gaveteira:pwa-apply-update"));
   }
 
@@ -720,7 +751,7 @@ function App() {
   function logout() {
     const clearedData = { ...dataRef.current, items: [] };
     dataRef.current = clearedData;
-    saveData(clearedData);
+    saveData(clearedData).catch((error) => console.warn("Could not save logout cleanup.", error));
     setData(clearedData);
     syncQueueRef.current = [];
     saveSyncQueue([]);
@@ -901,9 +932,20 @@ function App() {
     });
   }
 
-  if (showStartupSplash) {
+  if (storageError) {
     return (
-      <main className={`startup-splash${startupSplashLeaving ? " leaving" : ""}`} aria-label="Abrindo Gaveteira">
+      <main className="startup-splash" aria-label="Erro de armazenamento">
+        <div className="startup-splash-error">
+          <img src="/gaveteira-splash.png" alt="Gaveteira" />
+          <p>{storageError}</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (showStartupSplash || !storageReady) {
+    return (
+      <main className={`startup-splash${startupSplashLeaving && storageReady ? " leaving" : ""}`} aria-label="Abrindo Gaveteira">
         <img src="/gaveteira-splash.png" alt="Gaveteira" />
       </main>
     );

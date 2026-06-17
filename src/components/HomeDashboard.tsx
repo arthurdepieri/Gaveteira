@@ -1,4 +1,4 @@
-import { Archive, BookOpen, CheckCircle2, Circle, Clock3, Disc3, Film, Gamepad2, Library, Lightbulb, ListChecks, MessageSquare, RefreshCw, Sparkles, Tv, Users } from "lucide-react";
+import { Archive, BookOpen, CheckCircle2, Circle, Clock3, Disc3, Film, Gamepad2, Library, ListChecks, MessageSquare, RefreshCw, Sparkles, Tv, Users } from "lucide-react";
 import type { ElementType } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { AppSettings, Category, CloudSession, CulturalItem, FamilyItem } from "../types";
@@ -6,7 +6,7 @@ import { categoryLabels } from "../data/catalog";
 import { buildStats } from "../utils/stats";
 import { Cover } from "./Cover";
 import { Stars } from "./Rating";
-import { getGenres, getPlayedHours, getRating, getTitle, getYear, isInProgress, isWishlist } from "../utils/itemHelpers";
+import { getPlayedHours, getRating, getTitle, isInProgress, isWishlist } from "../utils/itemHelpers";
 import { fetchSocialItems } from "../services/supabaseCloud";
 
 const icons: Record<Category, ElementType> = {
@@ -27,7 +27,6 @@ export function HomeDashboard({
   onOpenItem,
   onAddItem,
   onOpenFamily,
-  onOpenFeed,
   connectedToFamily,
   profileReady,
   favoriteDrawersReady,
@@ -39,7 +38,6 @@ export function HomeDashboard({
   onOpenItem: (item: CulturalItem) => void;
   onAddItem: (category?: Category) => void;
   onOpenFamily: () => void;
-  onOpenFeed: () => void;
   connectedToFamily: boolean;
   profileReady: boolean;
   favoriteDrawersReady: boolean;
@@ -50,7 +48,6 @@ export function HomeDashboard({
   const [socialError, setSocialError] = useState("");
   const stats = buildStats(items);
   const latestItems = [...items].sort((a, b) => dateTime(b.createdAt || b.updatedAt) - dateTime(a.createdAt || a.updatedAt)).slice(0, 3);
-  const suggestions = buildSuggestions(items);
   const friendActivity = useMemo(() => buildFriendActivity(socialItems, session?.user.id ?? ""), [socialItems, session?.user.id]);
   const checklist = buildOnboardingChecklist({ items, connectedToFamily, profileReady, favoriteDrawersReady, syncSkipped });
   const showOnboarding = checklist.some((entry) => !entry.done) || items.length < 2;
@@ -188,7 +185,6 @@ export function HomeDashboard({
             </div>
             <div className="social-onboarding-actions">
               <button type="button" className="ghost" onClick={onOpenFamily}>Abrir Social</button>
-              <button type="button" className="ghost subtle" onClick={onOpenFeed}>Ver Feed</button>
             </div>
           </article>
         </section>
@@ -261,37 +257,9 @@ export function HomeDashboard({
           error={socialError}
           activity={friendActivity}
           onOpenFamily={onOpenFamily}
-          onOpenFeed={onOpenFeed}
           onRefresh={refreshSocial}
         />
         </div>
-      </section>
-
-      <section className="section home-suggestions">
-        <div className="section-heading">
-          <Lightbulb size={20} />
-          <h2>Sugestões da Gaveteira</h2>
-        </div>
-        {suggestions.length ? (
-          <div className="suggestion-grid">
-            {suggestions.map((suggestion) => (
-              <button key={`${suggestion.reason}-${suggestion.item.id}`} className="suggestion-card" onClick={() => onOpenItem(suggestion.item)}>
-                <Cover item={suggestion.item} compact />
-                <span className="suggestion-copy">
-                  <small>{suggestion.reason}</small>
-                  <strong>{getTitle(suggestion.item)}</strong>
-                  <em>{suggestion.detail}</em>
-                  <span className="suggestion-reasons" aria-label="Motivos da sugestão">
-                    {suggestion.reasons.map((reason) => <b key={reason}>{reason}</b>)}
-                  </span>
-                </span>
-                <Sparkles size={18} />
-              </button>
-            ))}
-          </div>
-        ) : (
-          <p className="empty">Quando houver wishlist, notas ou fichas abertas, a Gaveteira separa algumas sugestões para você.</p>
-        )}
       </section>
 
       <section className="section home-drawers-panel" aria-label="Gaveteira">
@@ -446,7 +414,6 @@ function FriendActivityShelf({
   error,
   activity,
   onOpenFamily,
-  onOpenFeed,
   onRefresh,
 }: {
   connected: boolean;
@@ -454,7 +421,6 @@ function FriendActivityShelf({
   error: string;
   activity: FriendActivity[];
   onOpenFamily: () => void;
-  onOpenFeed: () => void;
   onRefresh: () => void;
 }) {
   const preview = activity.slice(0, 3);
@@ -472,7 +438,6 @@ function FriendActivityShelf({
               <RefreshCw size={14} />
               Atualizar
             </button>
-            <button type="button" className="ghost compact" onClick={onOpenFeed}>Ver Feed</button>
           </div>
         ) : null}
       </div>
@@ -500,218 +465,12 @@ function FriendActivityShelf({
             </div>
           ))}
         </div>
-        <p className="home-social-hint">Movimento completo, diário público e comparações ficam no Feed.</p>
         </>
       ) : (
         <p className="empty">{loading ? "Abrindo o arquivo social..." : "Quando seus amigos movimentarem fichas, esse canto ganha vida."}</p>
       )}
     </section>
   );
-}
-
-type Suggestion = {
-  item: CulturalItem;
-  reason: string;
-  detail: string;
-  reasons: string[];
-  score: number;
-};
-
-type SuggestionSignal = {
-  label: string;
-  score: number;
-  kind: "status" | "favorite" | "genre" | "age" | "progress" | "stale";
-};
-
-type PreferenceProfile = {
-  genres: Map<string, { label: string; weight: number }>;
-  categoryWeights: Map<Category, number>;
-  maxGenreWeight: number;
-  maxCategoryWeight: number;
-};
-
-const DAY_MS = 86_400_000;
-
-const suggestionWeights = {
-  wishlist: 16,
-  inProgress: 22,
-  favorite: 10,
-  genreAffinity: 24,
-  categoryAffinity: 10,
-  backlogAge: 18,
-  currentProgress: 18,
-  staleInProgress: 26,
-};
-
-function buildSuggestions(items: CulturalItem[]): Suggestion[] {
-  const profile = buildPreferenceProfile(items);
-
-  return items
-    .filter((item) => isWishlist(item) || isInProgress(item))
-    .map((item) => scoreSuggestion(item, profile))
-    .filter((suggestion) => suggestion.score > 0)
-    .sort((a, b) => (
-      b.score - a.score
-      || latestInteractionTime(a.item) - latestInteractionTime(b.item)
-      || getTitle(a.item).localeCompare(getTitle(b.item))
-    ))
-    .slice(0, 3);
-}
-
-function suggestionMeta(item: CulturalItem) {
-  return [categoryLabels[item.category], getYear(item), item.status].filter(Boolean).join(" / ");
-}
-
-function scoreSuggestion(item: CulturalItem, profile: PreferenceProfile): Suggestion {
-  const signals = [
-    statusSignal(item),
-    favoriteSignal(item),
-    genreAffinitySignal(item, profile),
-    categoryAffinitySignal(item, profile),
-    backlogAgeSignal(item),
-    progressSignal(item),
-    staleSignal(item),
-  ].filter(Boolean) as SuggestionSignal[];
-  const orderedSignals = signals.sort((a, b) => b.score - a.score);
-  const score = orderedSignals.reduce((total, signal) => total + signal.score, 0);
-
-  return {
-    item,
-    score,
-    reason: primarySuggestionReason(orderedSignals[0]?.kind, item),
-    detail: suggestionMeta(item),
-    reasons: orderedSignals
-      .filter((signal) => signal.kind !== "status" || orderedSignals.length < 3)
-      .slice(0, 4)
-      .map((signal) => signal.label),
-  };
-}
-
-function statusSignal(item: CulturalItem): SuggestionSignal | undefined {
-  if (isInProgress(item)) {
-    return { kind: "status", label: "Em andamento", score: suggestionWeights.inProgress };
-  }
-
-  if (isWishlist(item)) {
-    return { kind: "status", label: "Na wishlist", score: suggestionWeights.wishlist };
-  }
-
-  return undefined;
-}
-
-function favoriteSignal(item: CulturalItem): SuggestionSignal | undefined {
-  const rating = getRating(item);
-  if (rating < 4) return undefined;
-  return {
-    kind: "favorite",
-    label: `Você já marcou ${rating}/5`,
-    score: suggestionWeights.favorite,
-  };
-}
-
-function genreAffinitySignal(item: CulturalItem, profile: PreferenceProfile): SuggestionSignal | undefined {
-  if (!profile.maxGenreWeight) return undefined;
-
-  const matches = getGenres(item)
-    .map((genre) => profile.genres.get(normalizeAffinityKey(genre)))
-    .filter(Boolean) as Array<{ label: string; weight: number }>;
-  if (!matches.length) return undefined;
-
-  const rawWeight = matches.reduce((total, match) => total + match.weight, 0);
-  const score = Math.round(Math.min(1, rawWeight / profile.maxGenreWeight) * suggestionWeights.genreAffinity);
-  return {
-    kind: "genre",
-    label: `Gênero favorito: ${matches.map((match) => match.label).slice(0, 2).join(", ")}`,
-    score,
-  };
-}
-
-function categoryAffinitySignal(item: CulturalItem, profile: PreferenceProfile): SuggestionSignal | undefined {
-  if (!profile.maxCategoryWeight) return undefined;
-
-  const rawWeight = profile.categoryWeights.get(item.category) ?? 0;
-  if (!rawWeight) return undefined;
-
-  return {
-    kind: "favorite",
-    label: `Categoria forte: ${categoryLabels[item.category]}`,
-    score: Math.round(Math.min(1, rawWeight / profile.maxCategoryWeight) * suggestionWeights.categoryAffinity),
-  };
-}
-
-function backlogAgeSignal(item: CulturalItem): SuggestionSignal | undefined {
-  if (!isWishlist(item)) return undefined;
-
-  const days = ageInDays(item.createdAt || item.updatedAt);
-  if (days < 7) return undefined;
-
-  return {
-    kind: "age",
-    label: `Na fila ${formatAge(days)}`,
-    score: Math.min(suggestionWeights.backlogAge, Math.max(4, Math.round(days / 7 * 1.5))),
-  };
-}
-
-function progressSignal(item: CulturalItem): SuggestionSignal | undefined {
-  if (!isInProgress(item)) return undefined;
-
-  const label = progressLabel(item);
-  if (!label) return undefined;
-
-  return {
-    kind: "progress",
-    label,
-    score: progressScore(item),
-  };
-}
-
-function staleSignal(item: CulturalItem): SuggestionSignal | undefined {
-  if (!isInProgress(item)) return undefined;
-
-  const days = Math.floor(Math.max(0, Date.now() - latestInteractionTime(item)) / DAY_MS);
-  if (days < 21) return undefined;
-
-  return {
-    kind: "stale",
-    label: `Parado ${formatAge(days)}`,
-    score: Math.min(suggestionWeights.staleInProgress, 12 + Math.round((days - 21) / 7 * 3)),
-  };
-}
-
-function primarySuggestionReason(kind: SuggestionSignal["kind"] | undefined, item: CulturalItem) {
-  if (kind === "stale") return "Retomar antes de esfriar";
-  if (kind === "progress") return "Continuar de onde parou";
-  if (kind === "genre" || kind === "favorite") return "Combina com seus favoritos";
-  if (kind === "age") return "Resgatar da wishlist";
-  if (isInProgress(item)) return "Retomar andamento";
-  if (isWishlist(item)) return "Tirar da wishlist";
-  return "Próximo bom candidato";
-}
-
-function buildPreferenceProfile(items: CulturalItem[]): PreferenceProfile {
-  const genres = new Map<string, { label: string; weight: number }>();
-  const categoryWeights = new Map<Category, number>();
-
-  items.filter((item) => getRating(item) >= 4).forEach((item) => {
-    const ratingWeight = getRating(item);
-    categoryWeights.set(item.category, (categoryWeights.get(item.category) ?? 0) + ratingWeight);
-
-    getGenres(item).forEach((genre) => {
-      const key = normalizeAffinityKey(genre);
-      const current = genres.get(key);
-      genres.set(key, {
-        label: current?.label ?? genre,
-        weight: (current?.weight ?? 0) + ratingWeight,
-      });
-    });
-  });
-
-  return {
-    genres,
-    categoryWeights,
-    maxGenreWeight: Math.max(0, ...[...genres.values()].map((genre) => genre.weight)),
-    maxCategoryWeight: Math.max(0, ...categoryWeights.values()),
-  };
 }
 
 function progressLabel(item: CulturalItem) {
@@ -746,59 +505,9 @@ function continueDetail(item: CulturalItem) {
   return progressLabel(item) || item.status || categoryLabels[item.category];
 }
 
-function progressScore(item: CulturalItem) {
-  if (item.category === "books" && item.currentPage) {
-    const pageProgress = item.pages ? Math.min(1, item.currentPage / item.pages) : 0.5;
-    return Math.round(8 + pageProgress * (suggestionWeights.currentProgress - 8));
-  }
-
-  if (item.category === "games") {
-    return Math.min(suggestionWeights.currentProgress, 8 + Math.round(getPlayedHours(item) / 6));
-  }
-
-  if (item.category === "series") {
-    return Math.min(suggestionWeights.currentProgress, 8 + (item.currentSeason ?? 0) * 2 + (item.currentEpisode ? 2 : 0));
-  }
-
-  if (item.category === "albums") {
-    return item.listenMode === "Parcialmente" ? 12 : 10;
-  }
-
-  return 8;
-}
-
-function latestInteractionTime(item: CulturalItem) {
-  return Math.max(
-    dateTime(item.updatedAt),
-    ...item.timeline.map((event) => dateTime(event.date)),
-    ...item.diary.map((entry) => dateTime(entry.date)),
-  );
-}
-
-function ageInDays(value: string) {
-  const timestamp = dateTime(value);
-  if (!timestamp) return 0;
-  return Math.floor(Math.max(0, Date.now() - timestamp) / DAY_MS);
-}
-
-function formatAge(days: number) {
-  if (days === 1) return "há 1 dia";
-  if (days < 60) return `há ${days} dias`;
-  const months = Math.floor(days / 30);
-  return months === 1 ? "há 1 mês" : `há ${months} meses`;
-}
-
 function formatHours(hours: number) {
   if (Number.isInteger(hours)) return `${hours}h`;
   return `${hours.toFixed(1).replace(".", ",")}h`;
-}
-
-function normalizeAffinityKey(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim();
 }
 
 function buildFriendActivity(entries: FamilyItem[], viewerId: string): FriendActivity[] {

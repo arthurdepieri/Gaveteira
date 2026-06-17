@@ -49,7 +49,7 @@ export function SettingsView({
   const [loadingCloud, setLoadingCloud] = useState(false);
   const [importPreview, setImportPreview] = useState<BackupPreview | null>(null);
   const [backupHistory, setBackupHistory] = useState<BackupHistoryEntry[]>(() => loadBackupHistory());
-  const [snapshots, setSnapshots] = useState<SafetySnapshot[]>(() => loadSafetySnapshots());
+  const [snapshots, setSnapshots] = useState<SafetySnapshot[]>([]);
   const [readinessReport, setReadinessReport] = useState<CloudReadinessReport | null>(null);
   const [readinessLoading, setReadinessLoading] = useState(false);
   const [readinessError, setReadinessError] = useState("");
@@ -62,7 +62,19 @@ export function SettingsView({
       : mergeBackupItems(data.items, cloudItems ?? []).length;
 
   useEffect(() => {
-    setSnapshots(loadSafetySnapshots());
+    let cancelled = false;
+
+    loadSafetySnapshots()
+      .then((loadedSnapshots) => {
+        if (!cancelled) setSnapshots(loadedSnapshots);
+      })
+      .catch(() => {
+        if (!cancelled) setSnapshots([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -184,33 +196,33 @@ export function SettingsView({
     setBackupMessage(`Backup exportado: ${fileName}.`);
   }
 
-  function restorePreview() {
+  async function restorePreview() {
     if (!importPreview) return;
-    const snapshot = createSafetySnapshot(data, "before-restore", {
+    const snapshot = await createSafetySnapshot(data, "before-restore", {
       label: `Antes de restaurar ${importPreview.fileName}`,
     });
     const restored = restoreBackupData(data, importPreview);
     onReplaceData(restored);
-    setSnapshots(loadSafetySnapshots());
+    setSnapshots(await loadSafetySnapshots());
     setBackupMessage(`Snapshot salvo (${snapshot.itemCount} fichas). Backup restaurado: ${importPreview.added.length} adicionados, ${importPreview.updated.length} atualizados e ${importPreview.ignored.length} ignorados.`);
     setImportPreview(null);
   }
 
-  function rollbackSnapshot(snapshot: SafetySnapshot) {
-    const safety = createSafetySnapshot(data, "manual", {
+  async function rollbackSnapshot(snapshot: SafetySnapshot) {
+    const safety = await createSafetySnapshot(data, "manual", {
       label: `Antes de voltar para ${formatDateTime(snapshot.createdAt)}`,
       appVersion: snapshot.appVersion,
       schemaVersion: snapshot.schemaVersion,
     });
     onReplaceData(JSON.parse(JSON.stringify(snapshot.data)) as AppData);
-    setSnapshots(loadSafetySnapshots());
+    setSnapshots(await loadSafetySnapshots());
     setBackupMessage(`Voltamos para o snapshot de ${formatDateTime(snapshot.createdAt)}. Também salvei um snapshot do estado anterior (${safety.itemCount} fichas).`);
     setImportError("");
     setImportPreview(null);
   }
 
-  function deleteSnapshot(snapshotId: string) {
-    setSnapshots(removeSafetySnapshot(snapshotId));
+  async function deleteSnapshot(snapshotId: string) {
+    setSnapshots(await removeSafetySnapshot(snapshotId));
     setBackupMessage("Snapshot removido da retenção local.");
   }
 

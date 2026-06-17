@@ -1,4 +1,5 @@
 import { AppData } from "../types";
+import { migrateLocalJsonToIndexedDb, readIndexedJson, readLocalJson, writeStoredJson } from "./browserStore";
 
 export type SnapshotReason = "before-restore" | "version-change" | "manual";
 
@@ -23,24 +24,29 @@ const RUNTIME_SIGNATURE_KEY = "gaveteira-runtime-signature:v1";
 const SNAPSHOT_RETENTION = 5;
 export const CURRENT_SCHEMA_VERSION = 1;
 
-export function loadSafetySnapshots(): SafetySnapshot[] {
+export async function loadSafetySnapshots(): Promise<SafetySnapshot[]> {
   try {
-    const parsed = JSON.parse(localStorage.getItem(SNAPSHOTS_KEY) || "[]");
-    if (!Array.isArray(parsed)) return [];
-    return parsed
-      .filter(isSafetySnapshot)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, SNAPSHOT_RETENTION);
+    const indexed = await readIndexedJson<SafetySnapshot[]>(SNAPSHOTS_KEY);
+    if (indexed) return normalizeSnapshots(indexed);
   } catch {
-    return [];
+    return normalizeSnapshots(readLocalJson<SafetySnapshot[]>(SNAPSHOTS_KEY));
   }
+
+  try {
+    const migrated = await migrateLocalJsonToIndexedDb<SafetySnapshot[]>(SNAPSHOTS_KEY, normalizeSnapshots);
+    if (migrated) return migrated;
+  } catch {
+    return normalizeSnapshots(readLocalJson<SafetySnapshot[]>(SNAPSHOTS_KEY));
+  }
+
+  return [];
 }
 
-export function createSafetySnapshot(
+export async function createSafetySnapshot(
   data: AppData,
   reason: SnapshotReason,
   options: { label?: string; appVersion?: string; schemaVersion?: number } = {},
-) {
+): Promise<SafetySnapshot> {
   const snapshot: SafetySnapshot = {
     id: `snapshot-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     createdAt: new Date().toISOString(),
@@ -52,18 +58,18 @@ export function createSafetySnapshot(
     data: cloneData(data),
   };
 
-  const snapshots = [snapshot, ...loadSafetySnapshots()].slice(0, SNAPSHOT_RETENTION);
-  saveSafetySnapshots(snapshots);
+  const snapshots = [snapshot, ...await loadSafetySnapshots()].slice(0, SNAPSHOT_RETENTION);
+  await saveSafetySnapshots(snapshots);
   return snapshot;
 }
 
-export function removeSafetySnapshot(snapshotId: string) {
-  const snapshots = loadSafetySnapshots().filter((snapshot) => snapshot.id !== snapshotId);
-  saveSafetySnapshots(snapshots);
+export async function removeSafetySnapshot(snapshotId: string) {
+  const snapshots = (await loadSafetySnapshots()).filter((snapshot) => snapshot.id !== snapshotId);
+  await saveSafetySnapshots(snapshots);
   return snapshots;
 }
 
-export function snapshotIfRuntimeChanged(data: AppData, appVersion: string) {
+export async function snapshotIfRuntimeChanged(data: AppData, appVersion: string) {
   const nextSignature: RuntimeSignature = {
     appVersion: appVersion || "local",
     schemaVersion: CURRENT_SCHEMA_VERSION,
@@ -97,8 +103,8 @@ export function snapshotReasonLabel(reason: SnapshotReason) {
   return "Snapshot manual";
 }
 
-function saveSafetySnapshots(snapshots: SafetySnapshot[]) {
-  localStorage.setItem(SNAPSHOTS_KEY, JSON.stringify(snapshots.slice(0, SNAPSHOT_RETENTION)));
+async function saveSafetySnapshots(snapshots: SafetySnapshot[]) {
+  await writeStoredJson(SNAPSHOTS_KEY, normalizeSnapshots(snapshots));
 }
 
 function currentStoredSignature(): RuntimeSignature | null {
@@ -125,4 +131,12 @@ function isSafetySnapshot(value: unknown): value is SafetySnapshot {
 
 function cloneData(data: AppData): AppData {
   return JSON.parse(JSON.stringify(data)) as AppData;
+}
+
+function normalizeSnapshots(value: SafetySnapshot[] | null): SafetySnapshot[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter(isSafetySnapshot)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, SNAPSHOT_RETENTION);
 }

@@ -1,11 +1,12 @@
 import { AppData } from "../types";
 import { defaultStatuses } from "../data/catalog";
 import { withoutLegacyDemoItems } from "../utils/legacyDemoItems";
+import { migrateLocalJsonToIndexedDb, readIndexedJson, readLocalJson, writeStoredJson } from "./browserStore";
 
 const STORAGE_KEY = "gaveteira-da-vida:v1";
 const DEFAULT_SETTINGS = { theme: "system" as const, apiKeys: {}, cloud: {} };
 
-function emptyData(): AppData {
+export function createEmptyData(): AppData {
   return {
     version: 1,
     items: [],
@@ -14,31 +15,39 @@ function emptyData(): AppData {
   };
 }
 
-export function loadData(): AppData {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) {
-    const data = emptyData();
-    saveData(data);
-    return data;
+export async function loadData(): Promise<AppData> {
+  let indexedReadFailed = false;
+
+  if (typeof indexedDB !== "undefined") {
+    try {
+      const indexedData = await readIndexedJson<AppData>(STORAGE_KEY);
+      if (indexedData) return normalizeData(indexedData);
+    } catch {
+      indexedReadFailed = true;
+      const fallbackData = readLocalJson<AppData>(STORAGE_KEY);
+      if (fallbackData) return normalizeData(fallbackData);
+    }
   }
 
   try {
-    const parsed = JSON.parse(raw) as AppData;
-    return {
-      version: parsed.version ?? 1,
-      items: withoutLegacyDemoItems(parsed.items ?? []),
-      statuses: { ...defaultStatuses, ...(parsed.statuses ?? {}) },
-      settings: { ...DEFAULT_SETTINGS, ...(parsed.settings ?? {}), apiKeys: parsed.settings?.apiKeys ?? {}, cloud: parsed.settings?.cloud ?? {} },
-    };
+    const migrated = await migrateLocalJsonToIndexedDb<AppData>(STORAGE_KEY, normalizeData);
+    if (migrated) return migrated;
   } catch {
-    const data = emptyData();
-    saveData(data);
-    return data;
+    const legacyData = readLocalJson<AppData>(STORAGE_KEY);
+    if (legacyData) return normalizeData(legacyData);
   }
+
+  if (indexedReadFailed) {
+    throw new Error("Nao consegui abrir o armazenamento local da Gaveteira neste navegador.");
+  }
+
+  const data = createEmptyData();
+  await saveData(data);
+  return data;
 }
 
-export function saveData(data: AppData) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...data, items: withoutLegacyDemoItems(data.items) }));
+export async function saveData(data: AppData) {
+  await writeStoredJson(STORAGE_KEY, normalizeData(data));
 }
 
 export function exportData(data: AppData) {
@@ -59,10 +68,19 @@ export function parseImportedData(text: string): AppData {
     throw new Error("Este JSON não parece ser um backup válido da Gaveteira.");
   }
 
+  return normalizeData(source);
+}
+
+function normalizeData(data: AppData): AppData {
   return {
-    version: source.version ?? 1,
-    items: withoutLegacyDemoItems(source.items),
-    statuses: { ...defaultStatuses, ...source.statuses },
-    settings: { ...DEFAULT_SETTINGS, ...(source.settings ?? {}), apiKeys: source.settings?.apiKeys ?? {}, cloud: source.settings?.cloud ?? {} },
+    version: data.version ?? 1,
+    items: withoutLegacyDemoItems(data.items ?? []),
+    statuses: { ...defaultStatuses, ...(data.statuses ?? {}) },
+    settings: {
+      ...DEFAULT_SETTINGS,
+      ...(data.settings ?? {}),
+      apiKeys: data.settings?.apiKeys ?? {},
+      cloud: data.settings?.cloud ?? {},
+    },
   };
 }
