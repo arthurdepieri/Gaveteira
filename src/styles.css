@@ -9483,68 +9483,6 @@ body {
   border-top: 1px dashed var(--line);
 }
 
-.seasonal-lab-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(180px, 240px);
-  gap: 14px;
-  align-items: stretch;
-  padding: 18px;
-  color: var(--ink);
-  border: 1px solid rgba(52, 107, 93, 0.26);
-  background:
-    linear-gradient(90deg, rgba(52, 107, 93, 0.055) 1px, transparent 1px) 0 0 / 18px 18px,
-    linear-gradient(135deg, rgba(255, 253, 248, 0.96), rgba(232, 243, 237, 0.74));
-  border-radius: 8px;
-}
-
-.seasonal-lab-hero h2,
-.seasonal-lab-hero p {
-  margin: 0;
-}
-
-.seasonal-lab-hero h2 {
-  margin-top: 2px;
-  color: var(--wood-dark);
-  font-size: clamp(1.55rem, 3vw, 2.3rem);
-  line-height: 1.05;
-}
-
-.seasonal-lab-hero p:not(.eyebrow) {
-  max-width: 720px;
-  margin-top: 8px;
-  color: var(--muted);
-  line-height: 1.5;
-}
-
-.seasonal-lab-status {
-  display: grid;
-  align-content: center;
-  gap: 6px;
-  min-height: 112px;
-  padding: 14px;
-  color: #fffaf1;
-  background:
-    linear-gradient(135deg, rgba(49, 95, 132, 0.94), rgba(52, 107, 93, 0.94));
-  border-radius: 8px;
-  box-shadow: 0 12px 24px rgba(38, 74, 80, 0.16);
-}
-
-.seasonal-lab-status span,
-.seasonal-lab-status small {
-  color: rgba(255, 250, 241, 0.78);
-  font-weight: 900;
-}
-
-.seasonal-lab-status span {
-  font-size: 0.72rem;
-  text-transform: uppercase;
-}
-
-.seasonal-lab-status strong {
-  font-size: 1.35rem;
-  line-height: 1.05;
-}
-
 .seasonal-lab-toolbar {
   display: grid;
   grid-template-columns: minmax(220px, 1fr) auto;
@@ -10206,7 +10144,6 @@ body {
   color: var(--sheet-title);
 }
 
-:root[data-theme="dark"] .seasonal-lab-hero,
 :root[data-theme="dark"] .seasonal-editor-panel,
 :root[data-theme="dark"] .seasonal-card-stage,
 :root[data-theme="dark"] .seasonal-preview-panel {
@@ -10217,13 +10154,11 @@ body {
     #241d17;
 }
 
-:root[data-theme="dark"] .seasonal-lab-hero h2,
 :root[data-theme="dark"] .seasonal-editor-panel h3,
 :root[data-theme="dark"] .seasonal-preview-panel h3 {
   color: #fff3df;
 }
 
-:root[data-theme="dark"] .seasonal-lab-hero p:not(.eyebrow),
 :root[data-theme="dark"] .seasonal-model-picker span,
 :root[data-theme="dark"] .seasonal-color-field span {
   color: var(--muted);
@@ -10256,7 +10191,6 @@ body {
 }
 
 @media (max-width: 920px) {
-  .seasonal-lab-hero,
   .seasonal-lab-toolbar,
   .seasonal-lab-grid,
   .seasonal-preview-grid {
@@ -10270,7 +10204,6 @@ body {
 }
 
 @media (max-width: 760px) {
-  .seasonal-lab-hero,
   .seasonal-editor-panel,
   .seasonal-preview-panel {
     padding: 12px;

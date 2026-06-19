@@ -115,7 +115,6 @@ export function SeasonalDesignLab() {
   const activeDraft = drafts.find((draft) => draft.id === activeDraftId) ?? drafts[0] ?? createDefaultDraft();
   const previewItem = useMemo(() => createPreviewItem(activeDraft), [activeDraft]);
   const previewStyle = useMemo(() => seasonalStyle(activeDraft), [activeDraft]);
-  const status = scheduleStatus(activeDraft);
 
   function persist(nextDrafts: SeasonalDesignDraft[], nextActiveId = activeDraft.id) {
     setDrafts(nextDrafts);
@@ -239,19 +238,6 @@ export function SeasonalDesignLab() {
           </article>
         </div>
       </section>
-
-      <div className="seasonal-lab-hero">
-        <div>
-          <p className="eyebrow">Experimento admin</p>
-          <h2>Design sazonal das fichas</h2>
-          <p>Modelos locais para campanhas, com datas de funcionamento, selos, imagens e previsualizacao da ficha antes de qualquer publicacao.</p>
-        </div>
-        <div className="seasonal-lab-status">
-          <span>{stateLabels[activeDraft.state]}</span>
-          <strong>{status.label}</strong>
-          <small>{status.detail}</small>
-        </div>
-      </div>
 
       <div className="seasonal-lab-toolbar">
         <label className="seasonal-model-picker">
@@ -746,31 +732,6 @@ function seasonalStyle(draft: SeasonalDesignDraft) {
     "--lab-radius": `${draft.cornerRadius}px`,
     "--lab-pattern": draft.pattern,
   } as CSSProperties;
-}
-
-function scheduleStatus(draft: SeasonalDesignDraft) {
-  if (draft.state === "retired") {
-    return { label: "Fora de linha", detail: "O modelo continua no laboratorio." };
-  }
-
-  const today = startOfDay(new Date()).getTime();
-  const start = startOfDay(new Date(`${draft.startsAt}T00:00:00`)).getTime();
-  const end = startOfDay(new Date(`${draft.endsAt}T00:00:00`)).getTime();
-
-  if (!Number.isFinite(start) || !Number.isFinite(end)) return { label: "Datas incompletas", detail: "Defina inicio e saida." };
-  if (today < start) return { label: "Agendado", detail: `Entra em ${formatDate(draft.startsAt)}.` };
-  if (today > end) return { label: "Encerrado", detail: `Saiu em ${formatDate(draft.endsAt)}.` };
-  return { label: "Na janela", detail: `Funciona ate ${formatDate(draft.endsAt)}.` };
-}
-
-function startOfDay(date: Date) {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-}
-
-function formatDate(value: string) {
-  const date = new Date(`${value}T00:00:00`);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
 function readFileAsDataUrl(file: File) {
