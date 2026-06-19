@@ -191,6 +191,55 @@ export function SeasonalDesignLab() {
 
   return (
     <section className="seasonal-lab" aria-label="Laboratorio sazonal de fichas">
+      <section className={`seasonal-preview-panel pattern-${activeDraft.pattern}`} style={previewStyle}>
+        <div className="section-heading split">
+          <div className="section-heading">
+            <Eye size={20} />
+            <h3>Ficha isolada</h3>
+          </div>
+          <button type="button" className="primary compact" onClick={() => setPreviewOpen(true)}>
+            <Sparkles size={15} />
+            Abrir ficha completa
+          </button>
+        </div>
+        <div className="seasonal-preview-grid">
+          <div className="seasonal-card-stage">
+            <div className="seasonal-card-frame">
+              <ItemCard item={previewItem} onOpen={() => setPreviewOpen(true)} seasonalStyle={previewStyle} />
+              <SeasonalOverlay draft={activeDraft} compact placement={activeDraft.sealPlacement} />
+            </div>
+          </div>
+          <article className={`seasonal-sheet-preview season-theme season-theme-${slugify(activeDraft.id)} sheet-layout-${activeDraft.sheetLayout} seal-placement-${activeDraft.sealPlacement}`}>
+            <div className="seasonal-sheet-media">
+              <Cover item={previewItem} />
+              <span>{activeDraft.badgeLabel}</span>
+            </div>
+            <div className="seasonal-sheet-body">
+              <p className="eyebrow">{categoryLabels[previewItem.category]} / modelo original</p>
+              <h3>{activeDraft.preview.title}</h3>
+              <div className="detail-summary seasonal-sheet-summary">
+                <span>{previewItem.status}</span>
+                <span>{activeDraft.preview.creator}</span>
+                <span>{activeDraft.preview.year}</span>
+              </div>
+              <Stars value={activeDraft.preview.rating} />
+              <div className="seasonal-sheet-details">
+                {activeDraft.details.map((detail) => (
+                  <span key={detail.id}>
+                    <small>{detail.label}</small>
+                    <strong>{detail.value}</strong>
+                  </span>
+                ))}
+              </div>
+              <div className="seasonal-seal-list preview">
+                {activeDraft.seals.map((seal) => <span key={seal}>{seal}</span>)}
+              </div>
+            </div>
+            <SeasonalOverlay draft={activeDraft} placement={activeDraft.sealPlacement} />
+          </article>
+        </div>
+      </section>
+
       <div className="seasonal-lab-hero">
         <div>
           <p className="eyebrow">Experimento admin</p>
@@ -453,55 +502,6 @@ export function SeasonalDesignLab() {
           </div>
         </section>
       </div>
-
-      <section className={`seasonal-preview-panel pattern-${activeDraft.pattern}`} style={previewStyle}>
-        <div className="section-heading split">
-          <div className="section-heading">
-            <Eye size={20} />
-            <h3>Ficha isolada</h3>
-          </div>
-          <button type="button" className="primary compact" onClick={() => setPreviewOpen(true)}>
-            <Sparkles size={15} />
-            Abrir ficha completa
-          </button>
-        </div>
-        <div className="seasonal-preview-grid">
-          <div className="seasonal-card-stage">
-            <div className="seasonal-card-frame">
-              <ItemCard item={previewItem} onOpen={() => setPreviewOpen(true)} seasonalStyle={previewStyle} />
-              <SeasonalOverlay draft={activeDraft} compact placement={activeDraft.sealPlacement} />
-            </div>
-          </div>
-          <article className={`seasonal-sheet-preview season-theme season-theme-${slugify(activeDraft.id)} sheet-layout-${activeDraft.sheetLayout} seal-placement-${activeDraft.sealPlacement}`}>
-            <div className="seasonal-sheet-media">
-              <Cover item={previewItem} />
-              <span>{activeDraft.badgeLabel}</span>
-            </div>
-            <div className="seasonal-sheet-body">
-              <p className="eyebrow">{categoryLabels[previewItem.category]} / modelo original</p>
-              <h3>{activeDraft.preview.title}</h3>
-              <div className="detail-summary seasonal-sheet-summary">
-                <span>{previewItem.status}</span>
-                <span>{activeDraft.preview.creator}</span>
-                <span>{activeDraft.preview.year}</span>
-              </div>
-              <Stars value={activeDraft.preview.rating} />
-              <div className="seasonal-sheet-details">
-                {activeDraft.details.map((detail) => (
-                  <span key={detail.id}>
-                    <small>{detail.label}</small>
-                    <strong>{detail.value}</strong>
-                  </span>
-                ))}
-              </div>
-              <div className="seasonal-seal-list preview">
-                {activeDraft.seals.map((seal) => <span key={seal}>{seal}</span>)}
-              </div>
-            </div>
-            <SeasonalOverlay draft={activeDraft} placement={activeDraft.sealPlacement} />
-          </article>
-        </div>
-      </section>
 
       {previewOpen ? (
         <ItemDetails
