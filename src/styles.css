@@ -10002,7 +10002,10 @@ body {
 
 .detail-modal.archive-sheet.season-theme:not(.season-theme-copa-do-mundo-2026) {
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
   color: var(--sheet-text);
   border-color: color-mix(in srgb, var(--sheet-border) 58%, #ffffff 42%);
   background:
