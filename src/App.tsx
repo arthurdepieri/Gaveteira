@@ -664,6 +664,7 @@ function App() {
         <AdminView
           settings={effectiveSettings}
           session={cloudSession}
+          localItems={data.items}
           page={view === "adminDesign" ? "design" : "curation"}
           onPageChange={selectAdminPage}
         />

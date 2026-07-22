@@ -1,6 +1,6 @@
 import { Award, Palette, RefreshCw, ShieldCheck, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { AdminAuditLog, AdminOverview, AppSettings, CloudSession, CuratedRecommendation, FamilyItem, SocialProfile } from "../types";
+import { AdminAuditLog, AdminOverview, AppSettings, CloudSession, CulturalItem, CuratedRecommendation, FamilyItem, SocialProfile } from "../types";
 import { categoryLabels } from "../data/catalog";
 import { deleteCuratedRecommendation, fetchAdminCuratableItems, fetchAdminLogs, fetchAdminOverview, fetchCuratedRecommendations, setProfileRole, upsertCuratedRecommendation } from "../services/supabaseCloud";
 import { getTitle, getYear } from "../utils/itemHelpers";
@@ -15,11 +15,13 @@ export function AdminView({
   settings,
   session,
   page,
+  localItems,
   onPageChange,
 }: {
   settings: AppSettings;
   session: CloudSession | null;
   page: AdminPage;
+  localItems: CulturalItem[];
   onPageChange: (page: AdminPage) => void;
 }) {
   const isAdmin = session?.profile?.role === "admin";
@@ -198,7 +200,7 @@ export function AdminView({
         </button>
       </nav>
 
-      {page === "design" ? <SeasonalDesignLab /> : (
+      {page === "design" ? <SeasonalDesignLab items={localItems} /> : (
         <section className="setting-panel admin-panel">
           <div className="section-heading split">
             <div className="section-heading">

@@ -1,149 +1,83 @@
-import type { CSSProperties } from "react";
-import { Clipboard, Download, Eye, FileJson, Layers3, LayoutTemplate, Palette, Plus, Ruler, Save, SlidersHorizontal, Trash2 } from "lucide-react";
+import { Clipboard, Download, Eye, FileUp, Layers3, Plus, Ruler, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
-import type { CulturalItem, Rating } from "../types";
-import { categoryLabels } from "../data/catalog";
+import type { CulturalItem } from "../types";
+import { defaultStatuses } from "../data/catalog";
+import { getGenre, getItemVisibilityLabel, getTitle, getYear } from "../utils/itemHelpers";
 import { ItemCard } from "./ItemCard";
 import { ItemDetails } from "./ItemDetails";
-import { Stars } from "./Rating";
 
-const STORAGE_KEY = "gaveteira-canva-ficha-template:v1";
+const STORAGE_KEY = "gaveteira-canva-ficha-template:v2";
 
-interface CanvaPalette {
-  paper: string;
-  surface: string;
-  panel: string;
-  ink: string;
-  muted: string;
-  line: string;
-  accent: string;
-  green: string;
-  red: string;
-  brass: string;
-  coverA: string;
-  coverB: string;
-  chip: string;
-}
+const cardSpec = [
+  { label: "Grid das gavetas", value: "auto-fill, minmax(210px, 1fr)" },
+  { label: "Referência Canva", value: "342 x 520 px" },
+  { label: "Capa externa", value: "100% x 220 px" },
+  { label: "Corpo do card", value: "padding 14 px" },
+  { label: "Borda", value: "1 px / raio 8 px" },
+  { label: "Sombra", value: "0 10 24 rgba(47,35,24,.10)" },
+];
 
-interface CanvaPreviewFields {
-  title: string;
-  creator: string;
-  status: string;
-  year: string;
-  genre: string;
-  rating: Rating;
-  currentPage: string;
-  pages: string;
-  quote: string;
-  summary: string;
-  diaryNote: string;
-}
+const sheetSpec = [
+  { label: "Modal interno", value: "min(1120px, 100vw - 28px)" },
+  { label: "Referência Canva", value: "1120 x 900 px" },
+  { label: "Hero", value: "capa 220 px + conteúdo" },
+  { label: "Capa interna", value: "220 x 292 px" },
+  { label: "Padding hero", value: "16 px" },
+  { label: "Blocos", value: "grid auto-fit minmax(180px, 1fr)" },
+];
 
-interface CanvaTemplateDraft {
-  id: string;
-  label: string;
-  cardWidth: number;
-  cardHeight: number;
-  cardCoverHeight: number;
-  cardBodyPadding: number;
-  sheetWidth: number;
-  sheetHeight: number;
-  sheetCoverWidth: number;
-  sheetCoverHeight: number;
-  sheetPadding: number;
-  sheetGap: number;
-  radius: number;
-  safeMargin: number;
-  titleFont: string;
-  bodyFont: string;
-  palette: CanvaPalette;
-  seals: string[];
-  layers: string[];
-  notes: string;
-  preview: CanvaPreviewFields;
-  updatedAt: string;
-}
-
-const paletteLabels: Record<keyof CanvaPalette, string> = {
-  paper: "Papel",
-  surface: "Superficie",
-  panel: "Painel",
-  ink: "Texto",
-  muted: "Texto leve",
-  line: "Linha",
-  accent: "Acento",
-  green: "Verde",
-  red: "Carimbo",
-  brass: "Dourado",
-  coverA: "Capa A",
-  coverB: "Capa B",
-  chip: "Selo",
+const canvaPalette = {
+  paper: "#fffaf1",
+  surface: "#fffdf8",
+  panel: "#fff4da",
+  ink: "#211d18",
+  muted: "#6f6255",
+  line: "#d8c7ad",
+  green: "#346b5d",
+  red: "#9f473d",
+  brass: "#c38625",
 };
 
-export function SeasonalDesignLab() {
-  const [drafts, setDrafts] = useState<CanvaTemplateDraft[]>(() => loadDrafts());
-  const [activeDraftId, setActiveDraftId] = useState(() => drafts[0]?.id ?? "");
+interface ImportedCanvaFile {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+  dataUrl: string;
+  importedAt: string;
+}
+
+interface CanvaTemplateState {
+  seals: string[];
+  layers: string[];
+  imports: ImportedCanvaFile[];
+}
+
+export function SeasonalDesignLab({ items }: { items: CulturalItem[] }) {
+  const [state, setState] = useState<CanvaTemplateState>(() => loadState());
   const [newSeal, setNewSeal] = useState("");
   const [newLayer, setNewLayer] = useState("");
   const [previewOpen, setPreviewOpen] = useState(false);
-  const activeDraft = drafts.find((draft) => draft.id === activeDraftId) ?? drafts[0] ?? createDefaultDraft();
-  const previewItem = useMemo(() => createPreviewItem(activeDraft), [activeDraft]);
-  const previewStyle = useMemo(() => canvaPreviewStyle(activeDraft), [activeDraft]);
-  const brief = useMemo(() => buildCanvaBrief(activeDraft), [activeDraft]);
+  const previewItem = useMemo(() => pickPreviewItem(items), [items]);
+  const brief = useMemo(() => buildCanvaBrief(previewItem, state), [previewItem, state]);
 
-  function persist(nextDrafts: CanvaTemplateDraft[], nextActiveId = activeDraft.id) {
-    setDrafts(nextDrafts);
-    setActiveDraftId(nextActiveId);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(nextDrafts));
-  }
-
-  function updateDraft(patch: Partial<CanvaTemplateDraft>) {
-    const nextDraft = { ...activeDraft, ...patch, updatedAt: new Date().toISOString() };
-    persist(drafts.map((draft) => draft.id === activeDraft.id ? nextDraft : draft), nextDraft.id);
-  }
-
-  function updatePalette(key: keyof CanvaPalette, value: string) {
-    updateDraft({ palette: { ...activeDraft.palette, [key]: value } });
-  }
-
-  function updatePreview(patch: Partial<CanvaPreviewFields>) {
-    updateDraft({ preview: { ...activeDraft.preview, ...patch } });
-  }
-
-  function addDraft() {
-    const draft = createDefaultDraft(`canva-ficha-${Date.now()}`);
-    persist([draft, ...drafts], draft.id);
-  }
-
-  function duplicateDraft() {
-    const draft = {
-      ...activeDraft,
-      id: `${activeDraft.id}-copia-${Date.now()}`,
-      label: `${activeDraft.label} copia`,
-      updatedAt: new Date().toISOString(),
-    };
-    persist([draft, ...drafts], draft.id);
-  }
-
-  function removeDraft() {
-    if (drafts.length <= 1) return;
-    const confirmed = window.confirm(`Remover o gabarito "${activeDraft.label}"?`);
-    if (!confirmed) return;
-    const nextDrafts = drafts.filter((draft) => draft.id !== activeDraft.id);
-    persist(nextDrafts, nextDrafts[0]?.id ?? "");
+  function updateState(patch: Partial<CanvaTemplateState>) {
+    const nextState = { ...state, ...patch };
+    setState(nextState);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(nextState));
   }
 
   function addSeal() {
     const value = newSeal.trim();
     if (!value) return;
-    updateDraft({ seals: [...activeDraft.seals, value].slice(0, 6) });
+    updateState({ seals: [...state.seals, value].slice(0, 8) });
     setNewSeal("");
   }
 
   function addLayer() {
     const value = newLayer.trim();
     if (!value) return;
-    updateDraft({ layers: [...activeDraft.layers, value].slice(0, 12) });
+    updateState({ layers: [...state.layers, value].slice(0, 14) });
     setNewLayer("");
   }
 
@@ -151,13 +85,15 @@ export function SeasonalDesignLab() {
     await navigator.clipboard?.writeText(brief).catch(() => undefined);
   }
 
-  async function copyJson() {
-    await navigator.clipboard?.writeText(JSON.stringify(activeDraft, null, 2)).catch(() => undefined);
+  async function importCanvaFiles(files: FileList | null) {
+    if (!files?.length) return;
+    const imported = await Promise.all(Array.from(files).map(readImportedFile));
+    updateState({ imports: [...imported, ...state.imports].slice(0, 12) });
   }
 
   return (
     <section className="canva-lab" aria-label="Gabarito Canva das fichas">
-      <section className="canva-preview-panel" style={previewStyle}>
+      <section className="canva-preview-panel">
         <div className="section-heading split">
           <div className="section-heading">
             <Eye size={20} />
@@ -168,68 +104,38 @@ export function SeasonalDesignLab() {
             Abrir ficha completa
           </button>
         </div>
-        <div className="canva-preview-grid">
-          <div className="canva-card-stage">
-            <div className="canva-measure-label">{activeDraft.cardWidth} x {activeDraft.cardHeight}px</div>
-            <div className="canva-card-frame">
-              <ItemCard item={previewItem} onOpen={() => setPreviewOpen(true)} seasonalStyle={previewStyle} />
-              <TemplateOverlay draft={activeDraft} compact />
-            </div>
+
+        <div className="canva-single-preview">
+          <div className="canva-original-card-frame">
+            <ItemCard item={previewItem} onOpen={() => setPreviewOpen(true)} />
           </div>
-          <article className="canva-sheet-preview">
-            <div className="canva-measure-label">{activeDraft.sheetWidth} x {activeDraft.sheetHeight}px</div>
-            <div className="canva-sheet-media">
-              <div className="canva-cover-placeholder" />
-              <span>{activeDraft.seals[0] ?? "Selo"}</span>
-            </div>
-            <div className="canva-sheet-body">
-              <p className="eyebrow">{categoryLabels[previewItem.category]} / modelo interno</p>
-              <h3>{activeDraft.preview.title}</h3>
-              <div className="detail-summary canva-sheet-summary">
-                <span>{previewItem.status}</span>
-                <span>{activeDraft.preview.creator}</span>
-                <span>{activeDraft.preview.year}</span>
-              </div>
-              <Stars value={activeDraft.preview.rating} />
-              <div className="canva-sheet-details">
-                <span><small>Capa</small><strong>{activeDraft.sheetCoverWidth} x {activeDraft.sheetCoverHeight}px</strong></span>
-                <span><small>Margem segura</small><strong>{activeDraft.safeMargin}px</strong></span>
-                <span><small>Tipografia</small><strong>{activeDraft.titleFont}</strong></span>
-                <span><small>Camadas</small><strong>{activeDraft.layers.length} grupos</strong></span>
-              </div>
-              <div className="canva-seal-list preview">
-                {activeDraft.seals.map((seal) => <span key={seal}>{seal}</span>)}
-              </div>
-            </div>
-            <TemplateOverlay draft={activeDraft} />
-          </article>
         </div>
       </section>
 
-      <div className="canva-lab-toolbar">
-        <label className="canva-model-picker">
-          <span>Gabarito</span>
-          <select value={activeDraft.id} onChange={(event) => setActiveDraftId(event.target.value)}>
-            {drafts.map((draft) => <option value={draft.id} key={draft.id}>{draft.label}</option>)}
-          </select>
-        </label>
-        <div className="button-row">
-          <button type="button" className="primary compact" onClick={addDraft}><Plus size={15} /> Novo</button>
-          <button type="button" className="ghost compact" onClick={duplicateDraft}><Clipboard size={15} /> Duplicar</button>
-          <button type="button" className="ghost compact" onClick={copyJson}><FileJson size={15} /> JSON</button>
-          <button type="button" className="ghost compact danger-soft" onClick={removeDraft} disabled={drafts.length <= 1}><Trash2 size={15} /> Remover</button>
-        </div>
-      </div>
-
       <section className="canva-export-panel">
-        <div className="section-heading">
-          <Download size={20} />
-          <h3>Arquivos para Canva</h3>
+        <div className="section-heading split">
+          <div className="section-heading">
+            <Download size={20} />
+            <h3>Arquivo para Canva</h3>
+          </div>
+          <details className="canva-download-menu">
+            <summary>
+              <Download size={15} />
+              Baixar
+            </summary>
+            <button type="button" onClick={() => downloadText("gaveteira-card-canva.svg", buildCardSvg(previewItem))}>Card em SVG</button>
+            <button type="button" onClick={() => downloadText("gaveteira-ficha-interna-canva.svg", buildSheetSvg(previewItem, state))}>Ficha interna em SVG</button>
+            <button type="button" onClick={() => downloadSvgAsPng(buildCardSvg(previewItem), "gaveteira-card-canva.png", 342, 520)}>Card em PNG</button>
+            <button type="button" onClick={() => downloadSvgAsPng(buildSheetSvg(previewItem, state), "gaveteira-ficha-interna-canva.png", 1120, 900)}>Ficha interna em PNG</button>
+          </details>
         </div>
         <div className="canva-export-actions">
-          <button type="button" className="primary compact" onClick={copyBrief}><Clipboard size={15} /> Copiar briefing</button>
-          <button type="button" className="ghost compact" onClick={() => downloadText(`${activeDraft.id}-card.svg`, buildCardSvg(activeDraft))}><Download size={15} /> SVG card</button>
-          <button type="button" className="ghost compact" onClick={() => downloadText(`${activeDraft.id}-ficha-interna.svg`, buildSheetSvg(activeDraft))}><Download size={15} /> SVG ficha</button>
+          <button type="button" className="ghost compact" onClick={copyBrief}><Clipboard size={15} /> Copiar briefing</button>
+          <label className="file-button compact">
+            <FileUp size={15} />
+            Importar do Canva
+            <input type="file" accept=".svg,.png,.jpg,.jpeg,.webp,image/*" multiple onChange={(event) => importCanvaFiles(event.target.files)} />
+          </label>
         </div>
         <pre className="canva-brief-preview">{brief}</pre>
       </section>
@@ -238,72 +144,47 @@ export function SeasonalDesignLab() {
         <section className="canva-editor-panel">
           <div className="section-heading">
             <Ruler size={20} />
-            <h3>Medidas</h3>
+            <h3>Medidas de referência</h3>
           </div>
-          <div className="form-grid">
-            <label className="field">
-              <span>Nome</span>
-              <input value={activeDraft.label} onChange={(event) => updateDraft({ label: event.target.value })} />
-            </label>
-            <label className="field">
-              <span>ID técnico</span>
-              <input value={activeDraft.id} onChange={(event) => updateDraft({ id: slugify(event.target.value) })} />
-            </label>
-          </div>
-          <div className="canva-control-grid">
-            <NumberField label="Card largura" value={activeDraft.cardWidth} min={210} max={720} onChange={(value) => updateDraft({ cardWidth: value })} />
-            <NumberField label="Card altura" value={activeDraft.cardHeight} min={320} max={900} onChange={(value) => updateDraft({ cardHeight: value })} />
-            <NumberField label="Capa card" value={activeDraft.cardCoverHeight} min={120} max={520} onChange={(value) => updateDraft({ cardCoverHeight: value })} />
-            <NumberField label="Padding card" value={activeDraft.cardBodyPadding} min={8} max={40} onChange={(value) => updateDraft({ cardBodyPadding: value })} />
-            <NumberField label="Ficha largura" value={activeDraft.sheetWidth} min={720} max={1600} onChange={(value) => updateDraft({ sheetWidth: value })} />
-            <NumberField label="Ficha altura" value={activeDraft.sheetHeight} min={640} max={1800} onChange={(value) => updateDraft({ sheetHeight: value })} />
-            <NumberField label="Capa interna L" value={activeDraft.sheetCoverWidth} min={120} max={420} onChange={(value) => updateDraft({ sheetCoverWidth: value })} />
-            <NumberField label="Capa interna A" value={activeDraft.sheetCoverHeight} min={180} max={680} onChange={(value) => updateDraft({ sheetCoverHeight: value })} />
-            <NumberField label="Padding ficha" value={activeDraft.sheetPadding} min={12} max={80} onChange={(value) => updateDraft({ sheetPadding: value })} />
-            <NumberField label="Vão interno" value={activeDraft.sheetGap} min={8} max={64} onChange={(value) => updateDraft({ sheetGap: value })} />
-            <NumberField label="Raio" value={activeDraft.radius} min={0} max={24} onChange={(value) => updateDraft({ radius: value })} />
-            <NumberField label="Margem segura" value={activeDraft.safeMargin} min={8} max={80} onChange={(value) => updateDraft({ safeMargin: value })} />
+          <div className="canva-reference-grid">
+            <SpecGroup title="Card externo" specs={cardSpec} />
+            <SpecGroup title="Ficha interna" specs={sheetSpec} />
           </div>
         </section>
 
         <section className="canva-editor-panel">
           <div className="section-heading">
-            <Palette size={20} />
-            <h3>Paleta</h3>
+            <FileUp size={20} />
+            <h3>Arquivos importados</h3>
           </div>
-          <div className="canva-color-grid">
-            {(Object.keys(activeDraft.palette) as Array<keyof CanvaPalette>).map((key) => (
-              <ColorField key={key} label={paletteLabels[key]} value={activeDraft.palette[key]} onChange={(value) => updatePalette(key, value)} />
-            ))}
+          <div className="canva-import-list">
+            {state.imports.length ? state.imports.map((file) => (
+              <article key={file.id} className="canva-import-row">
+                <span>{file.dataUrl ? <img src={file.dataUrl} alt="" /> : null}</span>
+                <div>
+                  <strong>{file.name}</strong>
+                  <small>{file.type || "arquivo Canva"} / {formatBytes(file.size)}</small>
+                </div>
+                <button type="button" className="icon-button" onClick={() => updateState({ imports: state.imports.filter((entry) => entry.id !== file.id) })} aria-label="Remover arquivo importado">
+                  <Trash2 size={15} />
+                </button>
+              </article>
+            )) : <p className="empty">Importe SVG, PNG, JPG ou WEBP exportado do Canva para manter os materiais junto do gabarito.</p>}
           </div>
         </section>
 
-        <section className="canva-editor-panel">
+        <section className="canva-editor-panel canva-wide-panel">
           <div className="section-heading">
-            <SlidersHorizontal size={20} />
-            <h3>Tipografia e selos</h3>
-          </div>
-          <div className="form-grid">
-            <label className="field">
-              <span>Fonte título Canva</span>
-              <input value={activeDraft.titleFont} onChange={(event) => updateDraft({ titleFont: event.target.value })} />
-            </label>
-            <label className="field">
-              <span>Fonte texto Canva</span>
-              <input value={activeDraft.bodyFont} onChange={(event) => updateDraft({ bodyFont: event.target.value })} />
-            </label>
-            <label className="field wide">
-              <span>Notas de edição</span>
-              <textarea value={activeDraft.notes} onChange={(event) => updateDraft({ notes: event.target.value })} />
-            </label>
+            <Layers3 size={20} />
+            <h3>Selos</h3>
           </div>
           <div className="canva-add-row">
             <input value={newSeal} onChange={(event) => setNewSeal(event.target.value)} onKeyDown={(event) => event.key === "Enter" ? addSeal() : undefined} placeholder="Novo selo" />
             <button type="button" className="primary compact" onClick={addSeal}><Plus size={15} /> Selo</button>
           </div>
           <div className="canva-seal-list">
-            {activeDraft.seals.map((seal, index) => (
-              <button type="button" key={`${seal}-${index}`} onClick={() => updateDraft({ seals: activeDraft.seals.filter((_, itemIndex) => itemIndex !== index) })}>
+            {state.seals.map((seal, index) => (
+              <button type="button" key={`${seal}-${index}`} onClick={() => updateState({ seals: state.seals.filter((_, itemIndex) => itemIndex !== index) })}>
                 {seal}
                 <Trash2 size={12} />
               </button>
@@ -312,22 +193,20 @@ export function SeasonalDesignLab() {
         </section>
 
         <section className="canva-editor-panel canva-wide-panel">
-          <div className="section-heading split">
-            <div className="section-heading">
-              <Layers3 size={20} />
-              <h3>Camadas para montar no Canva</h3>
-            </div>
+          <div className="section-heading">
+            <Layers3 size={20} />
+            <h3>Camadas para montar no Canva</h3>
           </div>
           <div className="canva-add-row">
             <input value={newLayer} onChange={(event) => setNewLayer(event.target.value)} onKeyDown={(event) => event.key === "Enter" ? addLayer() : undefined} placeholder="Nova camada ou instrução" />
             <button type="button" className="primary compact" onClick={addLayer}><Plus size={15} /> Camada</button>
           </div>
           <div className="canva-layer-list">
-            {activeDraft.layers.map((layer, index) => (
+            {state.layers.map((layer, index) => (
               <article key={`${layer}-${index}`} className="canva-layer-row">
                 <strong>{String(index + 1).padStart(2, "0")}</strong>
-                <input value={layer} onChange={(event) => updateDraft({ layers: activeDraft.layers.map((entry, itemIndex) => itemIndex === index ? event.target.value : entry) })} />
-                <button type="button" className="icon-button" onClick={() => updateDraft({ layers: activeDraft.layers.filter((_, itemIndex) => itemIndex !== index) })} aria-label="Remover camada">
+                <input value={layer} onChange={(event) => updateState({ layers: state.layers.map((entry, itemIndex) => itemIndex === index ? event.target.value : entry) })} />
+                <button type="button" className="icon-button" onClick={() => updateState({ layers: state.layers.filter((_, itemIndex) => itemIndex !== index) })} aria-label="Remover camada">
                   <Trash2 size={15} />
                 </button>
               </article>
@@ -337,56 +216,16 @@ export function SeasonalDesignLab() {
 
         <section className="canva-editor-panel canva-wide-panel">
           <div className="section-heading">
-            <LayoutTemplate size={20} />
-            <h3>Ficha-modelo</h3>
+            <Ruler size={20} />
+            <h3>Partes da ficha</h3>
           </div>
-          <div className="form-grid">
-            <label className="field">
-              <span>Título</span>
-              <input value={activeDraft.preview.title} onChange={(event) => updatePreview({ title: event.target.value })} />
-            </label>
-            <label className="field">
-              <span>Autor/criador</span>
-              <input value={activeDraft.preview.creator} onChange={(event) => updatePreview({ creator: event.target.value })} />
-            </label>
-            <label className="field">
-              <span>Status</span>
-              <input value={activeDraft.preview.status} onChange={(event) => updatePreview({ status: event.target.value })} />
-            </label>
-            <label className="field">
-              <span>Ano</span>
-              <input value={activeDraft.preview.year} onChange={(event) => updatePreview({ year: event.target.value })} />
-            </label>
-            <label className="field">
-              <span>Gênero</span>
-              <input value={activeDraft.preview.genre} onChange={(event) => updatePreview({ genre: event.target.value })} />
-            </label>
-            <label className="field">
-              <span>Nota</span>
-              <select value={activeDraft.preview.rating} onChange={(event) => updatePreview({ rating: Number(event.target.value) as Rating })}>
-                {[0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map((rating) => <option value={rating} key={rating}>{rating}</option>)}
-              </select>
-            </label>
-            <label className="field">
-              <span>Página atual</span>
-              <input value={activeDraft.preview.currentPage} onChange={(event) => updatePreview({ currentPage: event.target.value })} />
-            </label>
-            <label className="field">
-              <span>Total páginas</span>
-              <input value={activeDraft.preview.pages} onChange={(event) => updatePreview({ pages: event.target.value })} />
-            </label>
-            <label className="field wide">
-              <span>Frase/citação</span>
-              <textarea value={activeDraft.preview.quote} onChange={(event) => updatePreview({ quote: event.target.value })} />
-            </label>
-            <label className="field wide">
-              <span>Resumo interno</span>
-              <textarea value={activeDraft.preview.summary} onChange={(event) => updatePreview({ summary: event.target.value })} />
-            </label>
-            <label className="field wide">
-              <span>Diário da ficha</span>
-              <textarea value={activeDraft.preview.diaryNote} onChange={(event) => updatePreview({ diaryNote: event.target.value })} />
-            </label>
+          <div className="canva-parts-grid">
+            {fichaParts.map((part) => (
+              <article key={part.title}>
+                <strong>{part.title}</strong>
+                <p>{part.text}</p>
+              </article>
+            ))}
           </div>
         </section>
       </div>
@@ -394,9 +233,7 @@ export function SeasonalDesignLab() {
       {previewOpen ? (
         <ItemDetails
           item={previewItem}
-          statuses={["Quero ler", "Lendo", "Lido", "Abandonado"]}
-          seasonalStyle={previewStyle}
-          seasonalClassName="canva-template-modal"
+          statuses={defaultStatuses[previewItem.category]}
           onClose={() => setPreviewOpen(false)}
         />
       ) : null}
@@ -404,149 +241,78 @@ export function SeasonalDesignLab() {
   );
 }
 
-function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+function SpecGroup({ title, specs }: { title: string; specs: Array<{ label: string; value: string }> }) {
   return (
-    <label className="canva-color-field">
-      <span>{label}</span>
-      <input type="color" value={value} onChange={(event) => onChange(event.target.value)} />
-      <input value={value} onChange={(event) => onChange(event.target.value)} />
-    </label>
-  );
-}
-
-function NumberField({ label, value, min, max, onChange }: { label: string; value: number; min: number; max: number; onChange: (value: number) => void }) {
-  return (
-    <label className="canva-number-field">
-      <span>{label}</span>
-      <input type="number" min={min} max={max} value={value} onChange={(event) => onChange(numberValue(event.target.value, min, max))} />
-    </label>
-  );
-}
-
-function TemplateOverlay({ draft, compact = false }: { draft: CanvaTemplateDraft; compact?: boolean }) {
-  return (
-    <div className={`canva-template-overlay${compact ? " compact" : ""}`} aria-hidden="true">
-      <span className="canva-safe-margin" />
-      <div className="canva-template-seals">
-        {draft.seals.slice(0, compact ? 3 : 6).map((seal) => <span key={seal}>{seal}</span>)}
+    <article className="canva-spec-group">
+      <h4>{title}</h4>
+      <div>
+        {specs.map((spec) => (
+          <span key={spec.label}>
+            <small>{spec.label}</small>
+            <strong>{spec.value}</strong>
+          </span>
+        ))}
       </div>
-    </div>
+    </article>
   );
 }
 
-function createDefaultDraft(id = "modelo-canva-ficha-gaveteira"): CanvaTemplateDraft {
-  const now = new Date().toISOString();
-  return {
-    id,
-    label: "Ficha Gaveteira para Canva",
-    cardWidth: 342,
-    cardHeight: 520,
-    cardCoverHeight: 220,
-    cardBodyPadding: 14,
-    sheetWidth: 1120,
-    sheetHeight: 900,
-    sheetCoverWidth: 220,
-    sheetCoverHeight: 292,
-    sheetPadding: 16,
-    sheetGap: 18,
-    radius: 8,
-    safeMargin: 24,
-    titleFont: "Fraunces ou Playfair Display",
-    bodyFont: "Inter ou Lato",
-    palette: {
-      paper: "#fffaf1",
-      surface: "#fffdf8",
-      panel: "#fff4da",
-      ink: "#211d18",
-      muted: "#6f6255",
-      line: "#d8c7ad",
-      accent: "#b88737",
-      green: "#346b5d",
-      red: "#9f473d",
-      brass: "#c38625",
-      coverA: "#78644b",
-      coverB: "#9f473d",
-      chip: "#fff4da",
-    },
-    seals: ["Gaveteira", "Privado/amigos", "Diário"],
-    layers: [
-      "01 Fundo: papel #fffaf1 com grade sutil de arquivo.",
-      "02 Capa: área em branco; a capa real continua vindo da gaveta.",
-      "03 Corpo do card: título, status, ano, visibilidade, gênero, diário e nota.",
-      "04 Ficha interna: hero com capa, carimbo de status, título grande e metadados.",
-      "05 Blocos internos: detalhes, progresso, links, linha do tempo e diário.",
-      "06 Selos: chips pequenos com raio alto e contraste suficiente.",
-    ],
-    notes: "Use este gabarito como base no Canva. Exporte o resultado final como imagem e aplique pelas gavetas quando quiser trocar capas ou peças visuais.",
-    preview: {
-      title: "O Atlas das Gavetas",
-      creator: "Modelo Admin",
-      status: "Lendo",
-      year: "2026",
-      genre: "Fantasia documental",
-      rating: 4.5,
-      currentPage: "144",
-      pages: "320",
-      quote: "Um modelo bom deixa a ficha clara sem esconder o arquivo.",
-      summary: "Ficha de referência para montar variações no Canva preservando a estrutura da Gaveteira.",
-      diaryNote: "Validar card externo e ficha interna antes de aplicar qualquer imagem final.",
-    },
-    updatedAt: now,
-  };
-}
-
-function loadDrafts() {
-  if (typeof localStorage === "undefined") return [createDefaultDraft()];
+function loadState(): CanvaTemplateState {
+  const defaults = createDefaultState();
+  if (typeof localStorage === "undefined") return defaults;
   const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) return [createDefaultDraft()];
+  if (!raw) return defaults;
 
   try {
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed) || !parsed.length) return [createDefaultDraft()];
-    return parsed.map((draft) => normalizeDraft(draft)) as CanvaTemplateDraft[];
+    const parsed = JSON.parse(raw) as Partial<CanvaTemplateState>;
+    return {
+      seals: Array.isArray(parsed.seals) ? parsed.seals : defaults.seals,
+      layers: Array.isArray(parsed.layers) ? parsed.layers : defaults.layers,
+      imports: Array.isArray(parsed.imports) ? parsed.imports : defaults.imports,
+    };
   } catch {
     localStorage.removeItem(STORAGE_KEY);
-    return [createDefaultDraft()];
+    return defaults;
   }
 }
 
-function normalizeDraft(draft: Partial<CanvaTemplateDraft>) {
-  const defaults = createDefaultDraft();
+function createDefaultState(): CanvaTemplateState {
   return {
-    ...defaults,
-    ...draft,
-    palette: {
-      ...defaults.palette,
-      ...(draft.palette ?? {}),
-    },
-    preview: {
-      ...defaults.preview,
-      ...(draft.preview ?? {}),
-    },
-    seals: Array.isArray(draft.seals) ? draft.seals : defaults.seals,
-    layers: Array.isArray(draft.layers) ? draft.layers : defaults.layers,
+    seals: ["Gaveteira", "Privado/amigos", "Diário"],
+    layers: [
+      "Fundo: papel do arquivo com grade sutil.",
+      "Card: capa vertical, corpo, status, visibilidade, gênero, diário e nota.",
+      "Interior: modal original com header, hero, capa, título, metadados e blocos.",
+      "Hero: capa à esquerda e identidade da ficha à direita.",
+      "Blocos: detalhes, progresso, links, linha do tempo e diário.",
+      "Selos: chips pequenos para marcações opcionais no arquivo Canva.",
+    ],
+    imports: [],
   };
 }
 
-function createPreviewItem(draft: CanvaTemplateDraft): CulturalItem {
+function pickPreviewItem(items: CulturalItem[]) {
+  return items.find((item) => item.coverUrl) ?? items[0] ?? createFallbackItem();
+}
+
+function createFallbackItem(): CulturalItem {
   const now = new Date().toISOString();
   return {
     id: "canva-template-preview-book",
     category: "books",
-    title: draft.preview.title,
-    author: draft.preview.creator,
-    status: draft.preview.status,
+    title: "O Atlas das Gavetas",
+    author: "Modelo Admin",
+    status: "Lendo",
     startDate: "2026-01-01",
-    endDate: "",
-    pages: numberValue(draft.preview.pages, 1, 9999),
-    currentPage: numberValue(draft.preview.currentPage, 0, 9999),
+    pages: 320,
+    currentPage: 144,
     format: "Outro",
-    rating: draft.preview.rating,
-    genre: draft.preview.genre,
+    rating: 4.5,
+    genre: "Fantasia documental",
     publisher: "Gaveteira Admin",
-    publicationYear: numberValue(draft.preview.year, 0, 9999),
-    favoriteQuotes: draft.preview.quote,
-    personalSummary: draft.preview.summary,
+    publicationYear: 2026,
+    favoriteQuotes: "Um modelo bom deixa a ficha clara sem esconder o arquivo.",
+    personalSummary: "Ficha de referência para montar variações no Canva preservando a estrutura real da Gaveteira.",
     finalOpinion: "",
     coverUrl: "",
     visibility: "friends",
@@ -554,95 +320,65 @@ function createPreviewItem(draft: CanvaTemplateDraft): CulturalItem {
     links: [{ id: "canva-doc", label: "Gabarito Canva", url: "https://www.canva.com/" }],
     timeline: [
       { id: "canva-start", date: "2026-01-01", type: "Comecei", note: "Modelo criado para edição no Canva." },
-      { id: "canva-review", date: now.slice(0, 10), type: "Outro", note: "Revisar proporção, paleta e camadas." },
+      { id: "canva-review", date: now.slice(0, 10), type: "Outro", note: "Revisar proporção, arquivo e camadas." },
     ],
     diary: [
-      { id: "canva-diary-1", date: now.slice(0, 10), type: "Progresso", visibility: "friends", text: draft.notes },
-      { id: "canva-diary-2", date: now.slice(0, 10), type: "Progresso", visibility: "private", text: draft.preview.diaryNote },
+      { id: "canva-diary-1", date: now.slice(0, 10), type: "Progresso", visibility: "friends", text: "Validar card externo e ficha interna antes de aplicar qualquer imagem final." },
     ],
-    seasonalTheme: {
-      id: draft.id,
-      label: draft.label,
-      assignedAt: now,
-    },
     createdAt: now,
     updatedAt: now,
   };
 }
 
-function canvaPreviewStyle(draft: CanvaTemplateDraft) {
-  const palette = draft.palette;
-  return {
-    "--card-bg": palette.paper,
-    "--card-body-bg": palette.surface,
-    "--card-text": palette.ink,
-    "--card-title": palette.ink,
-    "--card-muted": palette.muted,
-    "--card-border": palette.line,
-    "--card-accent": palette.accent,
-    "--card-kicker": palette.green,
-    "--card-tag-bg": palette.chip,
-    "--card-cover-a": palette.coverA,
-    "--card-cover-b": palette.coverB,
-    "--card-open-bg": palette.green,
-    "--sheet-bg": palette.paper,
-    "--sheet-panel": palette.surface,
-    "--sheet-text": palette.ink,
-    "--sheet-title": palette.ink,
-    "--sheet-muted": palette.muted,
-    "--sheet-border": palette.line,
-    "--sheet-section-bg": palette.panel,
-    "--sheet-accent": palette.accent,
-    "--sheet-warning": palette.red,
-    "--sheet-chip-bg": palette.chip,
-    "--sheet-cover-a": palette.coverA,
-    "--sheet-cover-b": palette.coverB,
-    "--lab-detail-image": "none",
-    "--lab-sheet-image-opacity": 0,
-    "--lab-sheet-cover-width": `${draft.sheetCoverWidth}px`,
-    "--lab-sheet-panel-bg": palette.surface,
-    "--lab-sheet-title-scale": 1,
-    "--lab-sheet-density": 1,
-    "--lab-radius": `${draft.radius}px`,
-    "--canva-card-width": `${draft.cardWidth}px`,
-    "--canva-card-height": `${draft.cardHeight}px`,
-    "--canva-card-cover-height": `${draft.cardCoverHeight}px`,
-    "--canva-card-body-padding": `${draft.cardBodyPadding}px`,
-    "--canva-sheet-height": `${draft.sheetHeight}px`,
-    "--canva-sheet-cover-height": `${draft.sheetCoverHeight}px`,
-    "--canva-sheet-padding": `${draft.sheetPadding}px`,
-    "--canva-sheet-gap": `${draft.sheetGap}px`,
-    "--canva-safe-margin": `${draft.safeMargin}px`,
-  } as CSSProperties;
-}
+const fichaParts = [
+  {
+    title: "Fundo",
+    text: "Camada base da ficha. Na Gaveteira ela usa textura clara de arquivo, linhas sutis e contraste baixo para não competir com capa, título e blocos.",
+  },
+  {
+    title: "Capa",
+    text: "Imagem vertical da obra. No card ela ocupa o topo; no interior aparece no hero. A capa continua pertencendo às gavetas, não ao gabarito.",
+  },
+  {
+    title: "Card",
+    text: "Versão externa e vertical da ficha. Mostra capa, status, ano, visibilidade, título, gênero, marcadores de diário, nota e progresso.",
+  },
+  {
+    title: "Hero",
+    text: "Primeiro bloco da ficha interna. Junta capa, carimbo de status, título grande, metadados, nota e ações rápidas.",
+  },
+  {
+    title: "Corpo",
+    text: "Área interna abaixo do hero. Organiza resumo, detalhes, progresso, links, linha do tempo e diário em blocos de arquivo.",
+  },
+  {
+    title: "Selos",
+    text: "Chips opcionais para marcar estados ou campanhas no Canva. Eles não substituem status, nota, visibilidade nem dados reais da ficha.",
+  },
+  {
+    title: "Camadas",
+    text: "Ordem recomendada para montar no Canva: fundo, capa, corpo, textos, blocos, selos e detalhes finais.",
+  },
+];
 
-function buildCanvaBrief(draft: CanvaTemplateDraft) {
-  const palette = Object.entries(draft.palette)
-    .map(([key, value]) => `${paletteLabels[key as keyof CanvaPalette]}: ${value}`)
-    .join("\n");
-  const layers = draft.layers.map((layer) => `- ${layer}`).join("\n");
-  const seals = draft.seals.join(", ");
+function buildCanvaBrief(item: CulturalItem, state: CanvaTemplateState) {
+  const layers = state.layers.map((layer) => `- ${layer}`).join("\n");
+  const seals = state.seals.join(", ");
 
   return [
-    `Gabarito Canva: ${draft.label}`,
+    `Ficha usada como referência: ${getTitle(item)}`,
     "",
     "CARD EXTERNO",
-    `Tamanho: ${draft.cardWidth} x ${draft.cardHeight}px`,
-    `Capa em branco: ${draft.cardWidth} x ${draft.cardCoverHeight}px`,
-    `Corpo: padding ${draft.cardBodyPadding}px, raio ${draft.radius}px`,
+    "Grid real: auto-fill, minmax(210px, 1fr)",
+    "Referência Canva: 342 x 520 px",
+    "Capa: 100% x 220 px",
+    "Corpo: padding 14 px; borda 1 px; raio 8 px",
     "",
     "FICHA INTERNA",
-    `Tamanho: ${draft.sheetWidth} x ${draft.sheetHeight}px`,
-    `Capa interna: ${draft.sheetCoverWidth} x ${draft.sheetCoverHeight}px`,
-    `Padding: ${draft.sheetPadding}px; vão entre capa e conteúdo: ${draft.sheetGap}px`,
-    `Margem segura: ${draft.safeMargin}px`,
-    "",
-    "TIPOGRAFIA",
-    `Título: ${draft.titleFont}`,
-    `Texto: ${draft.bodyFont}`,
-    "",
-    "PALETA",
-    palette,
+    "Modal real: min(1120px, calc(100vw - 28px))",
+    "Referência Canva: 1120 x 900 px",
+    "Hero: capa 220 x 292 px, gap 18 px, padding 16 px",
+    "Blocos: grid auto-fit com mínimo de 180 px",
     "",
     "SELOS",
     seals || "Sem selos",
@@ -650,51 +386,85 @@ function buildCanvaBrief(draft: CanvaTemplateDraft) {
     "CAMADAS",
     layers,
     "",
-    "NOTAS",
-    draft.notes,
+    "OBSERVAÇÃO",
+    "A visualização acima usa o componente real das gavetas. O arquivo Canva serve como gabarito de montagem, não como publicação automática.",
   ].join("\n");
 }
 
-function buildCardSvg(draft: CanvaTemplateDraft) {
-  const p = draft.palette;
-  const bodyY = draft.cardCoverHeight;
-  const bodyHeight = Math.max(0, draft.cardHeight - draft.cardCoverHeight);
-  const titleY = bodyY + draft.cardBodyPadding + 46;
-  return svgDoc(draft.cardWidth, draft.cardHeight, `
-    <rect id="fundo-card" width="100%" height="100%" rx="${draft.radius}" fill="${p.paper}" stroke="${p.line}" />
-    <rect id="capa-em-branco" x="0" y="0" width="${draft.cardWidth}" height="${draft.cardCoverHeight}" fill="${p.surface}" stroke="${p.line}" stroke-dasharray="10 8" />
-    <rect id="corpo-card" x="0" y="${bodyY}" width="${draft.cardWidth}" height="${bodyHeight}" fill="${p.surface}" />
-    <text id="status-ano" x="${draft.cardBodyPadding}" y="${bodyY + draft.cardBodyPadding + 14}" fill="${p.muted}" font-size="14" font-family="${escapeXml(draft.bodyFont)}">${escapeXml(draft.preview.status)} / ${escapeXml(draft.preview.year)}</text>
-    <text id="titulo-card" x="${draft.cardBodyPadding}" y="${titleY}" fill="${p.ink}" font-size="28" font-weight="700" font-family="${escapeXml(draft.titleFont)}">${escapeXml(draft.preview.title)}</text>
-    <text id="genero-card" x="${draft.cardBodyPadding}" y="${titleY + 34}" fill="${p.muted}" font-size="17" font-family="${escapeXml(draft.bodyFont)}">${escapeXml(draft.preview.genre)}</text>
-    <rect id="selo-visibilidade" x="${draft.cardBodyPadding}" y="${titleY + 60}" width="112" height="30" rx="15" fill="${p.chip}" stroke="${p.line}" />
-    <text x="${draft.cardBodyPadding + 14}" y="${titleY + 80}" fill="${p.green}" font-size="12" font-weight="700" font-family="${escapeXml(draft.bodyFont)}">AMIGOS</text>
-    <text id="nota" x="${draft.cardBodyPadding}" y="${draft.cardHeight - draft.cardBodyPadding - 16}" fill="${p.brass}" font-size="20" font-family="${escapeXml(draft.bodyFont)}">Nota ${draft.preview.rating}/5</text>
+function buildCardSvg(item: CulturalItem) {
+  const title = escapeXml(getTitle(item));
+  const genre = escapeXml(getGenre(item) || "Gênero não arquivado");
+  const year = escapeXml(getYear(item) || "Ano");
+  const status = escapeXml(item.status);
+  const visibility = escapeXml(getItemVisibilityLabel(item));
+
+  return svgDoc(342, 520, `
+    <rect id="fundo-card" width="342" height="520" rx="8" fill="${canvaPalette.paper}" stroke="${canvaPalette.line}" />
+    <rect id="capa" x="0" y="0" width="342" height="220" fill="#78644b" />
+    <text id="capa-placeholder" x="171" y="120" text-anchor="middle" fill="#fffaf1" font-size="46" font-weight="800" font-family="Inter, Arial">CAPA</text>
+    <rect id="corpo-card" x="0" y="220" width="342" height="300" fill="${canvaPalette.surface}" />
+    <text id="status-ano" x="14" y="248" fill="${canvaPalette.muted}" font-size="14" font-family="Inter, Arial">${status} / ${year}</text>
+    <rect id="visibilidade" x="14" y="264" width="128" height="28" rx="14" fill="${canvaPalette.panel}" stroke="${canvaPalette.line}" />
+    <text x="28" y="283" fill="${canvaPalette.green}" font-size="11" font-weight="800" font-family="Inter, Arial">${visibility.toUpperCase()}</text>
+    <text id="titulo" x="14" y="328" fill="${canvaPalette.ink}" font-size="26" font-weight="800" font-family="Georgia, serif">${title}</text>
+    <text id="genero" x="14" y="360" fill="${canvaPalette.muted}" font-size="16" font-family="Inter, Arial">${genre}</text>
+    <rect id="diario" x="14" y="384" width="120" height="26" rx="13" fill="${canvaPalette.panel}" stroke="${canvaPalette.line}" />
+    <text x="26" y="402" fill="${canvaPalette.green}" font-size="11" font-weight="800" font-family="Inter, Arial">possui diário</text>
+    <text id="nota" x="14" y="488" fill="${canvaPalette.brass}" font-size="20" font-family="Inter, Arial">Nota ${item.rating ?? " -"}/5</text>
   `);
 }
 
-function buildSheetSvg(draft: CanvaTemplateDraft) {
-  const p = draft.palette;
-  const contentX = draft.sheetPadding + draft.sheetCoverWidth + draft.sheetGap;
-  const contentWidth = draft.sheetWidth - contentX - draft.sheetPadding;
-  return svgDoc(draft.sheetWidth, draft.sheetHeight, `
-    <rect id="fundo-ficha" width="100%" height="100%" rx="${draft.radius}" fill="${p.paper}" stroke="${p.line}" />
-    <rect id="margem-segura" x="${draft.safeMargin}" y="${draft.safeMargin}" width="${draft.sheetWidth - draft.safeMargin * 2}" height="${draft.sheetHeight - draft.safeMargin * 2}" fill="none" stroke="${p.accent}" stroke-dasharray="12 10" opacity="0.55" />
-    <rect id="capa-em-branco" x="${draft.sheetPadding}" y="${draft.sheetPadding}" width="${draft.sheetCoverWidth}" height="${draft.sheetCoverHeight}" rx="${draft.radius}" fill="${p.surface}" stroke="${p.line}" stroke-dasharray="10 8" />
-    <rect id="carimbo-status" x="${contentX}" y="${draft.sheetPadding}" width="124" height="34" rx="4" fill="${p.red}" />
-    <text x="${contentX + 13}" y="${draft.sheetPadding + 23}" fill="#fffaf1" font-size="13" font-weight="700" font-family="${escapeXml(draft.bodyFont)}">${escapeXml(draft.preview.status.toUpperCase())}</text>
-    <text id="titulo-ficha" x="${contentX}" y="${draft.sheetPadding + 96}" fill="${p.ink}" font-size="54" font-weight="700" font-family="${escapeXml(draft.titleFont)}">${escapeXml(draft.preview.title)}</text>
-    <text id="metadados" x="${contentX}" y="${draft.sheetPadding + 136}" fill="${p.muted}" font-size="20" font-family="${escapeXml(draft.bodyFont)}">${escapeXml(draft.preview.creator)} / ${escapeXml(draft.preview.year)} / ${escapeXml(draft.preview.genre)}</text>
-    <rect id="painel-resumo" x="${contentX}" y="${draft.sheetPadding + 172}" width="${contentWidth}" height="150" rx="${draft.radius}" fill="${p.surface}" stroke="${p.line}" />
-    <text x="${contentX + 18}" y="${draft.sheetPadding + 214}" fill="${p.ink}" font-size="24" font-weight="700" font-family="${escapeXml(draft.titleFont)}">Resumo interno</text>
-    <text x="${contentX + 18}" y="${draft.sheetPadding + 252}" fill="${p.muted}" font-size="18" font-family="${escapeXml(draft.bodyFont)}">${escapeXml(draft.preview.summary)}</text>
-    <rect id="painel-diario" x="${draft.sheetPadding}" y="${draft.sheetPadding + draft.sheetCoverHeight + draft.sheetGap}" width="${draft.sheetWidth - draft.sheetPadding * 2}" height="180" rx="${draft.radius}" fill="${p.panel}" stroke="${p.line}" />
-    <text x="${draft.sheetPadding + 18}" y="${draft.sheetPadding + draft.sheetCoverHeight + draft.sheetGap + 44}" fill="${p.ink}" font-size="24" font-weight="700" font-family="${escapeXml(draft.titleFont)}">Diário e linha do tempo</text>
+function buildSheetSvg(item: CulturalItem, state: CanvaTemplateState) {
+  const title = escapeXml(getTitle(item));
+  const meta = escapeXml([getYear(item), getGenre(item)].filter(Boolean).join(" / ") || "Metadados");
+  const summary = escapeXml(getSummary(item));
+  const seals = state.seals.slice(0, 4).map((seal, index) => {
+    const x = 892 + (index % 2) * 100;
+    const y = 790 + Math.floor(index / 2) * 38;
+    return `<rect x="${x}" y="${y}" width="88" height="26" rx="13" fill="${canvaPalette.panel}" stroke="${canvaPalette.line}" /><text x="${x + 44}" y="${y + 17}" text-anchor="middle" fill="${canvaPalette.green}" font-size="10" font-weight="800" font-family="Inter, Arial">${escapeXml(seal)}</text>`;
+  }).join("");
+
+  return svgDoc(1120, 900, `
+    <rect id="fundo" width="1120" height="900" rx="8" fill="${canvaPalette.paper}" stroke="${canvaPalette.line}" />
+    <path id="grade" d="${gridPath(1120, 900, 34)}" stroke="${canvaPalette.line}" stroke-width="1" opacity=".38" />
+    <rect id="hero" x="16" y="16" width="1088" height="330" rx="8" fill="${canvaPalette.surface}" stroke="${canvaPalette.line}" />
+    <rect id="capa" x="32" y="32" width="220" height="292" rx="8" fill="#78644b" stroke="${canvaPalette.surface}" stroke-width="6" />
+    <text x="142" y="188" text-anchor="middle" fill="#fffaf1" font-size="42" font-weight="800" font-family="Inter, Arial">CAPA</text>
+    <rect id="carimbo-status" x="270" y="42" width="130" height="34" rx="4" fill="${canvaPalette.red}" />
+    <text x="335" y="64" text-anchor="middle" fill="#fffaf1" font-size="13" font-weight="800" font-family="Inter, Arial">${escapeXml(item.status.toUpperCase())}</text>
+    <text id="titulo" x="270" y="136" fill="${canvaPalette.ink}" font-size="56" font-weight="800" font-family="Georgia, serif">${title}</text>
+    <text id="metadados" x="270" y="178" fill="${canvaPalette.muted}" font-size="20" font-family="Inter, Arial">${meta}</text>
+    <text id="nota" x="270" y="224" fill="${canvaPalette.brass}" font-size="26" font-family="Inter, Arial">Nota ${item.rating ?? " -"}/5</text>
+    <rect id="resumo" x="16" y="370" width="528" height="180" rx="8" fill="${canvaPalette.surface}" stroke="${canvaPalette.line}" />
+    <text x="36" y="414" fill="${canvaPalette.ink}" font-size="24" font-weight="800" font-family="Georgia, serif">Resumo</text>
+    <text x="36" y="454" fill="${canvaPalette.muted}" font-size="18" font-family="Inter, Arial">${summary}</text>
+    <rect id="detalhes" x="576" y="370" width="528" height="180" rx="8" fill="${canvaPalette.surface}" stroke="${canvaPalette.line}" />
+    <text x="596" y="414" fill="${canvaPalette.ink}" font-size="24" font-weight="800" font-family="Georgia, serif">Detalhes</text>
+    <text x="596" y="454" fill="${canvaPalette.muted}" font-size="18" font-family="Inter, Arial">Blocos internos da ficha original</text>
+    <rect id="diario" x="16" y="580" width="1088" height="280" rx="8" fill="${canvaPalette.panel}" stroke="${canvaPalette.line}" />
+    <text x="36" y="626" fill="${canvaPalette.ink}" font-size="24" font-weight="800" font-family="Georgia, serif">Diário e linha do tempo</text>
+    <text x="36" y="668" fill="${canvaPalette.muted}" font-size="18" font-family="Inter, Arial">Área para notas, progresso e eventos da ficha.</text>
+    ${seals}
   `);
+}
+
+function getSummary(item: CulturalItem) {
+  if (item.category === "books") return item.personalSummary || item.favoriteQuotes || "Resumo interno";
+  if (item.category === "games") return item.notes || item.perceivedDifficulty || "Resumo interno";
+  if (item.category === "albums") return item.comments || item.favoriteTracks || "Resumo interno";
+  if (item.category === "movies") return item.comments || "Resumo interno";
+  return item.comments || "Resumo interno";
 }
 
 function svgDoc(width: number, height: number, body: string) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img">${body}</svg>`;
+}
+
+function gridPath(width: number, height: number, step: number) {
+  const lines: string[] = [];
+  for (let x = step; x < width; x += step) lines.push(`M${x} 0V${height}`);
+  for (let y = step; y < height; y += step) lines.push(`M0 ${y}H${width}`);
+  return lines.join(" ");
 }
 
 function downloadText(filename: string, content: string) {
@@ -707,19 +477,45 @@ function downloadText(filename: string, content: string) {
   URL.revokeObjectURL(url);
 }
 
-function slugify(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9_-]+/g, "-")
-    .replace(/^-+|-+$/g, "") || "modelo-canva-ficha";
+function downloadSvgAsPng(svg: string, filename: string, width: number, height: number) {
+  const image = new Image();
+  const svgUrl = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml;charset=utf-8" }));
+  image.onload = () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d");
+    if (!context) return;
+    context.drawImage(image, 0, 0, width, height);
+    URL.revokeObjectURL(svgUrl);
+    const link = document.createElement("a");
+    link.href = canvas.toDataURL("image/png");
+    link.download = filename;
+    link.click();
+  };
+  image.src = svgUrl;
 }
 
-function numberValue(value: string | number, min: number, max: number) {
-  const parsed = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(parsed)) return min;
-  return Math.min(max, Math.max(min, parsed));
+function readImportedFile(file: File) {
+  return new Promise<ImportedCanvaFile>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve({
+      id: `canva-import-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      dataUrl: String(reader.result ?? ""),
+      importedAt: new Date().toISOString(),
+    });
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+function formatBytes(size: number) {
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function escapeXml(value: string | number) {
