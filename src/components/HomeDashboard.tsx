@@ -51,6 +51,8 @@ export function HomeDashboard({
   const friendActivity = useMemo(() => buildFriendActivity(socialItems, session?.user.id ?? ""), [socialItems, session?.user.id]);
   const checklist = buildOnboardingChecklist({ items, connectedToFamily, profileReady, favoriteDrawersReady, syncSkipped });
   const showOnboarding = checklist.some((entry) => !entry.done) || items.length < 2;
+  const completedOnboardingSteps = checklist.filter((entry) => entry.done).length;
+  const nextOnboardingStep = checklist.find((entry) => !entry.done);
 
   useEffect(() => {
     if (!session) {
@@ -99,96 +101,37 @@ export function HomeDashboard({
 
   return (
     <main className="page">
-      <section className="hero">
-        <div>
+      <section className="hero hero-editorial">
+        <div className="hero-editorial-copy">
           <p className="eyebrow">Arquivo pessoal de cultura</p>
           <h1>Gaveteira</h1>
           <p>Uma mesa de controle local para o que você jogou, leu, ouviu, assistiu, largou e ainda quer descobrir.</p>
         </div>
-        <div className="hero-counters" aria-label="Resumo rápido">
+        <div className="hero-cover-stack" aria-label="Capas recentes da sua Gaveteira">
+          {[0, 1, 2].map((index) => {
+            const item = latestItems[index];
+            return item ? (
+              <button
+                key={item.id}
+                type="button"
+                className={`hero-cover hero-cover-${index + 1}`}
+                onClick={() => onOpenItem(item)}
+                aria-label={`Abrir ${getTitle(item)}`}
+              >
+                <Cover item={item} />
+              </button>
+            ) : (
+              <span key={`empty-cover-${index}`} className={`hero-cover hero-cover-placeholder hero-cover-${index + 1}`} aria-hidden="true">
+                <Archive size={28} />
+              </span>
+            );
+          })}
+        </div>
+        <div className="hero-counters" aria-label={`${items.length} itens catalogados`}>
           <strong>{items.length}</strong>
-          <span>itens catalogados</span>
+          <span>itens</span>
         </div>
       </section>
-
-      <section className="quick-stats">
-        <Metric label="Jogos zerados" value={stats.headline.gamesCompleted} />
-        <Metric label="Livros lidos" value={stats.headline.booksRead} />
-        <Metric label="Discos ouvidos" value={stats.headline.albumsHeard} />
-        <Metric label="Filmes assistidos" value={stats.headline.moviesWatched} />
-        <Metric label="Séries acompanhadas" value={stats.headline.seriesTracked} />
-        <Metric label="Na wishlist" value={stats.wishlist.length} />
-      </section>
-
-      {showOnboarding ? (
-        <section className="onboarding-grid" aria-label="Primeiros passos">
-          <article className="onboarding-card onboarding-start">
-            <div>
-              <p className="eyebrow">Primeiros passos</p>
-              <h2>Monte sua Gaveteira sem encarar uma tela vazia</h2>
-              <p>Crie seu perfil, escolha gavetas favoritas e guarde a primeira ficha. A nuvem pode vir agora ou depois.</p>
-            </div>
-            <div className="quick-add-grid">
-              {(Object.keys(categoryLabels) as Category[]).map((category) => {
-                const Icon = icons[category];
-                return (
-                  <button key={category} type="button" onClick={() => onAddItem(category)}>
-                    <Icon size={18} />
-                    <span>{categoryLabels[category]}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </article>
-
-          <article className="onboarding-card">
-            <div className="section-heading">
-              <CheckCircle2 size={20} />
-              <h2>Checklist inicial</h2>
-            </div>
-            <div className="onboarding-checklist">
-              {checklist.map((entry) => (
-                <button key={entry.label} type="button" className={entry.done ? "done" : ""} onClick={() => entry.action(onAddItem, onOpenFamily, onOpenCategory)}>
-                  {entry.done ? <CheckCircle2 size={18} /> : <Circle size={18} />}
-                  <span>{entry.label}</span>
-                </button>
-              ))}
-            </div>
-          </article>
-
-          <article className="onboarding-card family-onboarding">
-            <Users size={22} />
-            <div>
-              <h2>{connectedToFamily ? "Social conectado" : syncSkipped ? "Sincronização pulada por enquanto" : "Conectar ou pular"}</h2>
-              <p>
-                {connectedToFamily
-                  ? "Você pode procurar pessoas, aceitar convites e visitar a gaveteira dos seus amigos."
-                  : syncSkipped
-                    ? "Tudo continua salvo neste navegador. Quando quiser, abra Social para conectar."
-                    : "Entre para salvar na nuvem e ver amigos, ou pule para começar só no aparelho."}
-              </p>
-            </div>
-            <div className="onboarding-sync-actions">
-              <button type="button" className="ghost" onClick={onOpenFamily}>{connectedToFamily ? "Ver social" : "Conectar"}</button>
-              {!connectedToFamily && !syncSkipped ? (
-                <button type="button" className="ghost subtle" onClick={skipSync}>Pular por agora</button>
-              ) : null}
-            </div>
-          </article>
-
-          <article className="onboarding-card social-onboarding-card">
-            <MessageSquare size={22} />
-            <div>
-              <p className="eyebrow">Primeiro círculo</p>
-              <h2>Convide amigos quando quiser comparar gavetas</h2>
-              <p>O social funciona por amizade aceita: fichas visíveis aparecem para amigos; fichas privadas e diários privados continuam guardados.</p>
-            </div>
-            <div className="social-onboarding-actions">
-              <button type="button" className="ghost" onClick={onOpenFamily}>Abrir Social</button>
-            </div>
-          </article>
-        </section>
-      ) : null}
 
       <section className="section home-continue-panel">
         <div className="section-heading split">
@@ -233,6 +176,71 @@ export function HomeDashboard({
           </div>
         )}
       </section>
+
+      <section className="metric-band" aria-label="Resumo da sua coleção">
+        <Metric label="Jogos zerados" value={stats.headline.gamesCompleted} />
+        <Metric label="Livros lidos" value={stats.headline.booksRead} />
+        <Metric label="Discos ouvidos" value={stats.headline.albumsHeard} />
+        <Metric label="Filmes assistidos" value={stats.headline.moviesWatched} />
+        <Metric label="Séries acompanhadas" value={stats.headline.seriesTracked} />
+        <Metric label="Na wishlist" value={stats.wishlist.length} />
+      </section>
+
+      {showOnboarding ? (
+        <details className="onboarding-trail">
+          <summary>
+            <span className="onboarding-trail-icon"><ListChecks size={20} /></span>
+            <span className="onboarding-trail-copy">
+              <small>Primeiros passos</small>
+              <strong>{nextOnboardingStep ? `Próximo: ${nextOnboardingStep.label}` : "Tudo pronto para explorar"}</strong>
+            </span>
+            <span className="onboarding-trail-count">{completedOnboardingSteps}/{checklist.length}</span>
+            <span className="onboarding-trail-progress" aria-hidden="true">
+              {checklist.map((entry) => <i key={entry.label} className={entry.done ? "done" : ""} />)}
+            </span>
+          </summary>
+          <div className="onboarding-trail-body">
+            <section>
+              <h3>Trilha inicial</h3>
+              <div className="onboarding-checklist">
+                {checklist.map((entry) => (
+                  <button key={entry.label} type="button" className={entry.done ? "done" : ""} onClick={() => entry.action(onAddItem, onOpenFamily, onOpenCategory)}>
+                    {entry.done ? <CheckCircle2 size={18} /> : <Circle size={18} />}
+                    <span>{entry.label}</span>
+                  </button>
+                ))}
+              </div>
+            </section>
+            <section>
+              <p className="eyebrow">Abrir uma ficha</p>
+              <div className="quick-add-grid">
+                {(Object.keys(categoryLabels) as Category[]).map((category) => {
+                  const Icon = icons[category];
+                  return (
+                    <button key={category} type="button" onClick={() => onAddItem(category)}>
+                      <Icon size={18} />
+                      <span>{categoryLabels[category]}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+            <footer className="onboarding-trail-social">
+              <span><Users size={20} /></span>
+              <div>
+                <strong>{connectedToFamily ? "Social conectado" : syncSkipped ? "Sincronização pulada por enquanto" : "Conectar ou continuar local"}</strong>
+                <small>{connectedToFamily ? "Visite gaveteiras e acompanhe seus amigos." : "Suas fichas continuam seguras neste navegador."}</small>
+              </div>
+              <div className="onboarding-sync-actions">
+                <button type="button" className="ghost compact" onClick={onOpenFamily}>{connectedToFamily ? "Ver social" : "Conectar"}</button>
+                {!connectedToFamily && !syncSkipped ? (
+                  <button type="button" className="ghost compact subtle" onClick={skipSync}>Pular</button>
+                ) : null}
+              </div>
+            </footer>
+          </div>
+        </details>
+      ) : null}
 
       <section className="section home-life-panel" aria-label="Painel da vida cultural">
         <div className="section-heading split">
