@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ElementType } from "react";
-import { AlertTriangle, Archive, Award, BarChart3, BookOpen, CheckCircle2, ChevronDown, CloudOff, Disc3, Download, FileText, Film, Gamepad2, Home, Library, ListChecks, Loader2, LogIn, LogOut, MessageSquare, Palette, RefreshCw, RotateCcw, Settings, Share, ShieldCheck, Tv, UserCheck, UserPlus, Users, WifiOff, X } from "lucide-react";
+import { AlertTriangle, Archive, BarChart3, BookOpen, CheckCircle2, ChevronDown, CloudOff, Disc3, Download, FileText, Film, Gamepad2, Home, Library, ListChecks, Loader2, LogIn, LogOut, MessageSquare, Palette, RefreshCw, RotateCcw, Settings, Share, ShieldCheck, Tv, UserCheck, UserPlus, Users, WifiOff, X } from "lucide-react";
 import { AppData, AppSettings, BookItem, Category, CloudSession, CulturalItem, ViewKey } from "./types";
 import { createEmptyData, loadData, saveData } from "./storage/localStore";
 import { createSafetySnapshot, snapshotIfRuntimeChanged } from "./storage/snapshots";
@@ -659,12 +659,12 @@ function App() {
         />
       );
     }
-    if (view === "adminDesign" || view === "adminCuration") {
+    if (view === "adminDesign" || view === "adminMembers") {
       return (
         <AdminView
           settings={effectiveSettings}
           session={cloudSession}
-          page={view === "adminDesign" ? "design" : "curation"}
+          page={view === "adminDesign" ? "design" : "members"}
           onPageChange={selectAdminPage}
         />
       );
@@ -716,7 +716,7 @@ function App() {
       selectView("home");
       return;
     }
-    selectView(nextPage === "design" ? "adminDesign" : "adminCuration");
+    selectView(nextPage === "design" ? "adminDesign" : "adminMembers");
   }
 
   async function installApp() {
@@ -1048,8 +1048,8 @@ function App() {
             </div>
           </div>
           {cloudSession?.profile?.role === "admin" ? (
-            <div className={`drawer-nav ${view === "adminDesign" || view === "adminCuration" ? "active" : ""}`}>
-              <button className="drawer-nav-trigger" type="button" onClick={() => selectAdminPage(view === "adminCuration" ? "curation" : "design")}>
+            <div className={`drawer-nav ${view === "adminDesign" || view === "adminMembers" ? "active" : ""}`}>
+              <button className="drawer-nav-trigger" type="button" onClick={() => selectAdminPage(view === "adminMembers" ? "members" : "design")}>
                 <ShieldCheck size={18} />
                 <span>Admin</span>
                 <ChevronDown size={16} />
@@ -1059,9 +1059,9 @@ function App() {
                   <Palette size={18} />
                   <span>Design sazonal</span>
                 </button>
-                <button className={view === "adminCuration" ? "active" : ""} onClick={() => selectAdminPage("curation")}>
-                  <Award size={18} />
-                  <span>Membros e curadoria</span>
+                <button className={view === "adminMembers" ? "active" : ""} onClick={() => selectAdminPage("members")}>
+                  <ShieldCheck size={18} />
+                  <span>Membros</span>
                 </button>
               </div>
             </div>
@@ -1113,7 +1113,7 @@ function App() {
           <span>Social</span>
         </button>
         {cloudSession?.profile?.role === "admin" ? (
-          <button type="button" className={view === "adminDesign" || view === "adminCuration" ? "active" : ""} onClick={() => selectAdminPage(view === "adminCuration" ? "curation" : "design")}>
+          <button type="button" className={view === "adminDesign" || view === "adminMembers" ? "active" : ""} onClick={() => selectAdminPage(view === "adminMembers" ? "members" : "design")}>
             <ShieldCheck size={20} />
             <span>Admin</span>
           </button>

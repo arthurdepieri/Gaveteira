@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -15,9 +16,16 @@ const packagePath = path.join(rootDir, "package.json");
 const changelogPath = path.join(rootDir, "CHANGELOG.md");
 const distDir = path.join(rootDir, "dist");
 const releasesDir = path.join(rootDir, "releases");
+const notesDir = path.join(releasesDir, "notes");
+const driveDir = path.join(releasesDir, "drive");
 const zipFileName = `Gaveteira-${version}.zip`;
 const zipPath = path.join(releasesDir, zipFileName);
+const notesFileName = `Gaveteira-${version}-release-notes.md`;
+const handoffFileName = `Gaveteira-${version}-drive-handoff.json`;
 const manifestPath = path.join(releasesDir, "manifest.json");
+const driveFolderName = process.env.GAVETEIRA_GOOGLE_DRIVE_FOLDER_NAME
+  ?? process.env.GAVETEIRA_RELEASE_DRIVE_FOLDER
+  ?? "Gaveteira Versions";
 const npmCommand = "npm";
 
 function run(command, args, options = {}) {
@@ -68,6 +76,102 @@ function extractChangelogSection(targetVersion) {
     title: headerTail.replace(/^-\s*/, "").replace(/\s+-\s+\d{4}-\d{2}-\d{2}\s*$/, "").trim(),
     notes: body,
   };
+}
+
+function buildShortNotes(changelogSection) {
+  const lines = changelogSection.notes.split(/\r?\n/);
+  const summary = lines.find((line) => {
+    const trimmed = line.trim();
+    return trimmed && !trimmed.startsWith("#") && !trimmed.startsWith("-");
+  })?.trim() ?? "";
+
+  const highlights = [];
+  let isInHighlights = false;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    if (/^###\s+Destaques/i.test(trimmed)) {
+      isInHighlights = true;
+      continue;
+    }
+
+    if (isInHighlights && /^###\s+/.test(trimmed)) {
+      break;
+    }
+
+    if (isInHighlights && trimmed.startsWith("- ")) {
+      highlights.push(trimmed.slice(2).trim());
+    }
+  }
+
+  return {
+    summary,
+    highlights: highlights.slice(0, 5),
+  };
+}
+
+function formatShortNotesMarkdown(release) {
+  const headingTitle = release.title ? ` - ${release.title}` : "";
+  const highlights = release.shortNotes.highlights.length > 0
+    ? release.shortNotes.highlights.map((item) => `- ${item}`).join("\n")
+    : "- Sem destaques curtos extraidos automaticamente.";
+
+  return `# Gaveteira ${release.version}${headingTitle}
+
+Data: ${release.date}
+Arquivo final: ${release.drive.finalFileName}
+Pasta no Google Drive: ${release.drive.folderName}
+
+## Resumo
+
+${release.shortNotes.summary || "Release beta da Gaveteira."}
+
+## Destaques
+
+${highlights}
+
+## Upload
+
+Com token do Google Drive configurado:
+
+\`\`\`bash
+npm run release:drive -- ${release.version}
+\`\`\`
+`;
+}
+
+function createDriveHandoff(release) {
+  mkdirSync(notesDir, { recursive: true });
+  mkdirSync(driveDir, { recursive: true });
+
+  const notesPath = path.join(notesDir, notesFileName);
+  const handoffPath = path.join(driveDir, handoffFileName);
+  const notesManifestPath = `releases/notes/${notesFileName}`;
+  const handoffManifestPath = `releases/drive/${handoffFileName}`;
+
+  release.drive.notesPath = notesManifestPath;
+  release.drive.handoffPath = handoffManifestPath;
+
+  writeFileSync(notesPath, formatShortNotesMarkdown(release), "utf8");
+  writeFileSync(
+    handoffPath,
+    `${JSON.stringify({
+      version: release.version,
+      date: release.date,
+      title: release.title,
+      archivePath: release.archivePath,
+      archiveSizeBytes: release.archiveSizeBytes,
+      archiveSha256: release.archiveSha256,
+      shortNotes: release.shortNotes,
+      drive: release.drive,
+    }, null, 2)}\n`,
+    "utf8",
+  );
+}
+
+function getFileSha256(filePath) {
+  return createHash("sha256").update(readFileSync(filePath)).digest("hex");
 }
 
 function compressDist() {
@@ -121,6 +225,7 @@ if (packageJson.version !== version) {
 }
 
 const changelogSection = extractChangelogSection(version);
+const shortNotes = buildShortNotes(changelogSection);
 
 run(npmCommand, ["run", "build"]);
 compressDist();
@@ -130,10 +235,25 @@ const release = {
   date: changelogSection.date,
   title: changelogSection.title,
   notes: changelogSection.notes,
+  shortNotes,
   archivePath: `releases/${zipFileName}`,
+  archiveSizeBytes: statSync(zipPath).size,
+  archiveSha256: getFileSha256(zipPath),
+  drive: {
+    folderName: driveFolderName,
+    finalFileName: zipFileName,
+    archivePath: `releases/${zipFileName}`,
+    notesFileName,
+    uploadScript: `npm run release:drive -- ${version}`,
+    status: "pending",
+  },
 };
 
+createDriveHandoff(release);
 writeManifest(release);
 
 console.log(`Release criado: ${release.archivePath}`);
 console.log(`Manifest atualizado: releases/manifest.json`);
+console.log(`Pacote para Drive: ${release.drive.folderName}/${release.drive.finalFileName}`);
+console.log(`Notas curtas: ${release.drive.notesPath}`);
+console.log(`Upload conectado: ${release.drive.uploadScript}`);

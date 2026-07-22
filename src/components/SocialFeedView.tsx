@@ -1,20 +1,11 @@
-import { Award, BookmarkPlus, CheckCircle2, Cloud, Heart, Loader2, MessageSquare, RefreshCw, ShieldCheck, Sparkles, X } from "lucide-react";
+import { BookmarkPlus, CheckCircle2, Cloud, Heart, Loader2, MessageSquare, RefreshCw, ShieldCheck, Sparkles, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AppSettings, Category, CloudSession, CulturalItem, CuratedRecommendation, FamilyItem, Friendship, SocialProfile } from "../types";
+import { AppSettings, CloudSession, CulturalItem, FamilyItem } from "../types";
 import { categoryLabels, defaultStatuses } from "../data/catalog";
-import { CloudSocialFeedEvent, fetchCuratedRecommendations, fetchFriendships, fetchMyProfile, fetchSocialFeed, fetchSocialItems, upsertMyItem } from "../services/supabaseCloud";
-import { getGenres, getRating, getTitle, isCompleted, isInProgress, isWishlist, uid } from "../utils/itemHelpers";
+import { CloudSocialFeedEvent, fetchMyProfile, fetchSocialFeed, fetchSocialItems, upsertMyItem } from "../services/supabaseCloud";
+import { getRating, getTitle, isCompleted, isWishlist, uid } from "../utils/itemHelpers";
 import { AuthGate } from "./AuthGate";
-import { Cover } from "./Cover";
 import { ItemDetails } from "./ItemDetails";
-import { Stars } from "./Rating";
-
-interface OwnerGroup {
-  ownerId: string;
-  ownerName: string;
-  profile?: SocialProfile;
-  entries: FamilyItem[];
-}
 
 const SOCIAL_REFRESH_INTERVAL_MS = 30_000;
 
@@ -35,51 +26,14 @@ export function SocialFeedView({
 }) {
   const [socialItems, setSocialItems] = useState<FamilyItem[]>([]);
   const [cloudFeedEvents, setCloudFeedEvents] = useState<FeedEvent[]>([]);
-  const [curatedRecommendations, setCuratedRecommendations] = useState<CuratedRecommendation[]>([]);
-  const [friendships, setFriendships] = useState<Friendship[]>([]);
   const [savingEventId, setSavingEventId] = useState("");
   const [feedScope, setFeedScope] = useState<"friends" | "mine">("friends");
-  const [curationCategory, setCurationCategory] = useState<Category | "all">("all");
   const [activeEntry, setActiveEntry] = useState<FamilyItem | null>(null);
   const [activeDiaryId, setActiveDiaryId] = useState<string | undefined>();
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [feedLoaded, setFeedLoaded] = useState(false);
   const feedLoadedRef = useRef(false);
-
-  const acceptedFriends = friendships.filter((friendship) => friendship.status === "accepted");
-  const groups = useMemo<OwnerGroup[]>(() => {
-    if (!session) return [];
-
-    const byOwner = socialItems.reduce<Record<string, OwnerGroup>>((acc, item) => {
-      acc[item.ownerId] = acc[item.ownerId] ?? {
-        ownerId: item.ownerId,
-        ownerName: item.ownerName,
-        profile: item.ownerId === session.user.id ? session.profile : acceptedFriends.find((friendship) => friendship.profile.id === item.ownerId)?.profile,
-        entries: [],
-      };
-      acc[item.ownerId].entries.push(item);
-      return acc;
-    }, {});
-
-    byOwner[session.user.id] = byOwner[session.user.id] ?? {
-      ownerId: session.user.id,
-      ownerName: session.profile?.displayName || session.user.email || "Você",
-      profile: session.profile,
-      entries: [],
-    };
-
-    acceptedFriends.forEach((friendship) => {
-      byOwner[friendship.profile.id] = byOwner[friendship.profile.id] ?? {
-        ownerId: friendship.profile.id,
-        ownerName: friendship.profile.displayName,
-        profile: friendship.profile,
-        entries: [],
-      };
-    });
-
-    return Object.values(byOwner);
-  }, [acceptedFriends, session, socialItems]);
 
   const socialFeed = useMemo(() => {
     const viewerId = session?.user.id ?? "";
@@ -96,15 +50,6 @@ export function SocialFeedView({
       .map((entry) => entry.item);
     return new Set([...localItems, ...cloudItems].map(comparableKey).filter(Boolean));
   }, [localItems, session?.user.id, socialItems]);
-  const curatedByCategory = useMemo(() => {
-    return (Object.keys(categoryLabels) as Category[]).map((category) => ({
-      category,
-      count: curatedRecommendations.filter((recommendation) => recommendation.item.category === category).length,
-    }));
-  }, [curatedRecommendations]);
-  const visibleCuratedRecommendations = curationCategory === "all"
-    ? curatedRecommendations
-    : curatedRecommendations.filter((recommendation) => recommendation.item.category === curationCategory);
 
   useEffect(() => {
     if (!session) return;
@@ -127,17 +72,13 @@ export function SocialFeedView({
     }
 
     try {
-      const [nextFriendships, nextItems, recommendations, freshProfile] = await Promise.all([
-        fetchFriendships(settings, session),
+      const [nextItems, freshProfile] = await Promise.all([
         fetchSocialItems(settings, session),
-        fetchCuratedRecommendations(settings, session),
         fetchMyProfile(settings, session),
       ]);
       const backendFeed = await fetchSocialFeed(settings, session).catch(() => []);
-      setFriendships(nextFriendships);
       setSocialItems(nextItems);
       setCloudFeedEvents(backendFeed.map((event) => cloudFeedEventToFeedEvent(event, session.user.id)));
-      setCuratedRecommendations(recommendations);
       if (JSON.stringify(freshProfile) !== JSON.stringify(session.profile)) {
         onAuthenticated({ ...session, profile: freshProfile });
       }
@@ -201,7 +142,7 @@ export function SocialFeedView({
         <div>
           <p className="eyebrow">Movimento social</p>
           <h1>Feed</h1>
-          <p>Eventos simples da sua rede, notas públicas e recomendações, sem transformar tudo em mural barulhento.</p>
+          <p>Eventos simples da sua rede e notas públicas, sem transformar tudo em mural barulhento.</p>
         </div>
         <MessageSquare size={38} />
       </section>
@@ -223,7 +164,7 @@ export function SocialFeedView({
             <MessageSquare size={20} />
             <h2>Feed</h2>
           </div>
-            <span className="soft-label">movimento leve, sem placar</span>
+          <span className="soft-label">movimento leve, sem placar</span>
         </div>
         <div className="feed-scope-tabs" aria-label="Filtrar feed">
           <button
@@ -256,41 +197,6 @@ export function SocialFeedView({
         </div>
       </section>
 
-      <section className="setting-panel social-curation-panel">
-        <div className="section-heading split">
-          <div className="section-heading">
-            <Award size={20} />
-            <h2>Recomendações da Gaveteira</h2>
-          </div>
-          <span className="soft-label">{curatedRecommendations.length} destaques</span>
-        </div>
-        <p className="curation-intro">Fichas reconhecidas por admins</p>
-        <div className="curation-filter-row" aria-label="Filtrar recomendações por gaveta">
-          <button type="button" className={curationCategory === "all" ? "active" : ""} onClick={() => setCurationCategory("all")}>
-            Todas <span>{curatedRecommendations.length}</span>
-          </button>
-          {curatedByCategory.map(({ category, count }) => (
-            <button key={category} type="button" className={curationCategory === category ? "active" : ""} onClick={() => setCurationCategory(category)}>
-              {categoryLabels[category]} <span>{count}</span>
-            </button>
-          ))}
-        </div>
-        <div className="curation-feed-grid">
-          {visibleCuratedRecommendations.length ? visibleCuratedRecommendations.slice(0, 10).map((recommendation) => (
-            <button key={recommendation.recommendationId} type="button" className="curation-feed-card" onClick={() => openCuratedRecommendation(recommendation)}>
-              <Cover item={recommendation.item} compact />
-              <span>
-                <small><Award size={13} /> Curadoria / ficha de {recommendation.ownerName}</small>
-                <strong>{getTitle(recommendation.item)}</strong>
-                <em>{categoryLabels[recommendation.item.category]} / curadoria de {recommendation.curatorName}</em>
-                {recommendation.note ? <p>{recommendation.note}</p> : null}
-                <Stars value={recommendation.item.rating} />
-              </span>
-            </button>
-          )) : <p className="empty">{curatedRecommendations.length ? "Nenhuma recomendação nessa gaveta por enquanto." : "Quando um admin reconhecer uma ficha, ela aparece aqui como recomendação da Gaveteira."}</p>}
-        </div>
-      </section>
-
       {activeEntry ? <ItemDetails item={activeEntry.item} ownerName={activeEntry.ownerName} focusDiaryId={activeDiaryId} onClose={() => { setActiveEntry(null); setActiveDiaryId(undefined); }} /> : null}
     </main>
   );
@@ -298,11 +204,6 @@ export function SocialFeedView({
   function openFeedEvent(event: FeedEvent) {
     setActiveEntry(event.entry);
     setActiveDiaryId(event.diaryId);
-  }
-
-  function openCuratedRecommendation(recommendation: CuratedRecommendation) {
-    setActiveEntry(recommendation);
-    setActiveDiaryId(undefined);
   }
 }
 
@@ -485,62 +386,6 @@ function cloudFeedText(kind: CloudSocialFeedEvent["eventType"], actor: string, t
   return `${actor} adicionou ${title}.`;
 }
 
-function buildSocialComparisons(groups: OwnerGroup[], viewerId: string) {
-  const entries = groups.flatMap((group) => group.entries).filter((entry) => entry.item.visibility !== "private");
-  const byWork = groupComparableEntries(entries);
-  const commonItems = byWork
-    .filter(([, workEntries]) => new Set(workEntries.map((entry) => entry.ownerId)).size > 1)
-    .slice(0, 6)
-    .map(([, workEntries]) => `${getTitle(workEntries[0].item)}: ${ownerNames(workEntries, viewerId).join(", ")}`);
-
-  const ratingDifferences = byWork
-    .map(([, workEntries]) => {
-      const rated = workEntries.filter((entry) => getRating(entry.item) > 0);
-      const owners = new Set(rated.map((entry) => entry.ownerId));
-      if (owners.size < 2) return "";
-      const ratings = rated.map((entry) => getRating(entry.item));
-      const spread = Math.max(...ratings) - Math.min(...ratings);
-      if (spread < 1) return "";
-      return `${getTitle(rated[0].item)}: ${rated.map((entry) => `${entry.ownerId === viewerId ? "você" : entry.ownerName} ${getRating(entry.item)}`).join(" x ")}`;
-    })
-    .filter(Boolean)
-    .slice(0, 6);
-
-  const sharedWishlist = byWork
-    .filter(([, workEntries]) => workEntries.filter((entry) => isWishlist(entry.item)).length > 1)
-    .slice(0, 6)
-    .map(([, workEntries]) => `${ownerNames(workEntries.filter((entry) => isWishlist(entry.item)), viewerId).join(" e ")} querem ${getTitle(workEntries[0].item)}`);
-
-  const favoriteRanking = [...entries]
-    .filter((entry) => getRating(entry.item) >= 4.5)
-    .sort((a, b) => getRating(b.item) - getRating(a.item))
-    .slice(0, 6)
-    .map((entry) => `${getTitle(entry.item)} (${entry.ownerId === viewerId ? "você" : entry.ownerName}, ${getRating(entry.item)})`);
-
-  const topGenres = topEntries(entries.flatMap((entry) => getGenres(entry.item)), 6);
-  const activePeople = groups
-    .map((group) => {
-      const count = group.entries.filter((entry) => isInProgress(entry.item)).length;
-      return count ? `${group.ownerId === viewerId ? "Você" : group.ownerName}: ${count} em andamento` : "";
-    })
-    .filter(Boolean)
-    .slice(0, 6);
-
-  return { commonItems, ratingDifferences, sharedWishlist, favoriteRanking, topGenres, activePeople };
-}
-
-function groupComparableEntries(entries: FamilyItem[]) {
-  const groups = entries.reduce<Record<string, FamilyItem[]>>((acc, entry) => {
-    const key = comparableKey(entry.item);
-    if (!key) return acc;
-    acc[key] = acc[key] ?? [];
-    acc[key].push(entry);
-    return acc;
-  }, {});
-
-  return Object.entries(groups).sort((a, b) => b[1].length - a[1].length);
-}
-
 function comparableKey(item: CulturalItem) {
   const title = getTitle(item);
   if (!title) return "";
@@ -629,27 +474,11 @@ function createWishlistCopy(source: CulturalItem): CulturalItem {
   };
 }
 
-function ownerNames(entries: FamilyItem[], viewerId: string) {
-  return [...new Set(entries.map((entry) => entry.ownerId === viewerId ? "você" : entry.ownerName))];
-}
-
 function getFinalOpinion(item: CulturalItem) {
   if (item.category === "books") return item.finalOpinion || item.personalSummary || "";
   if (item.category === "albums") return item.comments || "";
   if (item.category === "movies" || item.category === "series") return item.comments || "";
   return item.notes || "";
-}
-
-function topEntries(values: string[], limit: number) {
-  const counts = values.filter(Boolean).reduce<Record<string, number>>((acc, value) => {
-    acc[value] = (acc[value] ?? 0) + 1;
-    return acc;
-  }, {});
-
-  return Object.entries(counts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, limit)
-    .map(([value]) => value);
 }
 
 function formatDate(value: string) {
