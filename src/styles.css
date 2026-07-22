@@ -2007,6 +2007,27 @@ button.danger {
   border-radius: 8px;
 }
 
+.account-danger-zone {
+  border-color: color-mix(in srgb, var(--red) 42%, var(--line));
+}
+
+.account-danger-zone > .danger {
+  justify-self: start;
+}
+
+.account-delete-confirmation {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--red) 45%, var(--line));
+  background: color-mix(in srgb, var(--red) 7%, transparent);
+  border-radius: 8px;
+}
+
+.account-delete-confirmation > span {
+  color: var(--muted);
+}
+
 .compact {
   min-height: 34px !important;
   padding: 6px 10px !important;

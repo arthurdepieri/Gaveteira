@@ -75,11 +75,11 @@ function normalizeData(data: AppData): AppData {
   return {
     version: data.version ?? 1,
     items: withoutLegacyDemoItems(data.items ?? []),
-    statuses: { ...defaultStatuses, ...(data.statuses ?? {}) },
+    statuses: defaultStatuses,
     settings: {
       ...DEFAULT_SETTINGS,
       ...(data.settings ?? {}),
-      apiKeys: data.settings?.apiKeys ?? {},
+      apiKeys: {},
       cloud: data.settings?.cloud ?? {},
     },
   };

@@ -678,6 +678,7 @@ function App() {
           session={cloudSession}
           onReplaceData={setData}
           onUpdateData={updateData}
+          onAccountDeleted={logout}
         />
       );
     }
