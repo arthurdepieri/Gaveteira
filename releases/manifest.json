@@ -1,6 +1,35 @@
 {
-  "latest": "0.6.10-beta",
+  "latest": "0.6.11-beta",
   "releases": [
+    {
+      "version": "0.6.11-beta",
+      "date": "2026-07-22",
+      "title": "Home editorial",
+      "notes": "Versão beta focada em dar mais personalidade à página inicial e aproximar a Gaveteira de um arquivo cultural pessoal, com menos caixas repetidas e mais protagonismo para as capas.\n\n### Destaques\n\n- Hero editorial com composição de capas recentes e selo circular para o total de itens catalogados.\n- Seção `Continue de onde parou` promovida para o início da experiência.\n- Métricas reunidas em uma única faixa tipográfica com divisórias.\n- Onboarding transformado em uma trilha compacta e recolhível.\n- Seções da Home abertas sobre o fundo, reservando cartões para elementos interativos.\n- Navegação lateral simplificada e barra mobile flutuante com margens laterais.\n- Hierarquia de raios, entradas escalonadas, movimentos discretos e respeito à preferência de movimento reduzido.\n\n### Observações\n\n- Esta versão é uma subversão visual da linha `0.6.x`, sem migração de dados ou alteração da sincronização.\n- O pacote de release desta versão fica em `releases/Gaveteira-0.6.11-beta.zip`.",
+      "shortNotes": {
+        "summary": "Versão beta focada em dar mais personalidade à página inicial e aproximar a Gaveteira de um arquivo cultural pessoal, com menos caixas repetidas e mais protagonismo para as capas.",
+        "highlights": [
+          "Hero editorial com composição de capas recentes e selo circular para o total de itens catalogados.",
+          "Seção `Continue de onde parou` promovida para o início da experiência.",
+          "Métricas reunidas em uma única faixa tipográfica com divisórias.",
+          "Onboarding transformado em uma trilha compacta e recolhível.",
+          "Seções da Home abertas sobre o fundo, reservando cartões para elementos interativos."
+        ]
+      },
+      "archivePath": "releases/Gaveteira-0.6.11-beta.zip",
+      "archiveSizeBytes": 4333646,
+      "archiveSha256": "2c7779a98e57240699ccea788fc002edf70c27708eb15855eac5d561fcc49d5a",
+      "drive": {
+        "folderName": "Gaveteira Versions",
+        "finalFileName": "Gaveteira-0.6.11-beta.zip",
+        "archivePath": "releases/Gaveteira-0.6.11-beta.zip",
+        "notesFileName": "Gaveteira-0.6.11-beta-release-notes.md",
+        "uploadScript": "npm run release:drive -- 0.6.11-beta",
+        "status": "pending",
+        "notesPath": "releases/notes/Gaveteira-0.6.11-beta-release-notes.md",
+        "handoffPath": "releases/drive/Gaveteira-0.6.11-beta-drive-handoff.json"
+      }
+    },
     {
       "version": "0.6.10-beta",
       "date": "2026-06-14",
