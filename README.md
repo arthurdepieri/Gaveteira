@@ -150,9 +150,41 @@ Esse comando:
 - compila a Gaveteira com `npm run build`;
 - cria `releases/Gaveteira-0.6.3-beta.zip`;
 - extrai as notas da seção `0.6.3-beta` do `CHANGELOG.md`;
-- atualiza `releases/manifest.json` com versão, data, título, notas e caminho do zip.
+- gera notas curtas em `releases/notes/` e um handoff em `releases/drive/`;
+- atualiza `releases/manifest.json` com versao, data, titulo, notas, caminho do zip, checksum e metadados de publicacao no Drive.
 
 Os zips em `releases/` são artefatos locais e ficam fora do Git. O `manifest.json` pode ser versionado como índice leve das versões empacotadas.
+
+### Publicacao no Google Drive
+
+Cada release fica pronto para a pasta `Gaveteira Versions` no Google Drive. O arquivo final usa o mesmo nome do zip local, por exemplo:
+
+```text
+Gaveteira-0.6.3-beta.zip
+```
+
+Para conferir o plano de upload sem enviar nada:
+
+```bash
+npm run release:drive -- 0.6.3-beta --dry-run
+```
+
+Para enviar usando a API do Google Drive, configure um OAuth access token com permissao de escrita e rode:
+
+```bash
+# PowerShell
+$env:GAVETEIRA_GOOGLE_DRIVE_ACCESS_TOKEN="seu-token-oauth"
+
+# Opcional: evita busca/criacao automatica da pasta pelo nome.
+$env:GAVETEIRA_GOOGLE_DRIVE_FOLDER_ID="id-da-pasta-gaveteira-versions"
+
+# Opcional: usa outro nome de pasta quando nao houver ID.
+$env:GAVETEIRA_GOOGLE_DRIVE_FOLDER_NAME="Gaveteira Versions"
+
+npm run release:drive -- 0.6.3-beta
+```
+
+O script procura a pasta `Gaveteira Versions`, cria a pasta se ela nao existir, envia o zip e as notas curtas, atualiza arquivos existentes com o mesmo nome e grava os links retornados em `releases/manifest.json`.
 
 ## Roadmap
 
