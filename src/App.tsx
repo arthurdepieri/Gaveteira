@@ -1057,7 +1057,7 @@ function App() {
               <div className="drawer-nav-menu">
                 <button className={view === "adminDesign" ? "active" : ""} onClick={() => selectAdminPage("design")}>
                   <Palette size={18} />
-                  <span>Design sazonal</span>
+                  <span>Modelo Canva</span>
                 </button>
                 <button className={view === "adminCuration" ? "active" : ""} onClick={() => selectAdminPage("curation")}>
                   <Award size={18} />
