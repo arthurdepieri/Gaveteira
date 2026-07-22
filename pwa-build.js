@@ -1,1 +1,1 @@
-self.__GAVETEIRA_PWA_VERSION__ = {"version":"0.6.10-beta","cacheName":"gaveteira-pwa-0.6.10-beta"};
+self.__GAVETEIRA_PWA_VERSION__ = {"version":"0.6.11-beta","cacheName":"gaveteira-pwa-0.6.11-beta"};
