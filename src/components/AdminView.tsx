@@ -1,6 +1,6 @@
 import { Palette, RefreshCw, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
-import { AdminAuditLog, AdminOverview, AppSettings, CloudSession, SocialProfile } from "../types";
+import { AdminAuditLog, AdminOverview, AppSettings, CloudSession, CulturalItem, SocialProfile } from "../types";
 import { fetchAdminLogs, fetchAdminOverview, setProfileRole } from "../services/supabaseCloud";
 import { SeasonalDesignLab } from "./SeasonalDesignLab";
 
@@ -10,11 +10,13 @@ export function AdminView({
   settings,
   session,
   page,
+  localItems,
   onPageChange,
 }: {
   settings: AppSettings;
   session: CloudSession | null;
   page: AdminPage;
+  localItems: CulturalItem[];
   onPageChange: (page: AdminPage) => void;
 }) {
   const isAdmin = session?.profile?.role === "admin";
@@ -123,7 +125,7 @@ export function AdminView({
         </button>
       </nav>
 
-      {page === "design" ? <SeasonalDesignLab /> : (
+      {page === "design" ? <SeasonalDesignLab items={localItems} /> : (
         <section className="setting-panel admin-panel">
           <div className="section-heading split">
             <div className="section-heading">
