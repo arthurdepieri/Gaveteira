@@ -102,10 +102,10 @@ export function AdminView({
       <section className="list-header">
         <div>
           <p className="eyebrow">Administração</p>
-          <h1>{page === "design" ? "Design sazonal" : "Membros"}</h1>
+          <h1>{page === "design" ? "Modelo Canva" : "Membros"}</h1>
           <p>
             {page === "design"
-              ? "Ferramenta experimental para montar modelos sazonais de fichas sem publicar no catálogo."
+              ? "Ferramenta experimental para extrair medidas, paleta e gabaritos editáveis das fichas no Canva."
               : "Visualize perfis e promova administradores da Gaveteira."}
           </p>
         </div>
@@ -115,7 +115,7 @@ export function AdminView({
       <nav className="social-mobile-switch admin-page-switch" aria-label="Alternar área admin">
         <button type="button" className={page === "design" ? "active" : ""} onClick={() => onPageChange("design")}>
           <Palette size={17} />
-          Design sazonal
+          Modelo Canva
         </button>
         <button type="button" className={page === "members" ? "active" : ""} onClick={() => onPageChange("members")}>
           <ShieldCheck size={17} />

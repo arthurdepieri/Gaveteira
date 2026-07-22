@@ -1,27 +1,31 @@
 import type { CSSProperties } from "react";
-import { CalendarDays, Copy, Eye, ImagePlus, Layers3, LayoutTemplate, Palette, Plus, Save, SlidersHorizontal, Sparkles, Trash2 } from "lucide-react";
+import { Clipboard, Download, Eye, FileJson, Layers3, LayoutTemplate, Palette, Plus, Ruler, Save, SlidersHorizontal, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { CulturalItem, Rating } from "../types";
 import { categoryLabels } from "../data/catalog";
-import { Cover } from "./Cover";
 import { ItemCard } from "./ItemCard";
 import { ItemDetails } from "./ItemDetails";
 import { Stars } from "./Rating";
 
-const STORAGE_KEY = "gaveteira-seasonal-design-lab:v1";
+const STORAGE_KEY = "gaveteira-canva-ficha-template:v1";
 
-type SeasonalDraftState = "draft" | "ready" | "retired";
-type SeasonalPattern = "pitch" | "rays" | "paper";
-type SeasonalSheetLayout = "split" | "poster" | "editorial";
-type SeasonalSealPlacement = "bottom-left" | "bottom-right" | "top-left" | "top-right";
-
-interface SeasonalDesignDetail {
-  id: string;
-  label: string;
-  value: string;
+interface CanvaPalette {
+  paper: string;
+  surface: string;
+  panel: string;
+  ink: string;
+  muted: string;
+  line: string;
+  accent: string;
+  green: string;
+  red: string;
+  brass: string;
+  coverA: string;
+  coverB: string;
+  chip: string;
 }
 
-interface SeasonalPreviewFields {
+interface CanvaPreviewFields {
   title: string;
   creator: string;
   status: string;
@@ -35,100 +39,79 @@ interface SeasonalPreviewFields {
   diaryNote: string;
 }
 
-interface SeasonalDesignDraft {
+interface CanvaTemplateDraft {
   id: string;
   label: string;
-  themeLine: string;
-  startsAt: string;
-  endsAt: string;
-  state: SeasonalDraftState;
-  cardBackground: string;
-  sheetBackground: string;
-  accentColor: string;
-  secondaryColor: string;
-  titleColor: string;
-  mutedColor: string;
-  cardTitleColor: string;
-  cardTextColor: string;
-  sheetTextColor: string;
-  sheetPanelColor: string;
-  coverStart: string;
-  coverEnd: string;
-  badgeLabel: string;
-  imageUrl: string;
-  detailImageUrl: string;
-  pattern: SeasonalPattern;
-  sheetLayout: SeasonalSheetLayout;
-  sealPlacement: SeasonalSealPlacement;
-  cardImageOpacity: number;
-  cardImageSize: number;
-  cardImagePositionX: number;
-  cardImagePositionY: number;
-  cardOrnamentSize: number;
-  cardBodyContrast: number;
-  sheetImageOpacity: number;
-  sheetImageSize: number;
-  sheetImagePositionX: number;
-  sheetImagePositionY: number;
+  cardWidth: number;
+  cardHeight: number;
+  cardCoverHeight: number;
+  cardBodyPadding: number;
+  sheetWidth: number;
+  sheetHeight: number;
   sheetCoverWidth: number;
-  sheetPanelOpacity: number;
-  sheetTitleScale: number;
-  sheetDetailDensity: number;
-  cornerRadius: number;
+  sheetCoverHeight: number;
+  sheetPadding: number;
+  sheetGap: number;
+  radius: number;
+  safeMargin: number;
+  titleFont: string;
+  bodyFont: string;
+  palette: CanvaPalette;
   seals: string[];
-  details: SeasonalDesignDetail[];
+  layers: string[];
   notes: string;
-  preview: SeasonalPreviewFields;
+  preview: CanvaPreviewFields;
   updatedAt: string;
 }
 
-const stateLabels: Record<SeasonalDraftState, string> = {
-  draft: "Rascunho",
-  ready: "Pronto local",
-  retired: "Fora de linha",
-};
-
-const patternLabels: Record<SeasonalPattern, string> = {
-  pitch: "Campo",
-  rays: "Raios",
-  paper: "Arquivo",
-};
-
-const sheetLayoutLabels: Record<SeasonalSheetLayout, string> = {
-  split: "Capa lateral",
-  poster: "Poster",
-  editorial: "Editorial",
-};
-
-const sealPlacementLabels: Record<SeasonalSealPlacement, string> = {
-  "bottom-left": "Baixo esquerda",
-  "bottom-right": "Baixo direita",
-  "top-left": "Topo esquerda",
-  "top-right": "Topo direita",
+const paletteLabels: Record<keyof CanvaPalette, string> = {
+  paper: "Papel",
+  surface: "Superficie",
+  panel: "Painel",
+  ink: "Texto",
+  muted: "Texto leve",
+  line: "Linha",
+  accent: "Acento",
+  green: "Verde",
+  red: "Carimbo",
+  brass: "Dourado",
+  coverA: "Capa A",
+  coverB: "Capa B",
+  chip: "Selo",
 };
 
 export function SeasonalDesignLab() {
-  const [drafts, setDrafts] = useState<SeasonalDesignDraft[]>(() => loadDrafts());
+  const [drafts, setDrafts] = useState<CanvaTemplateDraft[]>(() => loadDrafts());
   const [activeDraftId, setActiveDraftId] = useState(() => drafts[0]?.id ?? "");
   const [newSeal, setNewSeal] = useState("");
+  const [newLayer, setNewLayer] = useState("");
   const [previewOpen, setPreviewOpen] = useState(false);
   const activeDraft = drafts.find((draft) => draft.id === activeDraftId) ?? drafts[0] ?? createDefaultDraft();
   const previewItem = useMemo(() => createPreviewItem(activeDraft), [activeDraft]);
-  const previewStyle = useMemo(() => seasonalStyle(activeDraft), [activeDraft]);
+  const previewStyle = useMemo(() => canvaPreviewStyle(activeDraft), [activeDraft]);
+  const brief = useMemo(() => buildCanvaBrief(activeDraft), [activeDraft]);
 
-  function persist(nextDrafts: SeasonalDesignDraft[], nextActiveId = activeDraft.id) {
+  function persist(nextDrafts: CanvaTemplateDraft[], nextActiveId = activeDraft.id) {
     setDrafts(nextDrafts);
     setActiveDraftId(nextActiveId);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(nextDrafts));
   }
 
-  function updateDraft(patch: Partial<SeasonalDesignDraft>) {
+  function updateDraft(patch: Partial<CanvaTemplateDraft>) {
     const nextDraft = { ...activeDraft, ...patch, updatedAt: new Date().toISOString() };
     persist(drafts.map((draft) => draft.id === activeDraft.id ? nextDraft : draft), nextDraft.id);
   }
 
+  function updatePalette(key: keyof CanvaPalette, value: string) {
+    updateDraft({ palette: { ...activeDraft.palette, [key]: value } });
+  }
+
+  function updatePreview(patch: Partial<CanvaPreviewFields>) {
+    updateDraft({ preview: { ...activeDraft.preview, ...patch } });
+  }
+
   function addDraft() {
-    const draft = createDefaultDraft(`seasonal-${Date.now()}`);
+    const draft = createDefaultDraft(`canva-ficha-${Date.now()}`);
     persist([draft, ...drafts], draft.id);
   }
 
@@ -137,7 +120,6 @@ export function SeasonalDesignLab() {
       ...activeDraft,
       id: `${activeDraft.id}-copia-${Date.now()}`,
       label: `${activeDraft.label} copia`,
-      state: "draft" as const,
       updatedAt: new Date().toISOString(),
     };
     persist([draft, ...drafts], draft.id);
@@ -145,7 +127,7 @@ export function SeasonalDesignLab() {
 
   function removeDraft() {
     if (drafts.length <= 1) return;
-    const confirmed = window.confirm(`Remover o modelo "${activeDraft.label}" deste laboratorio?`);
+    const confirmed = window.confirm(`Remover o gabarito "${activeDraft.label}"?`);
     if (!confirmed) return;
     const nextDrafts = drafts.filter((draft) => draft.id !== activeDraft.id);
     persist(nextDrafts, nextDrafts[0]?.id ?? "");
@@ -154,111 +136,109 @@ export function SeasonalDesignLab() {
   function addSeal() {
     const value = newSeal.trim();
     if (!value) return;
-    updateDraft({ seals: [...activeDraft.seals, value].slice(0, 5) });
+    updateDraft({ seals: [...activeDraft.seals, value].slice(0, 6) });
     setNewSeal("");
   }
 
-  function updateDetail(id: string, patch: Partial<SeasonalDesignDetail>) {
-    updateDraft({
-      details: activeDraft.details.map((detail) => detail.id === id ? { ...detail, ...patch } : detail),
-    });
+  function addLayer() {
+    const value = newLayer.trim();
+    if (!value) return;
+    updateDraft({ layers: [...activeDraft.layers, value].slice(0, 12) });
+    setNewLayer("");
   }
 
-  function updatePreview(patch: Partial<SeasonalPreviewFields>) {
-    updateDraft({ preview: { ...activeDraft.preview, ...patch } });
-  }
-
-  function addDetail() {
-    updateDraft({
-      details: [
-        ...activeDraft.details,
-        { id: `detail-${Date.now()}`, label: "Detalhe", value: "Novo elemento" },
-      ].slice(0, 8),
-    });
+  async function copyBrief() {
+    await navigator.clipboard?.writeText(brief).catch(() => undefined);
   }
 
   async function copyJson() {
-    const payload = JSON.stringify(activeDraft, null, 2);
-    await navigator.clipboard?.writeText(payload).catch(() => undefined);
-  }
-
-  async function uploadImage(file: File | undefined, target: "imageUrl" | "detailImageUrl") {
-    if (!file) return;
-    const dataUrl = await readFileAsDataUrl(file);
-    updateDraft({ [target]: dataUrl } as Pick<SeasonalDesignDraft, typeof target>);
+    await navigator.clipboard?.writeText(JSON.stringify(activeDraft, null, 2)).catch(() => undefined);
   }
 
   return (
-    <section className="seasonal-lab" aria-label="Laboratorio sazonal de fichas">
-      <section className={`seasonal-preview-panel pattern-${activeDraft.pattern}`} style={previewStyle}>
+    <section className="canva-lab" aria-label="Gabarito Canva das fichas">
+      <section className="canva-preview-panel" style={previewStyle}>
         <div className="section-heading split">
           <div className="section-heading">
             <Eye size={20} />
-            <h3>Ficha isolada</h3>
+            <h3>Ficha isolada para visualização</h3>
           </div>
           <button type="button" className="primary compact" onClick={() => setPreviewOpen(true)}>
-            <Sparkles size={15} />
+            <Eye size={15} />
             Abrir ficha completa
           </button>
         </div>
-        <div className="seasonal-preview-grid">
-          <div className="seasonal-card-stage">
-            <div className="seasonal-card-frame">
+        <div className="canva-preview-grid">
+          <div className="canva-card-stage">
+            <div className="canva-measure-label">{activeDraft.cardWidth} x {activeDraft.cardHeight}px</div>
+            <div className="canva-card-frame">
               <ItemCard item={previewItem} onOpen={() => setPreviewOpen(true)} seasonalStyle={previewStyle} />
-              <SeasonalOverlay draft={activeDraft} compact placement={activeDraft.sealPlacement} />
+              <TemplateOverlay draft={activeDraft} compact />
             </div>
           </div>
-          <article className={`seasonal-sheet-preview season-theme season-theme-${slugify(activeDraft.id)} sheet-layout-${activeDraft.sheetLayout} seal-placement-${activeDraft.sealPlacement}`}>
-            <div className="seasonal-sheet-media">
-              <Cover item={previewItem} />
-              <span>{activeDraft.badgeLabel}</span>
+          <article className="canva-sheet-preview">
+            <div className="canva-measure-label">{activeDraft.sheetWidth} x {activeDraft.sheetHeight}px</div>
+            <div className="canva-sheet-media">
+              <div className="canva-cover-placeholder" />
+              <span>{activeDraft.seals[0] ?? "Selo"}</span>
             </div>
-            <div className="seasonal-sheet-body">
-              <p className="eyebrow">{categoryLabels[previewItem.category]} / modelo original</p>
+            <div className="canva-sheet-body">
+              <p className="eyebrow">{categoryLabels[previewItem.category]} / modelo interno</p>
               <h3>{activeDraft.preview.title}</h3>
-              <div className="detail-summary seasonal-sheet-summary">
+              <div className="detail-summary canva-sheet-summary">
                 <span>{previewItem.status}</span>
                 <span>{activeDraft.preview.creator}</span>
                 <span>{activeDraft.preview.year}</span>
               </div>
               <Stars value={activeDraft.preview.rating} />
-              <div className="seasonal-sheet-details">
-                {activeDraft.details.map((detail) => (
-                  <span key={detail.id}>
-                    <small>{detail.label}</small>
-                    <strong>{detail.value}</strong>
-                  </span>
-                ))}
+              <div className="canva-sheet-details">
+                <span><small>Capa</small><strong>{activeDraft.sheetCoverWidth} x {activeDraft.sheetCoverHeight}px</strong></span>
+                <span><small>Margem segura</small><strong>{activeDraft.safeMargin}px</strong></span>
+                <span><small>Tipografia</small><strong>{activeDraft.titleFont}</strong></span>
+                <span><small>Camadas</small><strong>{activeDraft.layers.length} grupos</strong></span>
               </div>
-              <div className="seasonal-seal-list preview">
+              <div className="canva-seal-list preview">
                 {activeDraft.seals.map((seal) => <span key={seal}>{seal}</span>)}
               </div>
             </div>
-            <SeasonalOverlay draft={activeDraft} placement={activeDraft.sealPlacement} />
+            <TemplateOverlay draft={activeDraft} />
           </article>
         </div>
       </section>
 
-      <div className="seasonal-lab-toolbar">
-        <label className="seasonal-model-picker">
-          <span>Modelo</span>
+      <div className="canva-lab-toolbar">
+        <label className="canva-model-picker">
+          <span>Gabarito</span>
           <select value={activeDraft.id} onChange={(event) => setActiveDraftId(event.target.value)}>
             {drafts.map((draft) => <option value={draft.id} key={draft.id}>{draft.label}</option>)}
           </select>
         </label>
         <div className="button-row">
           <button type="button" className="primary compact" onClick={addDraft}><Plus size={15} /> Novo</button>
-          <button type="button" className="ghost compact" onClick={duplicateDraft}><Copy size={15} /> Duplicar</button>
-          <button type="button" className="ghost compact" onClick={copyJson}><Save size={15} /> JSON</button>
+          <button type="button" className="ghost compact" onClick={duplicateDraft}><Clipboard size={15} /> Duplicar</button>
+          <button type="button" className="ghost compact" onClick={copyJson}><FileJson size={15} /> JSON</button>
           <button type="button" className="ghost compact danger-soft" onClick={removeDraft} disabled={drafts.length <= 1}><Trash2 size={15} /> Remover</button>
         </div>
       </div>
 
-      <div className="seasonal-lab-grid">
-        <section className="seasonal-editor-panel">
+      <section className="canva-export-panel">
+        <div className="section-heading">
+          <Download size={20} />
+          <h3>Arquivos para Canva</h3>
+        </div>
+        <div className="canva-export-actions">
+          <button type="button" className="primary compact" onClick={copyBrief}><Clipboard size={15} /> Copiar briefing</button>
+          <button type="button" className="ghost compact" onClick={() => downloadText(`${activeDraft.id}-card.svg`, buildCardSvg(activeDraft))}><Download size={15} /> SVG card</button>
+          <button type="button" className="ghost compact" onClick={() => downloadText(`${activeDraft.id}-ficha-interna.svg`, buildSheetSvg(activeDraft))}><Download size={15} /> SVG ficha</button>
+        </div>
+        <pre className="canva-brief-preview">{brief}</pre>
+      </section>
+
+      <div className="canva-lab-grid">
+        <section className="canva-editor-panel">
           <div className="section-heading">
-            <Palette size={20} />
-            <h3>Modelo</h3>
+            <Ruler size={20} />
+            <h3>Medidas</h3>
           </div>
           <div className="form-grid">
             <label className="field">
@@ -266,181 +246,103 @@ export function SeasonalDesignLab() {
               <input value={activeDraft.label} onChange={(event) => updateDraft({ label: event.target.value })} />
             </label>
             <label className="field">
-              <span>ID tecnico</span>
+              <span>ID técnico</span>
               <input value={activeDraft.id} onChange={(event) => updateDraft({ id: slugify(event.target.value) })} />
             </label>
-            <label className="field wide">
-              <span>Linha visual</span>
-              <input value={activeDraft.themeLine} onChange={(event) => updateDraft({ themeLine: event.target.value })} />
-            </label>
-            <label className="field">
-              <span>Inicio</span>
-              <input type="date" value={activeDraft.startsAt} onChange={(event) => updateDraft({ startsAt: event.target.value })} />
-            </label>
-            <label className="field">
-              <span>Saida de linha</span>
-              <input type="date" value={activeDraft.endsAt} onChange={(event) => updateDraft({ endsAt: event.target.value })} />
-            </label>
-            <label className="field">
-              <span>Estado</span>
-              <select value={activeDraft.state} onChange={(event) => updateDraft({ state: event.target.value as SeasonalDraftState })}>
-                {Object.entries(stateLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}
-              </select>
-            </label>
-            <label className="field">
-              <span>Padrao</span>
-              <select value={activeDraft.pattern} onChange={(event) => updateDraft({ pattern: event.target.value as SeasonalPattern })}>
-                {Object.entries(patternLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}
-              </select>
-            </label>
-            <label className="field">
-              <span>Cantos</span>
-              <input type="number" min="0" max="16" value={activeDraft.cornerRadius} onChange={(event) => updateDraft({ cornerRadius: numberValue(event.target.value, 0, 16) })} />
-            </label>
           </div>
-
-          <div className="seasonal-color-grid">
-            <ColorField label="Card" value={activeDraft.cardBackground} onChange={(value) => updateDraft({ cardBackground: value })} />
-            <ColorField label="Ficha" value={activeDraft.sheetBackground} onChange={(value) => updateDraft({ sheetBackground: value })} />
-            <ColorField label="Acento" value={activeDraft.accentColor} onChange={(value) => updateDraft({ accentColor: value })} />
-            <ColorField label="Secundaria" value={activeDraft.secondaryColor} onChange={(value) => updateDraft({ secondaryColor: value })} />
-            <ColorField label="Titulo ficha" value={activeDraft.titleColor} onChange={(value) => updateDraft({ titleColor: value })} />
-            <ColorField label="Texto leve" value={activeDraft.mutedColor} onChange={(value) => updateDraft({ mutedColor: value })} />
-            <ColorField label="Titulo card" value={activeDraft.cardTitleColor} onChange={(value) => updateDraft({ cardTitleColor: value })} />
-            <ColorField label="Texto card" value={activeDraft.cardTextColor} onChange={(value) => updateDraft({ cardTextColor: value })} />
-            <ColorField label="Texto ficha" value={activeDraft.sheetTextColor} onChange={(value) => updateDraft({ sheetTextColor: value })} />
-            <ColorField label="Painel ficha" value={activeDraft.sheetPanelColor} onChange={(value) => updateDraft({ sheetPanelColor: value })} />
+          <div className="canva-control-grid">
+            <NumberField label="Card largura" value={activeDraft.cardWidth} min={210} max={720} onChange={(value) => updateDraft({ cardWidth: value })} />
+            <NumberField label="Card altura" value={activeDraft.cardHeight} min={320} max={900} onChange={(value) => updateDraft({ cardHeight: value })} />
+            <NumberField label="Capa card" value={activeDraft.cardCoverHeight} min={120} max={520} onChange={(value) => updateDraft({ cardCoverHeight: value })} />
+            <NumberField label="Padding card" value={activeDraft.cardBodyPadding} min={8} max={40} onChange={(value) => updateDraft({ cardBodyPadding: value })} />
+            <NumberField label="Ficha largura" value={activeDraft.sheetWidth} min={720} max={1600} onChange={(value) => updateDraft({ sheetWidth: value })} />
+            <NumberField label="Ficha altura" value={activeDraft.sheetHeight} min={640} max={1800} onChange={(value) => updateDraft({ sheetHeight: value })} />
+            <NumberField label="Capa interna L" value={activeDraft.sheetCoverWidth} min={120} max={420} onChange={(value) => updateDraft({ sheetCoverWidth: value })} />
+            <NumberField label="Capa interna A" value={activeDraft.sheetCoverHeight} min={180} max={680} onChange={(value) => updateDraft({ sheetCoverHeight: value })} />
+            <NumberField label="Padding ficha" value={activeDraft.sheetPadding} min={12} max={80} onChange={(value) => updateDraft({ sheetPadding: value })} />
+            <NumberField label="Vão interno" value={activeDraft.sheetGap} min={8} max={64} onChange={(value) => updateDraft({ sheetGap: value })} />
+            <NumberField label="Raio" value={activeDraft.radius} min={0} max={24} onChange={(value) => updateDraft({ radius: value })} />
+            <NumberField label="Margem segura" value={activeDraft.safeMargin} min={8} max={80} onChange={(value) => updateDraft({ safeMargin: value })} />
           </div>
         </section>
 
-        <section className="seasonal-editor-panel">
+        <section className="canva-editor-panel">
           <div className="section-heading">
-            <ImagePlus size={20} />
-            <h3>Imagens e selos</h3>
+            <Palette size={20} />
+            <h3>Paleta</h3>
           </div>
-          <div className="form-grid">
-            <label className="field wide">
-              <span>Imagem decorativa do card</span>
-              <input value={activeDraft.imageUrl} onChange={(event) => updateDraft({ imageUrl: event.target.value })} placeholder="/seasonal-elements/..." />
-            </label>
-            <label className="field wide seasonal-file-field">
-              <span>Enviar decoracao do card</span>
-              <input type="file" accept="image/*" onChange={(event) => uploadImage(event.target.files?.[0], "imageUrl")} />
-            </label>
-            <label className="field wide">
-              <span>Imagem da ficha</span>
-              <input value={activeDraft.detailImageUrl} onChange={(event) => updateDraft({ detailImageUrl: event.target.value })} placeholder="/seasonal-elements/..." />
-            </label>
-            <label className="field wide seasonal-file-field">
-              <span>Enviar imagem da ficha</span>
-              <input type="file" accept="image/*" onChange={(event) => uploadImage(event.target.files?.[0], "detailImageUrl")} />
-            </label>
-            <label className="field">
-              <span>Selo principal</span>
-              <input value={activeDraft.badgeLabel} onChange={(event) => updateDraft({ badgeLabel: event.target.value })} />
-            </label>
-          </div>
-          <div className="seasonal-seal-editor">
-            <div className="seasonal-add-row">
-              <input value={newSeal} onChange={(event) => setNewSeal(event.target.value)} onKeyDown={(event) => event.key === "Enter" ? addSeal() : undefined} placeholder="Novo selo" />
-              <button type="button" className="primary compact" onClick={addSeal}><Plus size={15} /> Selo</button>
-            </div>
-            <div className="seasonal-seal-list">
-              {activeDraft.seals.map((seal, index) => (
-                <button type="button" key={`${seal}-${index}`} onClick={() => updateDraft({ seals: activeDraft.seals.filter((_, itemIndex) => itemIndex !== index) })}>
-                  {seal}
-                  <Trash2 size={12} />
-                </button>
-              ))}
-            </div>
+          <div className="canva-color-grid">
+            {(Object.keys(activeDraft.palette) as Array<keyof CanvaPalette>).map((key) => (
+              <ColorField key={key} label={paletteLabels[key]} value={activeDraft.palette[key]} onChange={(value) => updatePalette(key, value)} />
+            ))}
           </div>
         </section>
 
-        <section className="seasonal-editor-panel">
+        <section className="canva-editor-panel">
           <div className="section-heading">
             <SlidersHorizontal size={20} />
-            <h3>Card</h3>
-          </div>
-          <div className="seasonal-control-grid">
-            <RangeField label="Decoracao" value={activeDraft.cardImageOpacity} min={0} max={1} step={0.05} suffix="opacidade" onChange={(value) => updateDraft({ cardImageOpacity: value })} />
-            <RangeField label="Tam. decor." value={activeDraft.cardImageSize} min={70} max={180} step={5} suffix="%" onChange={(value) => updateDraft({ cardImageSize: value })} />
-            <RangeField label="Decor. X" value={activeDraft.cardImagePositionX} min={0} max={100} step={1} suffix="%" onChange={(value) => updateDraft({ cardImagePositionX: value })} />
-            <RangeField label="Decor. Y" value={activeDraft.cardImagePositionY} min={0} max={100} step={1} suffix="%" onChange={(value) => updateDraft({ cardImagePositionY: value })} />
-            <RangeField label="Ornamento" value={activeDraft.cardOrnamentSize} min={32} max={120} step={2} suffix="px" onChange={(value) => updateDraft({ cardOrnamentSize: value })} />
-            <RangeField label="Contraste" value={activeDraft.cardBodyContrast} min={0.2} max={0.95} step={0.05} suffix="" onChange={(value) => updateDraft({ cardBodyContrast: value })} />
-          </div>
-          <label className="field">
-            <span>Posicao dos selos</span>
-            <select value={activeDraft.sealPlacement} onChange={(event) => updateDraft({ sealPlacement: event.target.value as SeasonalSealPlacement })}>
-              {Object.entries(sealPlacementLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}
-            </select>
-          </label>
-        </section>
-
-        <section className="seasonal-editor-panel">
-          <div className="section-heading">
-            <LayoutTemplate size={20} />
-            <h3>Interior da ficha</h3>
+            <h3>Tipografia e selos</h3>
           </div>
           <div className="form-grid">
             <label className="field">
-              <span>Layout interno</span>
-              <select value={activeDraft.sheetLayout} onChange={(event) => updateDraft({ sheetLayout: event.target.value as SeasonalSheetLayout })}>
-                {Object.entries(sheetLayoutLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}
-              </select>
+              <span>Fonte título Canva</span>
+              <input value={activeDraft.titleFont} onChange={(event) => updateDraft({ titleFont: event.target.value })} />
             </label>
             <label className="field">
-              <span>Selos internos</span>
-              <select value={activeDraft.sealPlacement} onChange={(event) => updateDraft({ sealPlacement: event.target.value as SeasonalSealPlacement })}>
-                {Object.entries(sealPlacementLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}
-              </select>
+              <span>Fonte texto Canva</span>
+              <input value={activeDraft.bodyFont} onChange={(event) => updateDraft({ bodyFont: event.target.value })} />
+            </label>
+            <label className="field wide">
+              <span>Notas de edição</span>
+              <textarea value={activeDraft.notes} onChange={(event) => updateDraft({ notes: event.target.value })} />
             </label>
           </div>
-          <div className="seasonal-control-grid">
-            <RangeField label="Fundo" value={activeDraft.sheetImageOpacity} min={0} max={1} step={0.05} suffix="opacidade" onChange={(value) => updateDraft({ sheetImageOpacity: value })} />
-            <RangeField label="Tamanho fundo" value={activeDraft.sheetImageSize} min={80} max={180} step={5} suffix="%" onChange={(value) => updateDraft({ sheetImageSize: value })} />
-            <RangeField label="Fundo X" value={activeDraft.sheetImagePositionX} min={0} max={100} step={1} suffix="%" onChange={(value) => updateDraft({ sheetImagePositionX: value })} />
-            <RangeField label="Fundo Y" value={activeDraft.sheetImagePositionY} min={0} max={100} step={1} suffix="%" onChange={(value) => updateDraft({ sheetImagePositionY: value })} />
-            <RangeField label="Capa" value={activeDraft.sheetCoverWidth} min={120} max={260} step={5} suffix="px" onChange={(value) => updateDraft({ sheetCoverWidth: value })} />
-            <RangeField label="Painel" value={activeDraft.sheetPanelOpacity} min={0.35} max={1} step={0.05} suffix="opacidade" onChange={(value) => updateDraft({ sheetPanelOpacity: value })} />
-            <RangeField label="Titulo" value={activeDraft.sheetTitleScale} min={0.8} max={1.35} step={0.05} suffix="escala" onChange={(value) => updateDraft({ sheetTitleScale: value })} />
-            <RangeField label="Densidade" value={activeDraft.sheetDetailDensity} min={0.75} max={1.35} step={0.05} suffix="espaco" onChange={(value) => updateDraft({ sheetDetailDensity: value })} />
+          <div className="canva-add-row">
+            <input value={newSeal} onChange={(event) => setNewSeal(event.target.value)} onKeyDown={(event) => event.key === "Enter" ? addSeal() : undefined} placeholder="Novo selo" />
+            <button type="button" className="primary compact" onClick={addSeal}><Plus size={15} /> Selo</button>
+          </div>
+          <div className="canva-seal-list">
+            {activeDraft.seals.map((seal, index) => (
+              <button type="button" key={`${seal}-${index}`} onClick={() => updateDraft({ seals: activeDraft.seals.filter((_, itemIndex) => itemIndex !== index) })}>
+                {seal}
+                <Trash2 size={12} />
+              </button>
+            ))}
           </div>
         </section>
 
-        <section className="seasonal-editor-panel seasonal-detail-editor">
+        <section className="canva-editor-panel canva-wide-panel">
           <div className="section-heading split">
             <div className="section-heading">
               <Layers3 size={20} />
-              <h3>Detalhes</h3>
+              <h3>Camadas para montar no Canva</h3>
             </div>
-            <button type="button" className="ghost compact" onClick={addDetail}><Plus size={15} /> Detalhe</button>
           </div>
-          <div className="seasonal-detail-list">
-            {activeDraft.details.map((detail) => (
-              <article key={detail.id} className="seasonal-detail-row">
-                <input value={detail.label} onChange={(event) => updateDetail(detail.id, { label: event.target.value })} />
-                <input value={detail.value} onChange={(event) => updateDetail(detail.id, { value: event.target.value })} />
-                <button type="button" className="icon-button" onClick={() => updateDraft({ details: activeDraft.details.filter((entry) => entry.id !== detail.id) })} aria-label="Remover detalhe">
+          <div className="canva-add-row">
+            <input value={newLayer} onChange={(event) => setNewLayer(event.target.value)} onKeyDown={(event) => event.key === "Enter" ? addLayer() : undefined} placeholder="Nova camada ou instrução" />
+            <button type="button" className="primary compact" onClick={addLayer}><Plus size={15} /> Camada</button>
+          </div>
+          <div className="canva-layer-list">
+            {activeDraft.layers.map((layer, index) => (
+              <article key={`${layer}-${index}`} className="canva-layer-row">
+                <strong>{String(index + 1).padStart(2, "0")}</strong>
+                <input value={layer} onChange={(event) => updateDraft({ layers: activeDraft.layers.map((entry, itemIndex) => itemIndex === index ? event.target.value : entry) })} />
+                <button type="button" className="icon-button" onClick={() => updateDraft({ layers: activeDraft.layers.filter((_, itemIndex) => itemIndex !== index) })} aria-label="Remover camada">
                   <Trash2 size={15} />
                 </button>
               </article>
             ))}
           </div>
-          <label className="field wide">
-            <span>Notas internas</span>
-            <textarea value={activeDraft.notes} onChange={(event) => updateDraft({ notes: event.target.value })} />
-          </label>
         </section>
 
-        <section className="seasonal-editor-panel seasonal-detail-editor">
+        <section className="canva-editor-panel canva-wide-panel">
           <div className="section-heading">
-            <CalendarDays size={20} />
+            <LayoutTemplate size={20} />
             <h3>Ficha-modelo</h3>
           </div>
           <div className="form-grid">
             <label className="field">
-              <span>Titulo</span>
+              <span>Título</span>
               <input value={activeDraft.preview.title} onChange={(event) => updatePreview({ title: event.target.value })} />
             </label>
             <label className="field">
@@ -456,7 +358,7 @@ export function SeasonalDesignLab() {
               <input value={activeDraft.preview.year} onChange={(event) => updatePreview({ year: event.target.value })} />
             </label>
             <label className="field">
-              <span>Genero</span>
+              <span>Gênero</span>
               <input value={activeDraft.preview.genre} onChange={(event) => updatePreview({ genre: event.target.value })} />
             </label>
             <label className="field">
@@ -466,15 +368,15 @@ export function SeasonalDesignLab() {
               </select>
             </label>
             <label className="field">
-              <span>Pagina atual</span>
+              <span>Página atual</span>
               <input value={activeDraft.preview.currentPage} onChange={(event) => updatePreview({ currentPage: event.target.value })} />
             </label>
             <label className="field">
-              <span>Total paginas</span>
+              <span>Total páginas</span>
               <input value={activeDraft.preview.pages} onChange={(event) => updatePreview({ pages: event.target.value })} />
             </label>
             <label className="field wide">
-              <span>Frase/citacao</span>
+              <span>Frase/citação</span>
               <textarea value={activeDraft.preview.quote} onChange={(event) => updatePreview({ quote: event.target.value })} />
             </label>
             <label className="field wide">
@@ -482,7 +384,7 @@ export function SeasonalDesignLab() {
               <textarea value={activeDraft.preview.summary} onChange={(event) => updatePreview({ summary: event.target.value })} />
             </label>
             <label className="field wide">
-              <span>Diario da ficha</span>
+              <span>Diário da ficha</span>
               <textarea value={activeDraft.preview.diaryNote} onChange={(event) => updatePreview({ diaryNote: event.target.value })} />
             </label>
           </div>
@@ -494,7 +396,7 @@ export function SeasonalDesignLab() {
           item={previewItem}
           statuses={["Quero ler", "Lendo", "Lido", "Abandonado"]}
           seasonalStyle={previewStyle}
-          seasonalClassName={`sheet-layout-${activeDraft.sheetLayout} seal-placement-${activeDraft.sealPlacement} pattern-${activeDraft.pattern}`}
+          seasonalClassName="canva-template-modal"
           onClose={() => setPreviewOpen(false)}
         />
       ) : null}
@@ -504,7 +406,7 @@ export function SeasonalDesignLab() {
 
 function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
   return (
-    <label className="seasonal-color-field">
+    <label className="canva-color-field">
       <span>{label}</span>
       <input type="color" value={value} onChange={(event) => onChange(event.target.value)} />
       <input value={value} onChange={(event) => onChange(event.target.value)} />
@@ -512,94 +414,70 @@ function ColorField({ label, value, onChange }: { label: string; value: string; 
   );
 }
 
-function RangeField({
-  label,
-  value,
-  min,
-  max,
-  step,
-  suffix,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  step: number;
-  suffix: string;
-  onChange: (value: number) => void;
-}) {
+function NumberField({ label, value, min, max, onChange }: { label: string; value: number; min: number; max: number; onChange: (value: number) => void }) {
   return (
-    <label className="seasonal-range-field">
-      <span>
-        {label}
-        <strong>{formatControlValue(value, suffix)}</strong>
-      </span>
-      <input type="range" min={min} max={max} step={step} value={value} onChange={(event) => onChange(Number(event.target.value))} />
+    <label className="canva-number-field">
+      <span>{label}</span>
+      <input type="number" min={min} max={max} value={value} onChange={(event) => onChange(numberValue(event.target.value, min, max))} />
     </label>
   );
 }
 
-function SeasonalOverlay({ draft, compact = false, placement }: { draft: SeasonalDesignDraft; compact?: boolean; placement?: SeasonalSealPlacement }) {
+function TemplateOverlay({ draft, compact = false }: { draft: CanvaTemplateDraft; compact?: boolean }) {
   return (
-    <div className={`seasonal-overlay${compact ? " compact" : ""} seal-placement-${placement ?? draft.sealPlacement}`} aria-hidden="true">
-      <div className="seasonal-overlay-image" />
-      <div className="seasonal-overlay-seals">
-        {[draft.badgeLabel, ...draft.seals].filter(Boolean).slice(0, compact ? 3 : 5).map((seal) => <span key={seal}>{seal}</span>)}
+    <div className={`canva-template-overlay${compact ? " compact" : ""}`} aria-hidden="true">
+      <span className="canva-safe-margin" />
+      <div className="canva-template-seals">
+        {draft.seals.slice(0, compact ? 3 : 6).map((seal) => <span key={seal}>{seal}</span>)}
       </div>
     </div>
   );
 }
 
-function createDefaultDraft(id = "copa-do-mundo-2026-lab"): SeasonalDesignDraft {
+function createDefaultDraft(id = "modelo-canva-ficha-gaveteira"): CanvaTemplateDraft {
   const now = new Date().toISOString();
   return {
     id,
-    label: "Copa do Mundo 2026",
-    themeLine: "Arquivo esportivo, campo vivo e selos de campanha.",
-    startsAt: "2026-06-14",
-    endsAt: "2026-07-20",
-    state: "draft",
-    cardBackground: "#1f6fb2",
-    sheetBackground: "#fff8d8",
-    accentColor: "#f2c94c",
-    secondaryColor: "#188a4a",
-    titleColor: "#174a2e",
-    mutedColor: "#68684f",
-    cardTitleColor: "#fffdf2",
-    cardTextColor: "#fff1a8",
-    sheetTextColor: "#20231a",
-    sheetPanelColor: "#fffdf2",
-    coverStart: "#1f6fb2",
-    coverEnd: "#188a4a",
-    badgeLabel: "Edicao limitada",
-    imageUrl: "/seasonal-elements/promocoes/copa-do-mundo-2026/elementos/soccer-ball-svgrepo-com.svg",
-    detailImageUrl: "/seasonal-elements/promocoes/copa-do-mundo-2026/elementos/campo-de-futebol.jpg",
-    pattern: "pitch",
-    sheetLayout: "split",
-    sealPlacement: "bottom-left",
-    cardImageOpacity: 0.78,
-    cardImageSize: 110,
-    cardImagePositionX: 50,
-    cardImagePositionY: 68,
-    cardOrnamentSize: 64,
-    cardBodyContrast: 0.74,
-    sheetImageOpacity: 0.36,
-    sheetImageSize: 110,
-    sheetImagePositionX: 50,
-    sheetImagePositionY: 30,
-    sheetCoverWidth: 180,
-    sheetPanelOpacity: 0.86,
-    sheetTitleScale: 1,
-    sheetDetailDensity: 1,
-    cornerRadius: 8,
-    seals: ["Campanha 2026", "Ativo por periodo", "Nao publicado"],
-    details: [
-      { id: "detail-card", label: "Card", value: "decoracao sazonal; capa vem da gaveta" },
-      { id: "detail-sheet", label: "Ficha", value: "folha clara com fundo de estadio" },
-      { id: "detail-exit", label: "Saida", value: "retirar apos a final" },
+    label: "Ficha Gaveteira para Canva",
+    cardWidth: 342,
+    cardHeight: 520,
+    cardCoverHeight: 220,
+    cardBodyPadding: 14,
+    sheetWidth: 1120,
+    sheetHeight: 900,
+    sheetCoverWidth: 220,
+    sheetCoverHeight: 292,
+    sheetPadding: 16,
+    sheetGap: 18,
+    radius: 8,
+    safeMargin: 24,
+    titleFont: "Fraunces ou Playfair Display",
+    bodyFont: "Inter ou Lato",
+    palette: {
+      paper: "#fffaf1",
+      surface: "#fffdf8",
+      panel: "#fff4da",
+      ink: "#211d18",
+      muted: "#6f6255",
+      line: "#d8c7ad",
+      accent: "#b88737",
+      green: "#346b5d",
+      red: "#9f473d",
+      brass: "#c38625",
+      coverA: "#78644b",
+      coverB: "#9f473d",
+      chip: "#fff4da",
+    },
+    seals: ["Gaveteira", "Privado/amigos", "Diário"],
+    layers: [
+      "01 Fundo: papel #fffaf1 com grade sutil de arquivo.",
+      "02 Capa: área em branco; a capa real continua vindo da gaveta.",
+      "03 Corpo do card: título, status, ano, visibilidade, gênero, diário e nota.",
+      "04 Ficha interna: hero com capa, carimbo de status, título grande e metadados.",
+      "05 Blocos internos: detalhes, progresso, links, linha do tempo e diário.",
+      "06 Selos: chips pequenos com raio alto e contraste suficiente.",
     ],
-    notes: "Rascunho local para avaliar card e ficha completa antes de registrar como tema sazonal.",
+    notes: "Use este gabarito como base no Canva. Exporte o resultado final como imagem e aplique pelas gavetas quando quiser trocar capas ou peças visuais.",
     preview: {
       title: "O Atlas das Gavetas",
       creator: "Modelo Admin",
@@ -609,9 +487,9 @@ function createDefaultDraft(id = "copa-do-mundo-2026-lab"): SeasonalDesignDraft 
       rating: 4.5,
       currentPage: "144",
       pages: "320",
-      quote: "Um modelo bom faz a ficha respirar sem esconder o arquivo.",
-      summary: "Arquivo esportivo, campo vivo e selos de campanha.",
-      diaryNote: "Validar card, ficha completa, imagens e selos antes da publicacao.",
+      quote: "Um modelo bom deixa a ficha clara sem esconder o arquivo.",
+      summary: "Ficha de referência para montar variações no Canva preservando a estrutura da Gaveteira.",
+      diaryNote: "Validar card externo e ficha interna antes de aplicar qualquer imagem final.",
     },
     updatedAt: now,
   };
@@ -625,58 +503,62 @@ function loadDrafts() {
   try {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed) || !parsed.length) return [createDefaultDraft()];
-    return parsed.map((draft) => normalizeDraft(draft)) as SeasonalDesignDraft[];
+    return parsed.map((draft) => normalizeDraft(draft)) as CanvaTemplateDraft[];
   } catch {
     localStorage.removeItem(STORAGE_KEY);
     return [createDefaultDraft()];
   }
 }
 
-function normalizeDraft(draft: Partial<SeasonalDesignDraft>) {
+function normalizeDraft(draft: Partial<CanvaTemplateDraft>) {
   const defaults = createDefaultDraft();
   return {
     ...defaults,
     ...draft,
+    palette: {
+      ...defaults.palette,
+      ...(draft.palette ?? {}),
+    },
     preview: {
       ...defaults.preview,
       ...(draft.preview ?? {}),
     },
-    details: Array.isArray(draft.details) ? draft.details : defaults.details,
     seals: Array.isArray(draft.seals) ? draft.seals : defaults.seals,
+    layers: Array.isArray(draft.layers) ? draft.layers : defaults.layers,
   };
 }
 
-function createPreviewItem(draft: SeasonalDesignDraft): CulturalItem {
+function createPreviewItem(draft: CanvaTemplateDraft): CulturalItem {
   const now = new Date().toISOString();
   return {
-    id: "seasonal-design-preview-book",
+    id: "canva-template-preview-book",
     category: "books",
     title: draft.preview.title,
     author: draft.preview.creator,
     status: draft.preview.status,
-    startDate: draft.startsAt,
-    endDate: draft.endsAt,
+    startDate: "2026-01-01",
+    endDate: "",
     pages: numberValue(draft.preview.pages, 1, 9999),
     currentPage: numberValue(draft.preview.currentPage, 0, 9999),
     format: "Outro",
     rating: draft.preview.rating,
     genre: draft.preview.genre,
-    publisher: "Gaveteira Experiments",
+    publisher: "Gaveteira Admin",
     publicationYear: numberValue(draft.preview.year, 0, 9999),
     favoriteQuotes: draft.preview.quote,
-    personalSummary: draft.preview.summary || draft.themeLine,
+    personalSummary: draft.preview.summary,
     finalOpinion: "",
     coverUrl: "",
     visibility: "friends",
-    tags: ["modelo", "sazonal", "admin"],
-    links: [{ id: "seasonal-doc", label: "Especificacao local", url: "/seasonal-elements/promocoes/_modelo/" }],
+    tags: ["modelo", "canva", "admin"],
+    links: [{ id: "canva-doc", label: "Gabarito Canva", url: "https://www.canva.com/" }],
     timeline: [
-      { id: "seasonal-start", date: draft.startsAt, type: "Comecei", note: "Entrada programada do modelo." },
-      { id: "seasonal-end", date: draft.endsAt, type: "Outro", note: "Saida de linha prevista." },
+      { id: "canva-start", date: "2026-01-01", type: "Comecei", note: "Modelo criado para edição no Canva." },
+      { id: "canva-review", date: now.slice(0, 10), type: "Outro", note: "Revisar proporção, paleta e camadas." },
     ],
     diary: [
-      { id: "seasonal-diary-1", date: draft.startsAt, type: "Progresso", visibility: "friends", text: draft.notes },
-      { id: "seasonal-diary-2", date: draft.endsAt, type: "Progresso", visibility: "private", text: draft.preview.diaryNote },
+      { id: "canva-diary-1", date: now.slice(0, 10), type: "Progresso", visibility: "friends", text: draft.notes },
+      { id: "canva-diary-2", date: now.slice(0, 10), type: "Progresso", visibility: "private", text: draft.preview.diaryNote },
     ],
     seasonalTheme: {
       id: draft.id,
@@ -688,59 +570,141 @@ function createPreviewItem(draft: SeasonalDesignDraft): CulturalItem {
   };
 }
 
-function seasonalStyle(draft: SeasonalDesignDraft) {
+function canvaPreviewStyle(draft: CanvaTemplateDraft) {
+  const palette = draft.palette;
   return {
-    "--card-bg": draft.cardBackground,
-    "--card-body-bg": draft.secondaryColor,
-    "--card-text": draft.cardTextColor,
-    "--card-title": draft.cardTitleColor,
-    "--card-muted": draft.cardTextColor,
-    "--card-border": draft.accentColor,
-    "--card-accent": draft.accentColor,
-    "--card-kicker": draft.accentColor,
-    "--card-tag-bg": colorMix(draft.sheetBackground, "#ffffff", 0.78),
-    "--card-cover-a": draft.coverStart,
-    "--card-cover-b": draft.coverEnd,
-    "--card-open-bg": draft.accentColor,
-    "--sheet-bg": draft.sheetBackground,
-    "--sheet-panel": draft.sheetPanelColor,
-    "--sheet-text": draft.sheetTextColor,
-    "--sheet-title": draft.titleColor,
-    "--sheet-muted": draft.mutedColor,
-    "--sheet-border": draft.accentColor,
-    "--sheet-section-bg": colorMix(draft.sheetBackground, draft.accentColor, 0.16),
-    "--sheet-accent": draft.accentColor,
-    "--sheet-warning": draft.secondaryColor,
-    "--sheet-chip-bg": colorMix(draft.sheetBackground, draft.accentColor, 0.2),
-    "--sheet-cover-a": draft.coverStart,
-    "--sheet-cover-b": draft.coverEnd,
-    "--lab-card-image": draft.imageUrl ? `url("${cssEscapeUrl(draft.imageUrl)}")` : "none",
-    "--lab-detail-image": draft.detailImageUrl ? `url("${cssEscapeUrl(draft.detailImageUrl)}")` : "none",
-    "--lab-card-image-opacity": draft.cardImageOpacity,
-    "--lab-card-image-size": `${draft.cardImageSize}%`,
-    "--lab-card-image-position": `${draft.cardImagePositionX}% ${draft.cardImagePositionY}%`,
-    "--lab-card-ornament-size": `${draft.cardOrnamentSize}px`,
-    "--lab-card-body-contrast": draft.cardBodyContrast,
-    "--lab-sheet-image-opacity": draft.sheetImageOpacity,
-    "--lab-sheet-image-size": `${draft.sheetImageSize}%`,
-    "--lab-sheet-image-position": `${draft.sheetImagePositionX}% ${draft.sheetImagePositionY}%`,
+    "--card-bg": palette.paper,
+    "--card-body-bg": palette.surface,
+    "--card-text": palette.ink,
+    "--card-title": palette.ink,
+    "--card-muted": palette.muted,
+    "--card-border": palette.line,
+    "--card-accent": palette.accent,
+    "--card-kicker": palette.green,
+    "--card-tag-bg": palette.chip,
+    "--card-cover-a": palette.coverA,
+    "--card-cover-b": palette.coverB,
+    "--card-open-bg": palette.green,
+    "--sheet-bg": palette.paper,
+    "--sheet-panel": palette.surface,
+    "--sheet-text": palette.ink,
+    "--sheet-title": palette.ink,
+    "--sheet-muted": palette.muted,
+    "--sheet-border": palette.line,
+    "--sheet-section-bg": palette.panel,
+    "--sheet-accent": palette.accent,
+    "--sheet-warning": palette.red,
+    "--sheet-chip-bg": palette.chip,
+    "--sheet-cover-a": palette.coverA,
+    "--sheet-cover-b": palette.coverB,
+    "--lab-detail-image": "none",
+    "--lab-sheet-image-opacity": 0,
     "--lab-sheet-cover-width": `${draft.sheetCoverWidth}px`,
-    "--lab-sheet-panel-alpha": draft.sheetPanelOpacity,
-    "--lab-sheet-panel-bg": rgbaFromHex(draft.sheetPanelColor, draft.sheetPanelOpacity),
-    "--lab-sheet-title-scale": draft.sheetTitleScale,
-    "--lab-sheet-density": draft.sheetDetailDensity,
-    "--lab-radius": `${draft.cornerRadius}px`,
-    "--lab-pattern": draft.pattern,
+    "--lab-sheet-panel-bg": palette.surface,
+    "--lab-sheet-title-scale": 1,
+    "--lab-sheet-density": 1,
+    "--lab-radius": `${draft.radius}px`,
+    "--canva-card-width": `${draft.cardWidth}px`,
+    "--canva-card-height": `${draft.cardHeight}px`,
+    "--canva-card-cover-height": `${draft.cardCoverHeight}px`,
+    "--canva-card-body-padding": `${draft.cardBodyPadding}px`,
+    "--canva-sheet-height": `${draft.sheetHeight}px`,
+    "--canva-sheet-cover-height": `${draft.sheetCoverHeight}px`,
+    "--canva-sheet-padding": `${draft.sheetPadding}px`,
+    "--canva-sheet-gap": `${draft.sheetGap}px`,
+    "--canva-safe-margin": `${draft.safeMargin}px`,
   } as CSSProperties;
 }
 
-function readFileAsDataUrl(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result ?? ""));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
+function buildCanvaBrief(draft: CanvaTemplateDraft) {
+  const palette = Object.entries(draft.palette)
+    .map(([key, value]) => `${paletteLabels[key as keyof CanvaPalette]}: ${value}`)
+    .join("\n");
+  const layers = draft.layers.map((layer) => `- ${layer}`).join("\n");
+  const seals = draft.seals.join(", ");
+
+  return [
+    `Gabarito Canva: ${draft.label}`,
+    "",
+    "CARD EXTERNO",
+    `Tamanho: ${draft.cardWidth} x ${draft.cardHeight}px`,
+    `Capa em branco: ${draft.cardWidth} x ${draft.cardCoverHeight}px`,
+    `Corpo: padding ${draft.cardBodyPadding}px, raio ${draft.radius}px`,
+    "",
+    "FICHA INTERNA",
+    `Tamanho: ${draft.sheetWidth} x ${draft.sheetHeight}px`,
+    `Capa interna: ${draft.sheetCoverWidth} x ${draft.sheetCoverHeight}px`,
+    `Padding: ${draft.sheetPadding}px; vão entre capa e conteúdo: ${draft.sheetGap}px`,
+    `Margem segura: ${draft.safeMargin}px`,
+    "",
+    "TIPOGRAFIA",
+    `Título: ${draft.titleFont}`,
+    `Texto: ${draft.bodyFont}`,
+    "",
+    "PALETA",
+    palette,
+    "",
+    "SELOS",
+    seals || "Sem selos",
+    "",
+    "CAMADAS",
+    layers,
+    "",
+    "NOTAS",
+    draft.notes,
+  ].join("\n");
+}
+
+function buildCardSvg(draft: CanvaTemplateDraft) {
+  const p = draft.palette;
+  const bodyY = draft.cardCoverHeight;
+  const bodyHeight = Math.max(0, draft.cardHeight - draft.cardCoverHeight);
+  const titleY = bodyY + draft.cardBodyPadding + 46;
+  return svgDoc(draft.cardWidth, draft.cardHeight, `
+    <rect id="fundo-card" width="100%" height="100%" rx="${draft.radius}" fill="${p.paper}" stroke="${p.line}" />
+    <rect id="capa-em-branco" x="0" y="0" width="${draft.cardWidth}" height="${draft.cardCoverHeight}" fill="${p.surface}" stroke="${p.line}" stroke-dasharray="10 8" />
+    <rect id="corpo-card" x="0" y="${bodyY}" width="${draft.cardWidth}" height="${bodyHeight}" fill="${p.surface}" />
+    <text id="status-ano" x="${draft.cardBodyPadding}" y="${bodyY + draft.cardBodyPadding + 14}" fill="${p.muted}" font-size="14" font-family="${escapeXml(draft.bodyFont)}">${escapeXml(draft.preview.status)} / ${escapeXml(draft.preview.year)}</text>
+    <text id="titulo-card" x="${draft.cardBodyPadding}" y="${titleY}" fill="${p.ink}" font-size="28" font-weight="700" font-family="${escapeXml(draft.titleFont)}">${escapeXml(draft.preview.title)}</text>
+    <text id="genero-card" x="${draft.cardBodyPadding}" y="${titleY + 34}" fill="${p.muted}" font-size="17" font-family="${escapeXml(draft.bodyFont)}">${escapeXml(draft.preview.genre)}</text>
+    <rect id="selo-visibilidade" x="${draft.cardBodyPadding}" y="${titleY + 60}" width="112" height="30" rx="15" fill="${p.chip}" stroke="${p.line}" />
+    <text x="${draft.cardBodyPadding + 14}" y="${titleY + 80}" fill="${p.green}" font-size="12" font-weight="700" font-family="${escapeXml(draft.bodyFont)}">AMIGOS</text>
+    <text id="nota" x="${draft.cardBodyPadding}" y="${draft.cardHeight - draft.cardBodyPadding - 16}" fill="${p.brass}" font-size="20" font-family="${escapeXml(draft.bodyFont)}">Nota ${draft.preview.rating}/5</text>
+  `);
+}
+
+function buildSheetSvg(draft: CanvaTemplateDraft) {
+  const p = draft.palette;
+  const contentX = draft.sheetPadding + draft.sheetCoverWidth + draft.sheetGap;
+  const contentWidth = draft.sheetWidth - contentX - draft.sheetPadding;
+  return svgDoc(draft.sheetWidth, draft.sheetHeight, `
+    <rect id="fundo-ficha" width="100%" height="100%" rx="${draft.radius}" fill="${p.paper}" stroke="${p.line}" />
+    <rect id="margem-segura" x="${draft.safeMargin}" y="${draft.safeMargin}" width="${draft.sheetWidth - draft.safeMargin * 2}" height="${draft.sheetHeight - draft.safeMargin * 2}" fill="none" stroke="${p.accent}" stroke-dasharray="12 10" opacity="0.55" />
+    <rect id="capa-em-branco" x="${draft.sheetPadding}" y="${draft.sheetPadding}" width="${draft.sheetCoverWidth}" height="${draft.sheetCoverHeight}" rx="${draft.radius}" fill="${p.surface}" stroke="${p.line}" stroke-dasharray="10 8" />
+    <rect id="carimbo-status" x="${contentX}" y="${draft.sheetPadding}" width="124" height="34" rx="4" fill="${p.red}" />
+    <text x="${contentX + 13}" y="${draft.sheetPadding + 23}" fill="#fffaf1" font-size="13" font-weight="700" font-family="${escapeXml(draft.bodyFont)}">${escapeXml(draft.preview.status.toUpperCase())}</text>
+    <text id="titulo-ficha" x="${contentX}" y="${draft.sheetPadding + 96}" fill="${p.ink}" font-size="54" font-weight="700" font-family="${escapeXml(draft.titleFont)}">${escapeXml(draft.preview.title)}</text>
+    <text id="metadados" x="${contentX}" y="${draft.sheetPadding + 136}" fill="${p.muted}" font-size="20" font-family="${escapeXml(draft.bodyFont)}">${escapeXml(draft.preview.creator)} / ${escapeXml(draft.preview.year)} / ${escapeXml(draft.preview.genre)}</text>
+    <rect id="painel-resumo" x="${contentX}" y="${draft.sheetPadding + 172}" width="${contentWidth}" height="150" rx="${draft.radius}" fill="${p.surface}" stroke="${p.line}" />
+    <text x="${contentX + 18}" y="${draft.sheetPadding + 214}" fill="${p.ink}" font-size="24" font-weight="700" font-family="${escapeXml(draft.titleFont)}">Resumo interno</text>
+    <text x="${contentX + 18}" y="${draft.sheetPadding + 252}" fill="${p.muted}" font-size="18" font-family="${escapeXml(draft.bodyFont)}">${escapeXml(draft.preview.summary)}</text>
+    <rect id="painel-diario" x="${draft.sheetPadding}" y="${draft.sheetPadding + draft.sheetCoverHeight + draft.sheetGap}" width="${draft.sheetWidth - draft.sheetPadding * 2}" height="180" rx="${draft.radius}" fill="${p.panel}" stroke="${p.line}" />
+    <text x="${draft.sheetPadding + 18}" y="${draft.sheetPadding + draft.sheetCoverHeight + draft.sheetGap + 44}" fill="${p.ink}" font-size="24" font-weight="700" font-family="${escapeXml(draft.titleFont)}">Diário e linha do tempo</text>
+  `);
+}
+
+function svgDoc(width: number, height: number, body: string) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img">${body}</svg>`;
+}
+
+function downloadText(filename: string, content: string) {
+  const blob = new Blob([content], { type: "image/svg+xml;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 function slugify(value: string) {
@@ -749,11 +713,7 @@ function slugify(value: string) {
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .replace(/[^a-z0-9_-]+/g, "-")
-    .replace(/^-+|-+$/g, "") || "seasonal-model";
-}
-
-function cssEscapeUrl(value: string) {
-  return value.replace(/"/g, "%22").replace(/\n/g, "");
+    .replace(/^-+|-+$/g, "") || "modelo-canva-ficha";
 }
 
 function numberValue(value: string | number, min: number, max: number) {
@@ -762,28 +722,10 @@ function numberValue(value: string | number, min: number, max: number) {
   return Math.min(max, Math.max(min, parsed));
 }
 
-function formatControlValue(value: number, suffix: string) {
-  if (!suffix) return Number.isInteger(value) ? String(value) : value.toFixed(2);
-  if (suffix === "opacidade" || suffix === "escala" || suffix === "espaco") return `${value.toFixed(2)} ${suffix}`;
-  return `${value}${suffix}`;
-}
-
-function colorMix(base: string, blend: string, amount: number) {
-  const left = parseHex(base);
-  const right = parseHex(blend);
-  if (!left || !right) return base;
-  const mix = left.map((channel, index) => Math.round(channel * (1 - amount) + right[index] * amount));
-  return `rgb(${mix[0]}, ${mix[1]}, ${mix[2]})`;
-}
-
-function parseHex(value: string) {
-  const match = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(value.trim());
-  if (!match) return null;
-  return [Number.parseInt(match[1], 16), Number.parseInt(match[2], 16), Number.parseInt(match[3], 16)] as const;
-}
-
-function rgbaFromHex(value: string, alpha: number) {
-  const channels = parseHex(value);
-  if (!channels) return value;
-  return `rgba(${channels[0]}, ${channels[1]}, ${channels[2]}, ${Math.min(1, Math.max(0, alpha))})`;
+function escapeXml(value: string | number) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
