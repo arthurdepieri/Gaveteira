@@ -1,11 +1,9 @@
-import { AlertTriangle, CheckCircle2, Cloud, Download, GitMerge, KeyRound, Loader2, Moon, RefreshCw, RotateCcw, ShieldCheck, Sun, Trash2, Upload } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Cloud, Download, GitMerge, Loader2, Moon, RefreshCw, RotateCcw, ShieldCheck, Sun, Trash2, Upload } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { AppData, AppSettings, Category, CloudSession, CulturalItem } from "../types";
-import { categoryLabels } from "../data/catalog";
+import { AppData, AppSettings, CloudSession, CulturalItem } from "../types";
 import { parseImportedData } from "../storage/localStore";
 import { createSafetySnapshot, loadSafetySnapshots, removeSafetySnapshot, SafetySnapshot, snapshotReasonLabel } from "../storage/snapshots";
-import { getMetadataProviders } from "../services/metadata";
-import { checkCloudReadiness, CloudReadinessReport, CloudReadinessStatus, fetchMyItems } from "../services/supabaseCloud";
+import { checkCloudReadiness, CloudReadinessReport, CloudReadinessStatus, deleteMyAccount, fetchMyItems } from "../services/supabaseCloud";
 import { getWorkKey } from "../utils/itemHelpers";
 import { withoutLegacyDemoItems } from "../utils/legacyDemoItems";
 
@@ -35,12 +33,14 @@ export function SettingsView({
   session,
   onReplaceData,
   onUpdateData,
+  onAccountDeleted,
 }: {
   data: AppData;
   settings: AppSettings;
   session: CloudSession | null;
   onReplaceData: (data: AppData) => void;
   onUpdateData: (patch: Partial<AppData>) => void;
+  onAccountDeleted: () => void;
 }) {
   const [importError, setImportError] = useState("");
   const [backupMessage, setBackupMessage] = useState("");
@@ -53,7 +53,9 @@ export function SettingsView({
   const [readinessReport, setReadinessReport] = useState<CloudReadinessReport | null>(null);
   const [readinessLoading, setReadinessLoading] = useState(false);
   const [readinessError, setReadinessError] = useState("");
-  const providers = getMetadataProviders(data.settings);
+  const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [deleteAccountError, setDeleteAccountError] = useState("");
   const accountName = useMemo(() => backupAccountName(session), [session]);
   const exportItemCount = backupScope === "local"
     ? data.items.length
@@ -226,13 +228,27 @@ export function SettingsView({
     setBackupMessage("Snapshot removido da retenção local.");
   }
 
+  async function confirmAccountDeletion() {
+    if (!session || deletingAccount) return;
+    setDeletingAccount(true);
+    setDeleteAccountError("");
+
+    try {
+      await deleteMyAccount(settings, session);
+      onAccountDeleted();
+    } catch (error) {
+      setDeleteAccountError(error instanceof Error ? error.message : "Não consegui excluir sua conta.");
+      setDeletingAccount(false);
+    }
+  }
+
   return (
     <main className="page">
       <section className="list-header">
         <div>
           <p className="eyebrow">Preferências locais</p>
           <h1>Configurações</h1>
-          <p>Status, backup JSON e chaves para buscas automáticas futuras.</p>
+          <p>Aparência, backups, nuvem e segurança da conta.</p>
         </div>
       </section>
 
@@ -359,32 +375,6 @@ export function SettingsView({
           {importError ? <p className="form-error">{importError}</p> : null}
         </div>
 
-        <div className="setting-panel">
-          <h2>Chaves de APIs</h2>
-          <p>Quando as integrações forem ativadas, estas chaves serão usadas apenas localmente no seu navegador.</p>
-          <div className="api-key-grid">
-            {Object.keys(data.settings.apiKeys).concat(["igdb", "steam", "rawg", "googleBooks", "spotify", "lastfm", "tmdb", "omdb"])
-              .filter((key, index, keys) => keys.indexOf(key) === index)
-              .map((key) => (
-                <label className="field" key={key}>
-                  <span>{key}</span>
-                  <input
-                    value={String(data.settings.apiKeys[key as keyof typeof data.settings.apiKeys] ?? "")}
-                    onChange={(event) => onUpdateData({ settings: { ...data.settings, apiKeys: { ...data.settings.apiKeys, [key]: event.target.value } } })}
-                    placeholder="Opcional"
-                  />
-                </label>
-              ))}
-          </div>
-          <div className="provider-list">
-            {providers.map((provider) => (
-              <span key={provider.id} className={provider.configured ? "provider-ok" : "provider-pending"}>
-                <KeyRound size={14} /> {provider.name} / {categoryLabels[provider.category]}
-              </span>
-            ))}
-          </div>
-        </div>
-
         <div className="setting-panel wide">
           <div className="cloud-readiness-header">
             <div>
@@ -420,7 +410,32 @@ export function SettingsView({
           {readinessError ? <p className="form-error">{readinessError}</p> : null}
         </div>
 
-        <StatusManager data={data} onUpdateData={onUpdateData} />
+        <div className="setting-panel wide account-danger-zone">
+          <div>
+            <h2>Excluir conta</h2>
+            <p>Apaga permanentemente seu perfil, suas fichas e seus dados da nuvem. Esta ação não pode ser desfeita.</p>
+          </div>
+          {!deleteConfirmationOpen ? (
+            <button className="danger" type="button" onClick={() => setDeleteConfirmationOpen(true)} disabled={!session}>
+              <Trash2 size={16} />
+              Excluir conta
+            </button>
+          ) : (
+            <div className="account-delete-confirmation">
+              <strong>Tem certeza de que deseja excluir sua conta?</strong>
+              <span>Se quiser guardar suas fichas, exporte um backup antes de continuar.</span>
+              <div className="button-row">
+                <button className="ghost" type="button" onClick={() => setDeleteConfirmationOpen(false)} disabled={deletingAccount}>Cancelar</button>
+                <button className="danger" type="button" onClick={confirmAccountDeletion} disabled={deletingAccount}>
+                  {deletingAccount ? <Loader2 size={16} className="spin" /> : <Trash2 size={16} />}
+                  {deletingAccount ? "Excluindo..." : "Excluir permanentemente"}
+                </button>
+              </div>
+            </div>
+          )}
+          {!session ? <p className="form-note">Entre na sua conta para habilitar esta ação.</p> : null}
+          {deleteAccountError ? <p className="form-error">{deleteAccountError}</p> : null}
+        </div>
       </section>
     </main>
   );
@@ -464,35 +479,6 @@ function readinessIcon(status: CloudReadinessStatus, loading = false) {
   if (status === "ready") return <CheckCircle2 size={17} />;
   if (status === "attention") return <AlertTriangle size={17} />;
   return <Cloud size={17} />;
-}
-
-function StatusManager({ data, onUpdateData }: { data: AppData; onUpdateData: (patch: Partial<AppData>) => void }) {
-  function updateCategory(category: Category, statuses: string[]) {
-    onUpdateData({ statuses: { ...data.statuses, [category]: statuses.filter(Boolean) } });
-  }
-
-  return (
-    <div className="setting-panel wide">
-      <h2>Status personalizados</h2>
-      <div className="status-columns">
-        {(Object.keys(categoryLabels) as Category[]).map((category) => (
-          <section key={category} className="status-box">
-            <h3>{categoryLabels[category]}</h3>
-            {data.statuses[category].map((status, index) => (
-              <div className="repeat-row" key={`${category}-${index}`}>
-                <input
-                  value={status}
-                  onChange={(event) => updateCategory(category, data.statuses[category].map((item, itemIndex) => itemIndex === index ? event.target.value : item))}
-                />
-                <button className="ghost compact" onClick={() => updateCategory(category, data.statuses[category].filter((_, itemIndex) => itemIndex !== index))}>Remover</button>
-              </div>
-            ))}
-            <button className="ghost" onClick={() => updateCategory(category, [...data.statuses[category], "Novo status"])}>Criar status</button>
-          </section>
-        ))}
-      </div>
-    </div>
-  );
 }
 
 function buildBackupPreview(fileName: string, imported: AppData, currentItems: CulturalItem[], incomingItems: CulturalItem[]): BackupPreview {

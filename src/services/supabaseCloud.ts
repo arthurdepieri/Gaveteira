@@ -509,6 +509,10 @@ export async function fetchMyItems(settings: AppSettings, session: CloudSession)
   return rows.map((row) => row.item).filter((item) => !isLegacyDemoItem(item.id));
 }
 
+export async function deleteMyAccount(settings: AppSettings, session: CloudSession) {
+  await rpcRequest<void>(settings, session, "delete_my_account");
+}
+
 export async function fetchFamilyItems(settings: AppSettings, session: CloudSession): Promise<FamilyItem[]> {
   const familyCode = requireFamilyCode(settings);
   const path = `/rest/v1/cultural_items?select=id,owner_id,family_code,item,updated_at&family_code=eq.${encodeURIComponent(familyCode)}&order=updated_at.desc`;

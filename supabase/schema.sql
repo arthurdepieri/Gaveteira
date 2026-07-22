@@ -200,6 +200,28 @@ as $$
     )
 $$;
 
+create or replace function public.delete_my_account()
+returns void
+language plpgsql
+security definer
+set search_path = public, auth, storage
+set row_security = off
+as $$
+declare
+  current_user_id uuid := auth.uid();
+begin
+  if current_user_id is null then
+    raise exception 'Authentication required';
+  end if;
+
+  delete from storage.objects
+  where owner_id = current_user_id::text
+     or (bucket_id = 'gaveteira-images' and (storage.foldername(name))[1] = current_user_id::text);
+
+  delete from auth.users where id = current_user_id;
+end;
+$$;
+
 create or replace function public.sanitize_social_item(raw_item jsonb)
 returns jsonb
 language sql
@@ -978,6 +1000,8 @@ grant select, insert on public.activity_events to authenticated;
 grant select, insert on public.admin_audit_logs to authenticated;
 grant execute on function public.is_admin() to authenticated;
 grant execute on function public.are_friends(uuid, uuid) to authenticated;
+revoke all on function public.delete_my_account() from public;
+grant execute on function public.delete_my_account() to authenticated;
 grant execute on function public.sanitize_social_item(jsonb) to authenticated;
 grant execute on function public.get_social_items() to authenticated;
 grant execute on function public.get_admin_curatable_items() to authenticated;
