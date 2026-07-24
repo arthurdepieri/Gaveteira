@@ -73,9 +73,6 @@ export function ItemForm({
   const formComplete = formStep === cardFormSteps.length - 1;
   const canClose = tutorialActive ? tutorialComplete : true;
   const advanceFirstCardTutorial = () => {
-    if (tutorialStep === 1 && !item.diary.length) {
-      update({ diary: [createBlankDiaryEntry(loadDiaryVisibility())] });
-    }
     setTutorialStep((current) => Math.min(firstCardTutorialSteps.length - 1, current + 1));
   };
   const advanceFormStep = () => {
@@ -112,6 +109,15 @@ export function ItemForm({
       </Field>
       <Field label="Nota">
         <RatingInput value={item.rating as Rating | undefined} onChange={(rating) => update({ rating })} />
+      </Field>
+    </MobileFieldGroup>
+  );
+  const firstCardStatusField = (
+    <MobileFieldGroup title="Status">
+      <Field label="Como essa obra está na sua vida?">
+        <select value={item.status} onChange={(event) => update({ status: event.target.value })}>
+          {statuses.map((status) => <option key={status}>{status}</option>)}
+        </select>
       </Field>
     </MobileFieldGroup>
   );
@@ -166,10 +172,11 @@ export function ItemForm({
               step={tutorialStep}
               onBack={() => setTutorialStep((current) => Math.max(0, current - 1))}
               onNext={advanceFirstCardTutorial}
+              canAdvance={Boolean(getTitle(item).trim())}
             />
 
             {tutorialStep === 0 ? (
-              <MobileFormSection title="Completar ficha" open>
+              <MobileFormSection title="Encontre sua obra" open>
                 {metadataLookup}
                 <div className="form-grid first-card-tutorial-grid">
                   {categoryFields}
@@ -178,22 +185,11 @@ export function ItemForm({
             ) : null}
 
             {tutorialStep === 1 ? (
-              <MobileFormSection title="Status, nota e visibilidade" open>
+              <MobileFormSection title="Confirme e salve" open>
                 <div className="form-grid first-card-tutorial-grid">
-                  {statusRatingFields}
-                  <MobileFieldGroup title="Visibilidade">
-                    {visibilityField}
-                  </MobileFieldGroup>
+                  {firstCardStatusField}
+                  {coverField}
                 </div>
-              </MobileFormSection>
-            ) : null}
-
-            {tutorialStep === 2 ? (
-              <MobileFormSection title="Diário" open>
-                <section className="form-section first-card-diary-step">
-                  <h3>Primeiro diário</h3>
-                  <DiaryEditor category={item.category} entries={item.diary} onChange={(diary) => update({ diary })} />
-                </section>
               </MobileFormSection>
             ) : null}
           </>
@@ -250,7 +246,7 @@ export function ItemForm({
                 Voltar
               </button>
             ) : null}
-            <button type="button" className="primary" onClick={finishOrAdvance}>
+            <button type="button" className="primary" onClick={finishOrAdvance} disabled={tutorialActive && !getTitle(item).trim()}>
               {(tutorialActive ? tutorialComplete : formComplete) ? "Concluir" : "Próxima etapa"}
             </button>
           </div>
@@ -262,19 +258,14 @@ export function ItemForm({
 
 const firstCardTutorialSteps = [
   {
-    eyebrow: "Etapa 1 de 3",
-    title: "Complete do seu jeito",
-    description: "É possível completar automaticamente ou manualmente. Nem todas as databases detêm todas as informações, então qualquer campo pode ser ajustado com calma.",
+    eyebrow: "Etapa 1 de 2",
+    title: "Encontre sua obra",
+    description: "Busque pelo título para preencher a ficha automaticamente. Se não encontrar, digite apenas o título e continue.",
   },
   {
-    eyebrow: "Etapa 2 de 3",
-    title: "Status, nota e visibilidade",
-    description: "Nesta página você define o status da ficha, a nota e quem pode ver esse card.",
-  },
-  {
-    eyebrow: "Etapa 3 de 3",
-    title: "Registre o primeiro diário",
-    description: "Abra uma primeira entrada para guardar uma impressão, citação, memória ou opinião inicial.",
+    eyebrow: "Etapa 2 de 2",
+    title: "Confirme e guarde",
+    description: "Confira a capa e escolha o status. Nota, visibilidade e diário podem ser ajustados depois.",
   },
 ];
 
@@ -316,10 +307,12 @@ function FirstCardTutorial({
   step,
   onBack,
   onNext,
+  canAdvance,
 }: {
   step: number;
   onBack: () => void;
   onNext: () => void;
+  canAdvance: boolean;
 }) {
   const current = firstCardTutorialSteps[step];
 
@@ -337,7 +330,7 @@ function FirstCardTutorial({
       </div>
       <div className="first-card-tutorial-actions">
         <button type="button" className="ghost" onClick={onBack} disabled={step === 0}>Voltar</button>
-        <button type="button" className="primary" onClick={onNext} disabled={step === firstCardTutorialSteps.length - 1}>Próxima etapa</button>
+        <button type="button" className="primary" onClick={onNext} disabled={!canAdvance || step === firstCardTutorialSteps.length - 1}>Próxima etapa</button>
       </div>
     </section>
   );

@@ -1,6 +1,25 @@
 {
-  "latest": "0.6.11-beta",
+  "latest": "0.6.12-beta",
   "releases": [
+    {
+      "version": "0.6.12-beta",
+      "date": "2026-07-24",
+      "title": "Menu-gaveta e acabamento da navegação",
+      "notes": "Versão beta focada em dar mais respiro à página inicial, simplificar a navegação e tornar o primeiro cadastro mais direto.\n\n### Destaques\n\n- Navegação principal transformada em uma gaveta lateral sobreposta, com gesto de arrastar e grupos recolhíveis.\n- Puxador visual removido em favor de uma marcação lateral discreta; a barra de rolagem da gaveta fica oculta sem impedir o scroll.\n- Página inicial com margens internas, conteúdo mais centralizado e painéis arredondados seguindo a linguagem visual do Feed.\n- Primeiro cadastro reduzido a duas etapas, priorizando os dados essenciais da ficha.\n- Cartão persistente de sincronização removido do menu; falhas aparecem em um aviso compacto na parte inferior da tela.\n- Comportamento responsivo unificado entre computador e celular, preservando as áreas Social e Administração.\n\n### Observações\n\n- Esta versão é uma subversão visual e de fluxo da linha `0.6.x`, sem migração de dados ou alteração de backend.\n- O pacote de release desta versão fica em `releases/Gaveteira-0.6.12-beta.zip`.",
+      "shortNotes": {
+        "summary": "Versão beta focada em dar mais respiro à página inicial, simplificar a navegação e tornar o primeiro cadastro mais direto.",
+        "highlights": [
+          "Navegação principal transformada em uma gaveta lateral sobreposta, com gesto de arrastar e grupos recolhíveis.",
+          "Puxador visual removido em favor de uma marcação lateral discreta; a barra de rolagem da gaveta fica oculta sem impedir o scroll.",
+          "Página inicial com margens internas, conteúdo mais centralizado e painéis arredondados seguindo a linguagem visual do Feed.",
+          "Primeiro cadastro reduzido a duas etapas, priorizando os dados essenciais da ficha.",
+          "Cartão persistente de sincronização removido do menu; falhas aparecem em um aviso compacto na parte inferior da tela."
+        ]
+      },
+      "archivePath": "releases/Gaveteira-0.6.12-beta.zip",
+      "archiveSizeBytes": 4682121,
+      "archiveSha256": "dd6b9ecfe1ae14b33e2cc3fc835cdcb9b0b9437a057cdc02bfd0dc1f2ac58de"
+    },
     {
       "version": "0.6.11-beta",
       "date": "2026-07-22",
