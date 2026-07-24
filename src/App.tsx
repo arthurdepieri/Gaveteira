@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { ElementType } from "react";
+import type { CSSProperties, ElementType, PointerEvent as ReactPointerEvent } from "react";
 import { AlertTriangle, Archive, Award, BarChart3, BookOpen, CheckCircle2, ChevronDown, CloudOff, Disc3, Download, FileText, Film, Gamepad2, Home, Library, ListChecks, Loader2, LogIn, LogOut, MessageSquare, Palette, RefreshCw, RotateCcw, Settings, Share, ShieldCheck, Tv, UserCheck, UserPlus, Users, WifiOff, X } from "lucide-react";
 import { AppData, AppSettings, BookItem, Category, CloudSession, CulturalItem, ViewKey } from "./types";
 import { createEmptyData, loadData, saveData } from "./storage/localStore";
@@ -71,6 +71,20 @@ interface PwaUpdateNotice {
   generatedAt?: string;
 }
 
+type DrawerGroupKey = "drawers" | "social" | "admin";
+
+interface DrawerGesture {
+  pointerId: number;
+  startX: number;
+  startY: number;
+  startTranslate: number;
+  closedTranslate: number;
+  startedOpen: boolean;
+  horizontal: boolean | null;
+}
+
+const NAVIGATION_DRAWER_PEEK_PX = 14;
+
 const navItems: Array<{ key: ViewKey; label: string; icon: ElementType }> = [
   { key: "home", label: "Início", icon: Home },
   { key: "feed", label: "Feed", icon: MessageSquare },
@@ -112,7 +126,14 @@ function App() {
   const [isOnline, setIsOnline] = useState(() => typeof navigator === "undefined" ? true : navigator.onLine);
   const [syncQueue, setSyncQueue] = useState<SyncQueueEntry[]>(() => loadSyncQueue(loadPendingDeletes()));
   const [socialSection, setSocialSection] = useState<"profile" | "friends">("profile");
-  const [mobileDrawersOpen, setMobileDrawersOpen] = useState(false);
+  const [navigationDrawerOpen, setNavigationDrawerOpen] = useState(false);
+  const [expandedDrawerGroups, setExpandedDrawerGroups] = useState<Record<DrawerGroupKey, boolean>>({
+    drawers: false,
+    social: false,
+    admin: false,
+  });
+  const [drawerDragTranslate, setDrawerDragTranslate] = useState<number | null>(null);
+  const [drawerDragging, setDrawerDragging] = useState(false);
   const [addPickerOpen, setAddPickerOpen] = useState(false);
   const [firstCardTutorial, setFirstCardTutorial] = useState(false);
   const [showFirstCardWelcome, setShowFirstCardWelcome] = useState(false);
@@ -125,6 +146,10 @@ function App() {
   const [pdfBookDraft, setPdfBookDraft] = useState<PdfBookDraft | null>(null);
   const [systemPrefersDark, setSystemPrefersDark] = useState(() => typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches);
   const pdfInputRef = useRef<HTMLInputElement>(null);
+  const navigationDrawerShellRef = useRef<HTMLDivElement>(null);
+  const drawerGestureRef = useRef<DrawerGesture | null>(null);
+  const drawerDragTranslateRef = useRef<number | null>(null);
+  const suppressDrawerClickRef = useRef(false);
   const syncInFlightRef = useRef(false);
   const syncQueuedRef = useRef(false);
   const oauthRedirectHandledRef = useRef(false);
@@ -143,6 +168,9 @@ function App() {
   }), [cloudSession?.user.id, syncQueue]);
   const queueCounts = useMemo(() => getSyncQueueCounts(syncQueue), [syncQueue]);
   const activeTheme = useMemo(() => resolveTheme(effectiveSettings.theme, systemPrefersDark), [effectiveSettings.theme, systemPrefersDark]);
+  const navigationDrawerStyle: CSSProperties | undefined = drawerDragTranslate === null
+    ? undefined
+    : { transform: `translate3d(${drawerDragTranslate}px, 0, 0)` };
 
   useEffect(() => {
     let cancelled = false;
@@ -169,6 +197,39 @@ function App() {
     dataRef.current = data;
     saveData(data).catch((error) => console.warn("Could not save local data.", error));
   }, [data, storageReady]);
+
+  useEffect(() => {
+    const activeGroup: DrawerGroupKey | null = view in categoryLabels
+      ? "drawers"
+      : view === "family"
+        ? "social"
+        : view === "adminDesign" || view === "adminCuration"
+          ? "admin"
+          : null;
+
+    if (!activeGroup) return;
+    setExpandedDrawerGroups((current) => current[activeGroup]
+      ? current
+      : { ...current, [activeGroup]: true });
+  }, [view]);
+
+  useEffect(() => {
+    if (!navigationDrawerOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      setNavigationDrawerOpen(false);
+    }
+
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [navigationDrawerOpen]);
 
   useEffect(() => {
     if (!storageReady) return;
@@ -705,7 +766,9 @@ function App() {
 
   function selectView(nextView: ViewKey) {
     setView(nextView);
-    setMobileDrawersOpen(false);
+    if (typeof window !== "undefined" && window.matchMedia("(max-width: 900px)").matches) {
+      setNavigationDrawerOpen(false);
+    }
   }
 
   function selectSocial(nextSection: "profile" | "friends") {
@@ -719,6 +782,97 @@ function App() {
       return;
     }
     selectView(nextPage === "design" ? "adminDesign" : "adminCuration");
+  }
+
+  function toggleDrawerGroup(group: DrawerGroupKey) {
+    setExpandedDrawerGroups((current) => ({ ...current, [group]: !current[group] }));
+  }
+
+  function toggleNavigationDrawer() {
+    if (suppressDrawerClickRef.current) {
+      suppressDrawerClickRef.current = false;
+      return;
+    }
+    setNavigationDrawerOpen((current) => !current);
+  }
+
+  function startNavigationDrawerGesture(event: ReactPointerEvent<HTMLElement>) {
+    if (event.button !== 0) return;
+
+    const drawerWidth = navigationDrawerShellRef.current?.getBoundingClientRect().width ?? 0;
+    if (!drawerWidth) return;
+
+    const closedTranslate = -drawerWidth + NAVIGATION_DRAWER_PEEK_PX;
+    const startTranslate = navigationDrawerOpen ? 0 : closedTranslate;
+    drawerGestureRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      startTranslate,
+      closedTranslate,
+      startedOpen: navigationDrawerOpen,
+      horizontal: null,
+    };
+    drawerDragTranslateRef.current = startTranslate;
+    setDrawerDragTranslate(startTranslate);
+    setDrawerDragging(true);
+  }
+
+  function moveNavigationDrawerGesture(event: ReactPointerEvent<HTMLElement>) {
+    const gesture = drawerGestureRef.current;
+    if (!gesture || gesture.pointerId !== event.pointerId) return;
+
+    const distanceX = event.clientX - gesture.startX;
+    const distanceY = event.clientY - gesture.startY;
+    if (gesture.horizontal === null && Math.max(Math.abs(distanceX), Math.abs(distanceY)) >= 7) {
+      gesture.horizontal = Math.abs(distanceX) > Math.abs(distanceY);
+    }
+    if (!gesture.horizontal) return;
+
+    event.preventDefault();
+    if (!event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }
+    const nextTranslate = Math.min(0, Math.max(gesture.closedTranslate, gesture.startTranslate + distanceX));
+    drawerDragTranslateRef.current = nextTranslate;
+    setDrawerDragTranslate(nextTranslate);
+    if (Math.abs(distanceX) > 6) suppressDrawerClickRef.current = true;
+  }
+
+  function finishNavigationDrawerGesture(event: ReactPointerEvent<HTMLElement>) {
+    const gesture = drawerGestureRef.current;
+    if (!gesture || gesture.pointerId !== event.pointerId) return;
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    if (gesture.horizontal) {
+      const currentTranslate = drawerDragTranslateRef.current ?? gesture.startTranslate;
+      const travel = Math.abs(gesture.closedTranslate);
+      const openProgress = travel ? (currentTranslate - gesture.closedTranslate) / travel : 0;
+      const shouldOpen = gesture.startedOpen ? openProgress > 0.7 : openProgress > 0.3;
+      setNavigationDrawerOpen(shouldOpen);
+    }
+
+    drawerGestureRef.current = null;
+    drawerDragTranslateRef.current = null;
+    setDrawerDragging(false);
+    setDrawerDragTranslate(null);
+    if (suppressDrawerClickRef.current) {
+      window.setTimeout(() => {
+        suppressDrawerClickRef.current = false;
+      }, 0);
+    }
+  }
+
+  function cancelNavigationDrawerGesture(event: ReactPointerEvent<HTMLElement>) {
+    const gesture = drawerGestureRef.current;
+    if (!gesture || gesture.pointerId !== event.pointerId) return;
+    drawerGestureRef.current = null;
+    drawerDragTranslateRef.current = null;
+    setDrawerDragging(false);
+    setDrawerDragTranslate(null);
   }
 
   async function installApp() {
@@ -780,6 +934,7 @@ function App() {
     setLastSyncedAt(null);
     setCloudSession(null);
     setBootstrappedCloudScope("");
+    setNavigationDrawerOpen(false);
     selectView("home");
     setActiveItemId(null);
     setActiveItemMode("details");
@@ -991,166 +1146,210 @@ function App() {
 
   return (
     <div className={`app-shell${standaloneMode ? " app-shell-standalone" : ""}`}>
-      <aside className="sidebar">
-        <div className="brand">
-          <span className="brand-mark">G</span>
-          <div>
-            <strong>Gaveteira</strong>
-            <small>{cloudSession ? cloudSession.profile?.displayName || cloudSession.user.email || "minha conta" : "modo local"}</small>
-          </div>
-        </div>
-        <SyncStatusCard status={syncStatus} queue={syncQueue} onReconnect={() => selectView("family")} onRetry={retrySyncNow} onRetryEntry={retrySyncEntry} />
-        <nav>
-          {topNavItems.map((item) => {
-            const Icon = item.icon;
-            const active = view === item.key;
-            return (
-              <button key={item.key} className={active ? "active" : ""} onClick={() => selectView(item.key)}>
-                <Icon size={18} />
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
-          <div className={`drawer-nav ${view in categoryLabels ? "active" : ""}`}>
-            <button className="drawer-nav-trigger" type="button">
-              <Archive size={18} />
-              <span>Gavetas</span>
-              <ChevronDown size={16} />
-            </button>
-            <div className="drawer-nav-menu">
-              {drawerItems.map((item) => {
-                const Icon = item.icon;
-                const active = view === item.key;
-                const count = data.items.filter((entry) => entry.category === item.key).length;
-                return (
-                  <button key={item.key} className={active ? "active" : ""} onClick={() => selectView(item.key)}>
-                    <Icon size={18} />
-                    <span>{item.label}</span>
-                    <small>{count}</small>
-                  </button>
-                );
-              })}
+      <button
+        type="button"
+        className={`navigation-drawer-backdrop${navigationDrawerOpen ? " open" : ""}`}
+        aria-label="Fechar menu"
+        aria-hidden={!navigationDrawerOpen}
+        tabIndex={-1}
+        onClick={() => setNavigationDrawerOpen(false)}
+      />
+      <div
+        ref={navigationDrawerShellRef}
+        className={`navigation-drawer-shell${navigationDrawerOpen ? " open" : ""}${drawerDragging ? " dragging" : ""}`}
+        style={navigationDrawerStyle}
+        onPointerDown={startNavigationDrawerGesture}
+        onPointerMove={moveNavigationDrawerGesture}
+        onPointerUp={finishNavigationDrawerGesture}
+        onPointerCancel={cancelNavigationDrawerGesture}
+        onClickCapture={(event) => {
+          if (!suppressDrawerClickRef.current) return;
+          event.preventDefault();
+          event.stopPropagation();
+          suppressDrawerClickRef.current = false;
+        }}
+      >
+        <aside
+          id="main-navigation-drawer"
+          className="sidebar navigation-drawer"
+          role="dialog"
+          aria-modal={navigationDrawerOpen}
+          aria-label="Menu principal"
+          aria-hidden={!navigationDrawerOpen}
+          inert={!navigationDrawerOpen}
+        >
+          <div className="brand">
+            <span className="brand-mark">G</span>
+            <div>
+              <strong>Gaveteira</strong>
+              <small>{cloudSession ? cloudSession.profile?.displayName || cloudSession.user.email || "minha conta" : "modo local"}</small>
             </div>
           </div>
-          <div className={`drawer-nav ${view === "family" ? "active" : ""}`}>
-            <button className="drawer-nav-trigger" type="button" onClick={() => selectSocial(socialSection)}>
-              <Users size={18} />
-              <span>Social</span>
-              <ChevronDown size={16} />
-            </button>
-            <div className="drawer-nav-menu">
-              <button className={view === "family" && socialSection === "profile" ? "active" : ""} onClick={() => selectSocial("profile")}>
-                <UserCheck size={18} />
-                <span>Meu perfil</span>
-              </button>
-              <button className={view === "family" && socialSection === "friends" ? "active" : ""} onClick={() => selectSocial("friends")}>
-                <UserPlus size={18} />
-                <span>Amigos</span>
-              </button>
-            </div>
-          </div>
-          {cloudSession?.profile?.role === "admin" ? (
-            <div className={`drawer-nav ${view === "adminDesign" || view === "adminCuration" ? "active" : ""}`}>
-              <button className="drawer-nav-trigger" type="button" onClick={() => selectAdminPage(view === "adminCuration" ? "curation" : "design")}>
-                <ShieldCheck size={18} />
-                <span>Admin</span>
+          <nav aria-label="Navegação principal">
+            {topNavItems.map((item) => {
+              const Icon = item.icon;
+              const active = view === item.key;
+              return (
+                <button type="button" key={item.key} className={active ? "active" : ""} onClick={() => selectView(item.key)}>
+                  <Icon size={18} />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+            <div className={`drawer-nav${view in categoryLabels ? " active" : ""}${expandedDrawerGroups.drawers ? " expanded" : ""}`}>
+              <button
+                className="drawer-nav-trigger"
+                type="button"
+                aria-expanded={expandedDrawerGroups.drawers}
+                aria-controls="drawer-group-categories"
+                onClick={() => toggleDrawerGroup("drawers")}
+              >
+                <Archive size={18} />
+                <span>Gavetas</span>
                 <ChevronDown size={16} />
               </button>
-              <div className="drawer-nav-menu">
-                <button className={view === "adminDesign" ? "active" : ""} onClick={() => selectAdminPage("design")}>
-                  <Palette size={18} />
-                  <span>Modelo Canva</span>
+              <div id="drawer-group-categories" className="drawer-nav-menu" aria-hidden={!expandedDrawerGroups.drawers}>
+                {drawerItems.map((item) => {
+                  const Icon = item.icon;
+                  const active = view === item.key;
+                  const count = categoryCount(item.key);
+                  return (
+                    <button
+                      type="button"
+                      key={item.key}
+                      tabIndex={expandedDrawerGroups.drawers ? 0 : -1}
+                      className={active ? "active" : ""}
+                      onClick={() => selectView(item.key)}
+                    >
+                      <Icon size={18} />
+                      <span>{item.label}</span>
+                      <small>{count}</small>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className={`drawer-nav${view === "family" ? " active" : ""}${expandedDrawerGroups.social ? " expanded" : ""}`}>
+              <button
+                className="drawer-nav-trigger"
+                type="button"
+                aria-expanded={expandedDrawerGroups.social}
+                aria-controls="drawer-group-social"
+                onClick={() => toggleDrawerGroup("social")}
+              >
+                <Users size={18} />
+                <span>Social</span>
+                <ChevronDown size={16} />
+              </button>
+              <div id="drawer-group-social" className="drawer-nav-menu" aria-hidden={!expandedDrawerGroups.social}>
+                <button
+                  type="button"
+                  tabIndex={expandedDrawerGroups.social ? 0 : -1}
+                  className={view === "family" && socialSection === "profile" ? "active" : ""}
+                  onClick={() => selectSocial("profile")}
+                >
+                  <UserCheck size={18} />
+                  <span>Meu perfil</span>
                 </button>
-                <button className={view === "adminCuration" ? "active" : ""} onClick={() => selectAdminPage("curation")}>
-                  <Award size={18} />
-                  <span>Membros e curadoria</span>
+                <button
+                  type="button"
+                  tabIndex={expandedDrawerGroups.social ? 0 : -1}
+                  className={view === "family" && socialSection === "friends" ? "active" : ""}
+                  onClick={() => selectSocial("friends")}
+                >
+                  <UserPlus size={18} />
+                  <span>Amigos</span>
                 </button>
               </div>
             </div>
-          ) : null}
-          {secondaryNavItems.map((item) => {
-            const Icon = item.icon;
-            const active = view === item.key;
-            return (
-              <button key={item.key} className={active ? "active" : ""} onClick={() => selectView(item.key)}>
-                <Icon size={18} />
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
-        </nav>
-        {cloudSession ? (
-          <>
-            <button className="sidebar-logout" onClick={logout}>
+            {cloudSession?.profile?.role === "admin" ? (
+              <div className={`drawer-nav${view === "adminDesign" || view === "adminCuration" ? " active" : ""}${expandedDrawerGroups.admin ? " expanded" : ""}`}>
+                <button
+                  className="drawer-nav-trigger"
+                  type="button"
+                  aria-expanded={expandedDrawerGroups.admin}
+                  aria-controls="drawer-group-admin"
+                  onClick={() => toggleDrawerGroup("admin")}
+                >
+                  <ShieldCheck size={18} />
+                  <span>Admin</span>
+                  <ChevronDown size={16} />
+                </button>
+                <div id="drawer-group-admin" className="drawer-nav-menu" aria-hidden={!expandedDrawerGroups.admin}>
+                  <button
+                    type="button"
+                    tabIndex={expandedDrawerGroups.admin ? 0 : -1}
+                    className={view === "adminDesign" ? "active" : ""}
+                    onClick={() => selectAdminPage("design")}
+                  >
+                    <Palette size={18} />
+                    <span>Modelo Canva</span>
+                  </button>
+                  <button
+                    type="button"
+                    tabIndex={expandedDrawerGroups.admin ? 0 : -1}
+                    className={view === "adminCuration" ? "active" : ""}
+                    onClick={() => selectAdminPage("curation")}
+                  >
+                    <Award size={18} />
+                    <span>Membros e curadoria</span>
+                  </button>
+                </div>
+              </div>
+            ) : null}
+            {secondaryNavItems.map((item) => {
+              const Icon = item.icon;
+              const active = view === item.key;
+              return (
+                <button type="button" key={item.key} className={active ? "active" : ""} onClick={() => selectView(item.key)}>
+                  <Icon size={18} />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+          {cloudSession ? (
+            <button type="button" className="sidebar-logout" onClick={logout}>
               <LogOut size={18} />
               <span>Sair</span>
             </button>
-          </>
-        ) : (
-          <button className="sidebar-action" onClick={() => selectView("family")}>
-            <LogIn size={18} />
-            <span>Conectar/sincronizar</span>
-          </button>
-        )}
-      </aside>
+          ) : (
+            <button type="button" className="sidebar-action" onClick={() => selectView("family")}>
+              <LogIn size={18} />
+              <span>Conectar/sincronizar</span>
+            </button>
+          )}
+        </aside>
+        <button
+          type="button"
+          className="navigation-drawer-handle"
+          aria-controls="main-navigation-drawer"
+          aria-expanded={navigationDrawerOpen}
+          title={navigationDrawerOpen ? "Fechar menu" : "Abrir menu"}
+          onClick={toggleNavigationDrawer}
+        >
+          <span className="navigation-drawer-handle-grip" aria-hidden="true" />
+          <span className="sr-only">{navigationDrawerOpen ? "Fechar menu" : "Abrir menu"}</span>
+        </button>
+      </div>
+      {!navigationDrawerOpen ? (
+        <button
+          type="button"
+          className="navigation-drawer-edge-swipe"
+          aria-label="Abrir menu"
+          aria-hidden="true"
+          tabIndex={-1}
+          onClick={() => setNavigationDrawerOpen(true)}
+          onPointerDown={startNavigationDrawerGesture}
+          onPointerMove={moveNavigationDrawerGesture}
+          onPointerUp={finishNavigationDrawerGesture}
+          onPointerCancel={cancelNavigationDrawerGesture}
+        />
+      ) : null}
       <div key={view} className="view-transition-frame">
         {mainView()}
       </div>
       <SyncStatusCard status={syncStatus} queue={syncQueue} onReconnect={() => selectView("family")} onRetry={retrySyncNow} onRetryEntry={retrySyncEntry} compact />
-      <nav className="mobile-bottom-nav" aria-label="Navegação principal mobile">
-        <button type="button" className={view === "home" ? "active" : ""} onClick={() => selectView("home")}>
-          <Home size={20} />
-          <span>Início</span>
-        </button>
-        <button type="button" className={view in categoryLabels ? "active" : ""} onClick={() => setMobileDrawersOpen(true)}>
-          <Archive size={20} />
-          <span>Gavetas</span>
-        </button>
-        <button type="button" className={view === "feed" ? "active" : ""} onClick={() => selectView("feed")}>
-          <MessageSquare size={20} />
-          <span>Feed</span>
-        </button>
-        <button type="button" className={view === "family" ? "active" : ""} onClick={() => selectSocial(socialSection)}>
-          <Users size={20} />
-          <span>Social</span>
-        </button>
-        {cloudSession?.profile?.role === "admin" ? (
-          <button type="button" className={view === "adminDesign" || view === "adminCuration" ? "active" : ""} onClick={() => selectAdminPage(view === "adminCuration" ? "curation" : "design")}>
-            <ShieldCheck size={20} />
-            <span>Admin</span>
-          </button>
-        ) : null}
-        <button type="button" className={view === "settings" ? "active" : ""} onClick={() => selectView("settings")}>
-          <Settings size={20} />
-          <span>Config</span>
-        </button>
-      </nav>
-      {mobileDrawersOpen ? (
-        <div className="mobile-drawer-backdrop" role="presentation" onClick={() => setMobileDrawersOpen(false)}>
-          <section className="mobile-drawer-panel" role="dialog" aria-modal="true" aria-label="Escolher gaveta" onClick={(event) => event.stopPropagation()}>
-            <div className="mobile-drawer-handle" />
-            <header>
-              <div>
-                <p className="eyebrow">Gavetas</p>
-                <h2>Escolha uma categoria</h2>
-              </div>
-              <button type="button" className="ghost compact" onClick={() => setMobileDrawersOpen(false)}>Fechar</button>
-            </header>
-            <div className="mobile-drawer-list">
-              {drawerItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <button key={item.key} type="button" className={view === item.key ? "active" : ""} onClick={() => selectView(item.key)}>
-                    <Icon size={20} />
-                    <span>{item.label}</span>
-                    <strong>{categoryCount(item.key)}</strong>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-        </div>
-      ) : null}
       {showInstallPrompt ? (
         <InstallAppPrompt
           canInstall={Boolean(installPrompt)}
@@ -1246,65 +1445,32 @@ function FirstCardStart({
 }: {
   onChoose: (category: Category) => void;
 }) {
-  const [page, setPage] = useState(0);
-  const isChoicePage = page === 2;
+  const firstCardCategories = drawerItems.filter((item) => item.key === "books" || item.key === "games" || item.key === "movies");
 
   return (
     <main className="page first-card-page" aria-label="Introdução da Gaveteira">
       <div className="modal-backdrop first-card-onboarding-backdrop" role="presentation">
         <section className="modal first-card-onboarding-modal" role="dialog" aria-modal="true" aria-label="Começar na Gaveteira">
-          <div className="first-card-progress" aria-label="Etapas de apresentação">
-            {[0, 1, 2].map((step) => (
-              <span key={step} className={step === page ? "active" : step < page ? "done" : ""} />
-            ))}
+          <div className="first-card-onboarding-copy">
+            <p className="eyebrow">Boas-vindas à Gaveteira</p>
+            <h1>O que você quer guardar primeiro?</h1>
+            <p>Este é o seu arquivo pessoal de cultura. Para começar, escolha uma categoria e procure uma obra que já faz parte da sua história.</p>
+            <div className="first-card-picker" aria-label="Escolher primeira gaveta">
+              {firstCardCategories.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <button key={item.key} type="button" className={`first-card-option drawer-${item.key}`} onClick={() => onChoose(item.key)}>
+                    <Icon size={22} />
+                    <strong>{item.label}</strong>
+                    <small>Criar primeira ficha</small>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          {page === 0 ? (
-            <div className="first-card-onboarding-copy">
-              <p className="eyebrow">Bem-vindo</p>
-              <h1>O que é a Gaveteira?</h1>
-              <p>Um local para guardar e mostrar os seus gostos para o mundo. Seus jogos, livros, filmes, séries e discos. Todos guardados na sua gaveta virtual.</p>
-            </div>
-          ) : null}
-
-          {page === 1 ? (
-            <div className="first-card-onboarding-copy">
-              <p className="eyebrow">Cards</p>
-              <h1>Cada consumo ganha uma ficha</h1>
-              <p>Tudo aquilo que você consome pode ser salvo na Gaveteira como um card: uma representação do que você viu, passou, sentiu, imaginou, refletiu ou ignorou.</p>
-            </div>
-          ) : null}
-
-          {isChoicePage ? (
-            <div className="first-card-onboarding-copy">
-              <p className="eyebrow">Primeira gaveta</p>
-              <h1>O que você gostaria de guardar primeiro?</h1>
-              <div className="first-card-picker" aria-label="Escolher primeira gaveta">
-                {drawerItems.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <button key={item.key} type="button" className={`first-card-option drawer-${item.key}`} onClick={() => onChoose(item.key)}>
-                      <Icon size={22} />
-                      <strong>{item.label}</strong>
-                      <small>Começar aqui</small>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ) : null}
-
           <footer className="modal-footer first-card-onboarding-footer">
-            <button type="button" className="ghost" onClick={() => setPage((current) => Math.max(0, current - 1))} disabled={page === 0}>
-              Voltar
-            </button>
-            {!isChoicePage ? (
-              <button type="button" className="primary" onClick={() => setPage((current) => Math.min(2, current + 1))}>
-                Continuar
-              </button>
-            ) : (
-              <span>Escolha uma gaveta para abrir a primeira ficha.</span>
-            )}
+            <span>Leva menos de um minuto. Você pode preencher manualmente se a busca não encontrar a obra.</span>
           </footer>
         </section>
       </div>
@@ -1580,8 +1746,11 @@ function SyncStatusCard({
   const meta = syncMeta(status);
   const hasQueue = queue.length > 0;
   const failedCount = queue.filter((entry) => entry.status === "failed").length;
-  const shouldOpenQueue = hasQueue && (queueOpen || (!compact && (status.kind === "error" || failedCount > 0)));
-  const canToggleQueue = hasQueue && (compact || status.kind === "pending" || status.kind === "offline" || status.kind === "expired" || status.kind === "error" || failedCount > 0);
+  const compactError = status.kind === "offline" || status.kind === "expired" || status.kind === "error" || failedCount > 0;
+  const shouldOpenQueue = !compact && hasQueue && (queueOpen || status.kind === "error" || failedCount > 0);
+  const canToggleQueue = !compact && hasQueue && (status.kind === "pending" || status.kind === "offline" || status.kind === "expired" || status.kind === "error" || failedCount > 0);
+
+  if (compact && !compactError) return null;
 
   return (
     <section className={`sync-card sync-card-${status.kind}${compact ? " sync-card-compact" : ""}`} aria-live="polite">

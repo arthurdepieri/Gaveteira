@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.6.12-beta - Menu-gaveta e acabamento da navegação - 2026-07-24
+
+Versão beta focada em dar mais respiro à página inicial, simplificar a navegação e tornar o primeiro cadastro mais direto.
+
+### Destaques
+
+- Navegação principal transformada em uma gaveta lateral sobreposta, com gesto de arrastar e grupos recolhíveis.
+- Puxador visual removido em favor de uma marcação lateral discreta; a barra de rolagem da gaveta fica oculta sem impedir o scroll.
+- Página inicial com margens internas, conteúdo mais centralizado e painéis arredondados seguindo a linguagem visual do Feed.
+- Primeiro cadastro reduzido a duas etapas, priorizando os dados essenciais da ficha.
+- Cartão persistente de sincronização removido do menu; falhas aparecem em um aviso compacto na parte inferior da tela.
+- Comportamento responsivo unificado entre computador e celular, preservando as áreas Social e Administração.
+
+### Observações
+
+- Esta versão é uma subversão visual e de fluxo da linha `0.6.x`, sem migração de dados ou alteração de backend.
+- O pacote de release desta versão fica em `releases/Gaveteira-0.6.12-beta.zip`.
+
 ## 0.6.11-beta - Home editorial - 2026-07-22
 
 Versão beta focada em dar mais personalidade à página inicial e aproximar a Gaveteira de um arquivo cultural pessoal, com menos caixas repetidas e mais protagonismo para as capas.

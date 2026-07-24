@@ -10,6 +10,7 @@ const APP_SHELL = [
   BUILD_URL,
   "/manifest.webmanifest",
   "/gaveteira-splash.png",
+  "/navigation-drawer-handle-a5667c15.png",
   "/icons/favicon-16.png",
   "/icons/favicon-32.png",
   "/icons/apple-touch-icon.png",
