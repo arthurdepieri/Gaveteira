@@ -17,7 +17,7 @@ export const categorySingular: Record<Category, string> = {
 };
 
 export const defaultStatuses: Record<Category, string[]> = {
-  games: ["Quero jogar", "Jogando", "Zerado", "Abandonado"],
+  games: ["Quero jogar", "Jogando", "Zerado", "Platinado", "Abandonado"],
   books: ["Quero ler", "Lendo", "Lido", "Abandonado"],
   albums: ["Quero ouvir", "Ouvindo", "Ouvido", "Abandonado"],
   movies: ["Quero assistir", "Assistindo", "Assistido", "Abandonado"],
@@ -41,6 +41,7 @@ export const progressStatuses = [
 ];
 
 export const completedStatuses = [
+  "Platinado",
   "Zerado",
   "Lido",
   "Ouvido",

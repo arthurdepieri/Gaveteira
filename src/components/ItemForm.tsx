@@ -8,6 +8,7 @@ import { getProviderHint, MetadataResult, searchMetadata } from "../services/met
 import { uploadStoredImage } from "../services/storage";
 import { getTitle, uid } from "../utils/itemHelpers";
 import { RatingInput } from "./Rating";
+import { gamePlatforms, getGamePlatform, getPlayedTimeParts, updatePlayedTime } from "../utils/gameFields";
 
 type MutableItem = CulturalItem & Record<string, unknown>;
 const DIARY_VISIBILITY_KEY = "gaveteira-diary-default-visibility:v1";
@@ -73,9 +74,6 @@ export function ItemForm({
   const formComplete = formStep === cardFormSteps.length - 1;
   const canClose = tutorialActive ? tutorialComplete : true;
   const advanceFirstCardTutorial = () => {
-    if (tutorialStep === 1 && !item.diary.length) {
-      update({ diary: [createBlankDiaryEntry(loadDiaryVisibility())] });
-    }
     setTutorialStep((current) => Math.min(firstCardTutorialSteps.length - 1, current + 1));
   };
   const advanceFormStep = () => {
@@ -112,6 +110,15 @@ export function ItemForm({
       </Field>
       <Field label="Nota">
         <RatingInput value={item.rating as Rating | undefined} onChange={(rating) => update({ rating })} />
+      </Field>
+    </MobileFieldGroup>
+  );
+  const firstCardStatusField = (
+    <MobileFieldGroup title="Status">
+      <Field label="Como essa obra está na sua vida?">
+        <select value={item.status} onChange={(event) => update({ status: event.target.value })}>
+          {statuses.map((status) => <option key={status}>{status}</option>)}
+        </select>
       </Field>
     </MobileFieldGroup>
   );
@@ -166,10 +173,11 @@ export function ItemForm({
               step={tutorialStep}
               onBack={() => setTutorialStep((current) => Math.max(0, current - 1))}
               onNext={advanceFirstCardTutorial}
+              canAdvance={Boolean(getTitle(item).trim())}
             />
 
             {tutorialStep === 0 ? (
-              <MobileFormSection title="Completar ficha" open>
+              <MobileFormSection title="Encontre sua obra" open>
                 {metadataLookup}
                 <div className="form-grid first-card-tutorial-grid">
                   {categoryFields}
@@ -178,22 +186,11 @@ export function ItemForm({
             ) : null}
 
             {tutorialStep === 1 ? (
-              <MobileFormSection title="Status, nota e visibilidade" open>
+              <MobileFormSection title="Confirme e salve" open>
                 <div className="form-grid first-card-tutorial-grid">
-                  {statusRatingFields}
-                  <MobileFieldGroup title="Visibilidade">
-                    {visibilityField}
-                  </MobileFieldGroup>
+                  {firstCardStatusField}
+                  {coverField}
                 </div>
-              </MobileFormSection>
-            ) : null}
-
-            {tutorialStep === 2 ? (
-              <MobileFormSection title="Diário" open>
-                <section className="form-section first-card-diary-step">
-                  <h3>Primeiro diário</h3>
-                  <DiaryEditor category={item.category} entries={item.diary} onChange={(diary) => update({ diary })} />
-                </section>
               </MobileFormSection>
             ) : null}
           </>
@@ -250,7 +247,7 @@ export function ItemForm({
                 Voltar
               </button>
             ) : null}
-            <button type="button" className="primary" onClick={finishOrAdvance}>
+            <button type="button" className="primary" onClick={finishOrAdvance} disabled={tutorialActive && !getTitle(item).trim()}>
               {(tutorialActive ? tutorialComplete : formComplete) ? "Concluir" : "Próxima etapa"}
             </button>
           </div>
@@ -262,19 +259,14 @@ export function ItemForm({
 
 const firstCardTutorialSteps = [
   {
-    eyebrow: "Etapa 1 de 3",
-    title: "Complete do seu jeito",
-    description: "É possível completar automaticamente ou manualmente. Nem todas as databases detêm todas as informações, então qualquer campo pode ser ajustado com calma.",
+    eyebrow: "Etapa 1 de 2",
+    title: "Encontre sua obra",
+    description: "Busque pelo título para preencher a ficha automaticamente. Se não encontrar, digite apenas o título e continue.",
   },
   {
-    eyebrow: "Etapa 2 de 3",
-    title: "Status, nota e visibilidade",
-    description: "Nesta página você define o status da ficha, a nota e quem pode ver esse card.",
-  },
-  {
-    eyebrow: "Etapa 3 de 3",
-    title: "Registre o primeiro diário",
-    description: "Abra uma primeira entrada para guardar uma impressão, citação, memória ou opinião inicial.",
+    eyebrow: "Etapa 2 de 2",
+    title: "Confirme e guarde",
+    description: "Confira a capa e escolha o status. Nota, visibilidade e diário podem ser ajustados depois.",
   },
 ];
 
@@ -316,10 +308,12 @@ function FirstCardTutorial({
   step,
   onBack,
   onNext,
+  canAdvance,
 }: {
   step: number;
   onBack: () => void;
   onNext: () => void;
+  canAdvance: boolean;
 }) {
   const current = firstCardTutorialSteps[step];
 
@@ -337,7 +331,7 @@ function FirstCardTutorial({
       </div>
       <div className="first-card-tutorial-actions">
         <button type="button" className="ghost" onClick={onBack} disabled={step === 0}>Voltar</button>
-        <button type="button" className="primary" onClick={onNext} disabled={step === firstCardTutorialSteps.length - 1}>Próxima etapa</button>
+        <button type="button" className="primary" onClick={onNext} disabled={!canAdvance || step === firstCardTutorialSteps.length - 1}>Próxima etapa</button>
       </div>
     </section>
   );
@@ -446,6 +440,7 @@ function updateCoverResult(item: CulturalItem, result: MetadataResult, update: (
 function updateMetadataResult(item: CulturalItem, result: MetadataResult, update: (patch: Record<string, unknown>) => void) {
   update({
     ...result.patch,
+    ...(item.category === "games" ? { platform: getGamePlatform(item), playedPlatform: undefined } : {}),
     links: mergeLinks(item.links, result.links ?? []),
   });
 }
@@ -555,11 +550,18 @@ function numberValue(value: FormDataEntryValue | null) {
 }
 
 function GameFields({ item, update }: { item: MutableItem; update: (patch: Record<string, unknown>) => void }) {
+  const platform = item.category === "games" ? getGamePlatform(item) : "";
+  const time = String(item.timePlayed ?? "");
+  const { hours, minutes } = getPlayedTimeParts(time);
   return (
     <>
       <MobileFieldGroup title="Dados básicos">
         <Field label="Nome do jogo"><input value={String(item.name ?? "")} onChange={(e) => update({ name: e.target.value })} /></Field>
-        <Field label="Plataforma"><input value={String(item.platform ?? "")} onChange={(e) => update({ platform: e.target.value })} /></Field>
+        <Field label="Plataforma"><select value={platform} onChange={(e) => update({ platform: e.target.value, playedPlatform: undefined })}>
+          <option value="">Não informado</option>
+          {platform && !gamePlatforms.some((option) => option === platform) ? <option value={platform}>{platform} (registro anterior)</option> : null}
+          {gamePlatforms.map((option) => <option key={option}>{option}</option>)}
+        </select></Field>
         <Field label="Desenvolvedora"><input value={String(item.developer ?? "")} onChange={(e) => update({ developer: e.target.value })} /></Field>
         <Field label="Publicadora"><input value={String(item.publisher ?? "")} onChange={(e) => update({ publisher: e.target.value })} /></Field>
         <Field label="Ano de lançamento"><input type="number" value={String(item.releaseYear ?? "")} onChange={(e) => update({ releaseYear: numberValue(e.target.value) })} /></Field>
@@ -568,7 +570,13 @@ function GameFields({ item, update }: { item: MutableItem; update: (patch: Recor
       <MobileFieldGroup title="Progresso">
         <Field label="Início"><input type="date" value={String(item.startDate ?? "")} onChange={(e) => update({ startDate: e.target.value })} /></Field>
         <Field label="Conclusão ou abandono"><input type="date" value={String(item.endDate ?? "")} onChange={(e) => update({ endDate: e.target.value })} /></Field>
-        <Field label="Tempo jogado"><input value={String(item.timePlayed ?? "")} onChange={(e) => update({ timePlayed: e.target.value })} /></Field>
+        <div className="field" role="group" aria-label="Tempo jogado">
+          <span>Tempo jogado</span>
+          <div className="played-time-inputs">
+            <Field label="Horas"><input type="number" min="0" step="1" inputMode="numeric" value={time ? hours : ""} placeholder="0" onChange={(e) => update({ timePlayed: updatePlayedTime(time, "hours", e.target.value) })} /></Field>
+            <Field label="Minutos"><input type="number" min="0" max="59" step="1" inputMode="numeric" value={time ? minutes : ""} placeholder="0" onChange={(e) => update({ timePlayed: updatePlayedTime(time, "minutes", e.target.value) })} /></Field>
+          </div>
+        </div>
       </MobileFieldGroup>
     </>
   );

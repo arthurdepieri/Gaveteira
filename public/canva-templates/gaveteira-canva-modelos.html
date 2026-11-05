@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>Gaveteira - modelos Canva</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 32px;
+      background: #ece2d1;
+      color: #211d18;
+      font-family: Inter, Arial, sans-serif;
+    }
+
+    .page {
+      position: relative;
+      overflow: hidden;
+      margin: 0 auto 48px;
+      border: 1px solid #d8c7ad;
+      border-radius: 8px;
+      background:
+        linear-gradient(90deg, rgba(134, 95, 62, 0.06) 1px, transparent 1px) 0 0 / 34px 34px,
+        #fffaf1;
+    }
+
+    .card-page {
+      width: 342px;
+      height: 520px;
+    }
+
+    .sheet-page {
+      width: 1120px;
+      height: 900px;
+    }
+
+    .cover {
+      display: grid;
+      place-items: center;
+      color: #fffaf1;
+      background: linear-gradient(135deg, #78644b, #223d50);
+      font-weight: 900;
+      letter-spacing: 0;
+    }
+
+    .card-cover {
+      width: 342px;
+      height: 220px;
+      font-size: 42px;
+    }
+
+    .card-body {
+      display: grid;
+      gap: 10px;
+      height: 300px;
+      padding: 14px;
+      background: #fffdf8;
+    }
+
+    .kicker {
+      display: flex;
+      justify-content: space-between;
+      color: #6f6255;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: fit-content;
+      min-height: 28px;
+      padding: 4px 10px;
+      color: #346b5d;
+      border: 1px solid #b9d7ca;
+      background: #e9f2df;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin: 0;
+      font-family: Georgia, serif;
+      letter-spacing: 0;
+      line-height: 1.02;
+    }
+
+    .card-title {
+      margin-top: 2px;
+      font-size: 27px;
+    }
+
+    .muted {
+      margin: 0;
+      color: #6f6255;
+      line-height: 1.35;
+    }
+
+    .diary-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+
+    .small-chip {
+      padding: 4px 8px;
+      color: #346b5d;
+      border: 1px solid #b9d7ca;
+      background: #e9f2df;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 900;
+    }
+
+    .card-footer {
+      align-self: end;
+      display: flex;
+      justify-content: space-between;
+      color: #c38625;
+      font-weight: 900;
+    }
+
+    .sheet-hero {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      right: 16px;
+      height: 330px;
+      padding: 16px;
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: 18px;
+      border: 1px solid #d8c7ad;
+      background: rgba(255, 253, 248, 0.88);
+      border-radius: 8px;
+    }
+
+    .sheet-cover {
+      width: 220px;
+      height: 292px;
+      border: 6px solid #fffdf8;
+      border-radius: 8px;
+      font-size: 42px;
+      box-shadow: 0 12px 24px rgba(66, 43, 25, 0.18);
+    }
+
+    .identity {
+      display: grid;
+      align-content: start;
+      gap: 13px;
+      padding-top: 10px;
+    }
+
+    .stamp {
+      justify-self: start;
+      padding: 7px 11px;
+      color: #fffaf1;
+      border: 2px solid rgba(255, 250, 241, 0.8);
+      background: #9f473d;
+      box-shadow: 0 0 0 1px #9f473d;
+      font-size: 12px;
+      font-weight: 900;
+      text-transform: uppercase;
+      transform: rotate(-1.5deg);
+    }
+
+    .sheet-title {
+      font-size: 58px;
+      max-width: 800px;
+    }
+
+    .summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .summary span {
+      padding: 6px 10px;
+      color: #5a4028;
+      border: 1px solid #d8c7ad;
+      background: #fff4da;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .stars {
+      color: #c38625;
+      font-size: 24px;
+    }
+
+    .block {
+      position: absolute;
+      padding: 18px;
+      border: 1px solid #d8c7ad;
+      background: rgba(255, 253, 248, 0.88);
+      border-radius: 8px;
+    }
+
+    .block h3 {
+      color: #70412f;
+      font-size: 24px;
+      margin-bottom: 14px;
+    }
+
+    .summary-block {
+      left: 16px;
+      top: 370px;
+      width: 528px;
+      height: 174px;
+    }
+
+    .details-block {
+      left: 576px;
+      top: 370px;
+      width: 528px;
+      height: 174px;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .detail-field {
+      display: grid;
+      gap: 4px;
+      padding: 12px;
+      border: 1px solid #d8c7ad;
+      background: #fffaf1;
+      border-radius: 8px;
+    }
+
+    .detail-field small {
+      color: #6f6255;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .detail-field strong {
+      font-size: 18px;
+    }
+
+    .diary-block {
+      left: 16px;
+      top: 574px;
+      width: 1088px;
+      height: 286px;
+      background:
+        linear-gradient(#fffaf1 31px, #eadbc6 32px) 0 0 / 100% 32px,
+        #fffaf1;
+    }
+
+    .timeline {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .note-card {
+      min-height: 150px;
+      padding: 14px;
+      border: 1px solid #dec79b;
+      background: rgba(255, 253, 248, 0.78);
+      border-radius: 8px;
+    }
+
+    .note-card strong {
+      display: block;
+      margin-bottom: 10px;
+      color: #70412f;
+      font-family: Georgia, serif;
+      font-size: 22px;
+    }
+  </style>
+</head>
+<body>
+  <section class="page card-page" data-document-role="page" data-label="Gaveteira - Card externo" data-speaker-notes="Modelo vertical do card externo real da Gaveteira. Substitua a capa e edite textos mantendo proporções.">
+    <div class="cover card-cover">CAPA</div>
+    <div class="card-body">
+      <div class="kicker"><span>Lendo</span><span>2026</span></div>
+      <span class="pill">amigos</span>
+      <h1 class="card-title">O Atlas das Gavetas</h1>
+      <p class="muted">Fantasia documental</p>
+      <div class="diary-row">
+        <span class="small-chip">1 nota</span>
+        <span class="small-chip">possui diário</span>
+      </div>
+      <div class="card-footer">
+        <span>Nota 4.5/5</span>
+        <span>pág. 144</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="page sheet-page" data-document-role="page" data-label="Gaveteira - Ficha interna" data-speaker-notes="Modelo interno da ficha original da Gaveteira: fundo, hero, capa, metadados, blocos, linha do tempo e diário.">
+    <div class="sheet-hero">
+      <div class="cover sheet-cover">CAPA</div>
+      <div class="identity">
+        <span class="stamp">Lendo</span>
+        <h2 class="sheet-title">O Atlas das Gavetas</h2>
+        <div class="summary">
+          <span>2026</span>
+          <span>Fantasia documental</span>
+          <span>amigos</span>
+        </div>
+        <div class="stars">★★★★☆ <strong>4.5/5</strong></div>
+      </div>
+    </div>
+
+    <article class="block summary-block">
+      <h3>Resumo</h3>
+      <p class="muted">Área para síntese pessoal, citações ou opinião final preservando a linguagem visual da ficha original.</p>
+    </article>
+
+    <article class="block details-block">
+      <h3>Detalhes</h3>
+      <div class="detail-grid">
+        <span class="detail-field"><small>FORMATO</small><strong>Outro</strong></span>
+        <span class="detail-field"><small>PÁGINAS</small><strong>144 / 320</strong></span>
+        <span class="detail-field"><small>STATUS</small><strong>Lendo</strong></span>
+      </div>
+    </article>
+
+    <article class="block diary-block">
+      <h3>Diário e linha do tempo</h3>
+      <div class="timeline">
+        <span class="note-card"><strong>Diário</strong><p class="muted">Notas, progresso, memória e impressões da ficha.</p></span>
+        <span class="note-card"><strong>Linha do tempo</strong><p class="muted">Comecei, pausei, terminei, revi ou avancei.</p></span>
+        <span class="note-card"><strong>Selos</strong><p class="muted">Chips opcionais para marcar estados e campanhas.</p></span>
+      </div>
+    </article>
+  </section>
+</body>
+</html>

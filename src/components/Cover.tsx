@@ -1,5 +1,6 @@
 import { CulturalItem } from "../types";
 import { getTitle } from "../utils/itemHelpers";
+import { CompletionBadges } from "./ItemIndicators";
 
 export function Cover({
   item,
@@ -21,6 +22,7 @@ export function Cover({
   return (
     <div className={`cover cover-${item.category} ${compact ? "cover-compact" : ""}`}>
       {item.coverUrl ? <img src={item.coverUrl} alt={`Capa de ${title}`} /> : <span>{initials}</span>}
+      <CompletionBadges item={item} />
       {item.coverUrl && onViewCover ? (
         <button
           type="button"

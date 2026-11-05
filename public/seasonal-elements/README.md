@@ -1,4 +1,4 @@
-# Elementos sazonais
+    # Elementos sazonais
 
 Esta pasta guarda os elementos visuais das fichas de temporada.
 

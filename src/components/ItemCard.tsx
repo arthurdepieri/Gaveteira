@@ -3,6 +3,7 @@ import { useState } from "react";
 import { CulturalItem } from "../types";
 import { Cover } from "./Cover";
 import { CoverViewer } from "./CoverViewer";
+import { PlatformIndicator } from "./ItemIndicators";
 import { Stars } from "./Rating";
 import { getSeasonalThemeClassName, getSeasonalThemeId } from "../data/seasonalThemes";
 import { getGenre, getItemVisibility, getItemVisibilityLabel, getTitle, getYear } from "../utils/itemHelpers";
@@ -54,6 +55,7 @@ export function ItemCard({ item, onOpen, seasonalStyle }: { item: CulturalItem; 
             <Stars value={item.rating} />
             {progress ? <small>{progress}</small> : null}
           </div>
+          <PlatformIndicator item={item} />
         </div>
       </article>
       {coverOpen ? <CoverViewer item={item} onClose={() => setCoverOpen(false)} /> : null}

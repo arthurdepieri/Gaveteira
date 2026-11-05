@@ -32,7 +32,7 @@ export function buildStats(items: CulturalItem[]) {
       series: byCategory("series").length,
     },
     headline: {
-      gamesCompleted: byCategory("games").filter((item) => item.status === "Zerado").length,
+      gamesCompleted: byCategory("games").filter(isCompleted).length,
       gamesAbandoned: byCategory("games").filter((item) => item.status === "Abandonado").length,
       booksRead: byCategory("books").filter((item) => item.status === "Lido").length,
       albumsHeard: byCategory("albums").filter((item) => item.status === "Ouvido").length,

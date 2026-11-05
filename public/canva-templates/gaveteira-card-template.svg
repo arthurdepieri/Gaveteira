@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="342" height="520" viewBox="0 0 342 520" role="img" aria-labelledby="title desc">
+  <title id="title">Gaveteira - modelo de card externo para Canva</title>
+  <desc id="desc">Modelo vertical do card externo da Gaveteira com capa, corpo, status, visibilidade, titulo, genero, diario, progresso e nota.</desc>
+  <defs>
+    <style>
+      .label { font-family: Inter, Arial, sans-serif; font-weight: 800; letter-spacing: 0; }
+      .body { font-family: Inter, Arial, sans-serif; letter-spacing: 0; }
+      .title { font-family: Georgia, serif; font-weight: 800; letter-spacing: 0; }
+    </style>
+    <pattern id="archive-grid" width="18" height="18" patternUnits="userSpaceOnUse">
+      <path d="M18 0H0V18" fill="none" stroke="#d8c7ad" stroke-width="1" opacity=".28"/>
+    </pattern>
+  </defs>
+
+  <g id="Fundo do card">
+    <rect width="342" height="520" rx="8" fill="#fffaf1" stroke="#d8c7ad"/>
+    <rect width="342" height="520" rx="8" fill="url(#archive-grid)" opacity=".45"/>
+  </g>
+
+  <g id="Capa externa - vem da gaveta">
+    <rect x="0" y="0" width="342" height="220" fill="#78644b"/>
+    <rect x="0" y="0" width="342" height="220" fill="#223d50" opacity=".42"/>
+    <text x="171" y="111" text-anchor="middle" fill="#fffaf1" font-size="42" class="label">CAPA</text>
+    <text x="171" y="139" text-anchor="middle" fill="#fffaf1" font-size="13" class="body" opacity=".82">substituir no Canva</text>
+  </g>
+
+  <g id="Corpo do card">
+    <rect x="0" y="220" width="342" height="300" fill="#fffdf8"/>
+    <text x="14" y="247" fill="#6f6255" font-size="13" class="label">Lendo</text>
+    <text x="302" y="247" text-anchor="end" fill="#6f6255" font-size="13" class="label">2026</text>
+
+    <g id="Visibilidade">
+      <rect x="14" y="263" width="112" height="28" rx="14" fill="#e9f2df" stroke="#b9d7ca"/>
+      <text x="70" y="282" text-anchor="middle" fill="#346b5d" font-size="11" class="label">AMIGOS</text>
+    </g>
+
+    <text id="Titulo" x="14" y="326" fill="#211d18" font-size="27" class="title">O Atlas</text>
+    <text x="14" y="357" fill="#211d18" font-size="27" class="title">das Gavetas</text>
+    <text id="Genero" x="14" y="386" fill="#6f6255" font-size="16" class="body">Fantasia documental</text>
+
+    <g id="Marcadores de diario">
+      <rect x="14" y="407" width="74" height="24" rx="12" fill="#e9f2df" stroke="#b9d7ca"/>
+      <text x="51" y="423" text-anchor="middle" fill="#346b5d" font-size="10" class="label">1 nota</text>
+      <rect x="94" y="407" width="126" height="24" rx="12" fill="#e9f2df" stroke="#b9d7ca"/>
+      <text x="157" y="423" text-anchor="middle" fill="#346b5d" font-size="10" class="label">possui diário</text>
+    </g>
+
+    <g id="Rodape">
+      <text x="14" y="485" fill="#c38625" font-size="20" class="body">Nota 4.5/5</text>
+      <text x="302" y="485" text-anchor="end" fill="#70412f" font-size="14" class="label">pág. 144</text>
+    </g>
+  </g>
+</svg>

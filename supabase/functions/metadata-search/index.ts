@@ -65,17 +65,11 @@ async function searchGames(query: string) {
     rawgUrl.searchParams.set("search", query);
     rawgUrl.searchParams.set("page_size", "8");
 
-    const rawg = await fetchJson(rawgUrl).catch(() => ({}));
+    const rawg = await fetchRawgWithDiagnostics(rawgUrl);
     results.push(...arrayOfRecords(rawg.results).map((game) => {
       const name = stringValue(game.name);
       const released = stringValue(game.released);
       const genres = arrayOfRecords(game.genres).map((genre) => stringValue(genre.name)).filter(Boolean).join(", ");
-      const platforms = arrayOfRecords(game.platforms)
-        .map((entry) => recordValue(entry.platform))
-        .map((platform) => stringValue(platform.name))
-        .filter(Boolean)
-        .slice(0, 4)
-        .join(", ");
       const image = stringValue(game.background_image);
       const id = stringValue(game.id);
 
@@ -91,12 +85,13 @@ async function searchGames(query: string) {
           name,
           releaseYear: yearFromDate(released),
           genre: genres,
-          platform: platforms,
           coverUrl: image,
         }),
         links: id ? [link("RAWG", `https://rawg.io/games/${stringValue(game.slug) || id}`)] : [],
       };
     }));
+  } else {
+    console.warn(JSON.stringify({ provider: "RAWG", event: "missing_key", secret: "RAWG_API_KEY" }));
   }
 
   const steamUrl = new URL(`https://steamcommunity.com/actions/SearchApps/${encodeURIComponent(query)}`);
@@ -567,6 +562,36 @@ async function searchTmdbSeries(query: string, apiKey: string, language: "pt-BR"
       links: id ? [link("TMDB", `https://www.themoviedb.org/tv/${id}`)] : [],
     };
   });
+}
+
+async function fetchRawgWithDiagnostics(url: URL): Promise<Record<string, unknown>> {
+  const startedAt = Date.now();
+  let status: number | undefined;
+  let stage = "request";
+  try {
+    const response = await fetch(url, {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(15_000),
+    });
+    status = response.status;
+    if (!response.ok) {
+      console.warn(JSON.stringify({ provider: "RAWG", event: "http_error", status, durationMs: Date.now() - startedAt }));
+      return {};
+    }
+    stage = "parse";
+    const data = recordValue(await response.json());
+    if (!Array.isArray(data.results)) {
+      console.warn(JSON.stringify({ provider: "RAWG", event: "invalid_response", status, durationMs: Date.now() - startedAt }));
+      return {};
+    }
+    console.info(JSON.stringify({ provider: "RAWG", event: "success", status, resultCount: data.results.length, durationMs: Date.now() - startedAt }));
+    return data;
+  } catch (error) {
+    // Never log the URL, response body or exception message: they can contain the API key.
+    const timedOut = error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError");
+    console.warn(JSON.stringify({ provider: "RAWG", event: timedOut ? "timeout" : stage === "parse" ? "invalid_json" : "network_error", status, durationMs: Date.now() - startedAt }));
+    return {};
+  }
 }
 
 async function fetchJson(url: URL): Promise<Record<string, unknown> | unknown[]> {

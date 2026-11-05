@@ -89,7 +89,13 @@ async function searchCloudMetadata(category: Category, query: string, settings: 
     .then(async (response) => {
       if (!response.ok) return [];
       const json = await response.json();
-      return Array.isArray(json.results) ? json.results as MetadataResult[] : [];
+      return Array.isArray(json.results) ? (json.results as MetadataResult[]).map((result) => {
+        if (category !== "games") return result;
+        const patch = { ...result.patch };
+        if ("platform" in patch) delete patch.platform;
+        if ("playedPlatform" in patch) delete patch.playedPlatform;
+        return { ...result, patch };
+      }) : [];
     })
     .catch(() => []);
 }
@@ -108,12 +114,6 @@ async function searchGames(query: string, settings: AppSettings): Promise<Metada
       const name = stringValue(game.name);
       const released = stringValue(game.released);
       const genres = arrayOfRecords(game.genres).map((genre) => stringValue(genre.name)).filter(Boolean).join(", ");
-      const platforms = arrayOfRecords(game.platforms)
-        .map((entry) => recordValue(entry.platform))
-        .map((platform) => stringValue(platform.name))
-        .filter(Boolean)
-        .slice(0, 4)
-        .join(", ");
       const image = stringValue(game.background_image);
       const id = stringValue(game.id);
 
@@ -129,7 +129,6 @@ async function searchGames(query: string, settings: AppSettings): Promise<Metada
           name,
           releaseYear: yearFromDate(released),
           genre: genres,
-          platform: platforms,
           coverUrl: image,
         }),
         links: id ? [link("RAWG", `https://rawg.io/games/${stringValue(game.slug) || id}`)] : [],
@@ -856,7 +855,6 @@ async function searchWikidataMedia(query: string, category: "games" | "movies"):
 
     const developer = claimEntityIds(claims, "P178").map((developerId) => labels[developerId]).filter(Boolean).join(", ");
     const publisher = claimEntityIds(claims, "P123").map((publisherId) => labels[publisherId]).filter(Boolean).join(", ");
-    const platform = claimEntityIds(claims, "P400").map((platformId) => labels[platformId]).filter(Boolean).slice(0, 5).join(", ");
 
     return {
       id: `wikidata-game-${id}`,
@@ -872,7 +870,6 @@ async function searchWikidataMedia(query: string, category: "games" | "movies"):
         genre: genres,
         developer,
         publisher,
-        platform,
         coverUrl,
       }),
       links: [link("Wikidata", `https://www.wikidata.org/wiki/${id}`)],

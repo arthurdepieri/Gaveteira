@@ -50,6 +50,7 @@ export interface GameItem extends SharedFields {
   category: "games";
   name: string;
   platform: string;
+  playedPlatform?: "PlayStation" | "Xbox" | "Computador" | "Nintendo Switch";
   status: string;
   startDate?: string;
   endDate?: string;

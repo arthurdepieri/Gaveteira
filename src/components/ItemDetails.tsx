@@ -10,7 +10,9 @@ import { MetadataResult, searchMetadata } from "../services/metadata";
 import { uploadStoredImage } from "../services/storage";
 import { Cover } from "./Cover";
 import { CoverViewer } from "./CoverViewer";
+import { PlatformIndicator } from "./ItemIndicators";
 import { Stars } from "./Rating";
+import { getGamePlatform } from "../utils/gameFields";
 
 const DIARY_VISIBILITY_KEY = "gaveteira-diary-default-visibility:v1";
 type DiaryType = NonNullable<DiaryEntry["type"]>;
@@ -159,6 +161,7 @@ export function ItemDetails({
           <Cover item={item} onViewCover={() => setCoverOpen(true)} />
           <div className="detail-identity">
             <span className="archive-stamp">{item.status}</span>
+            <PlatformIndicator item={item} />
             <h1>{getTitle(item)}</h1>
             <div className="detail-summary">
               {year ? <span>{year}</span> : null}
@@ -702,7 +705,7 @@ function buildDetailSummaryFields(item: CulturalItem, diary: DiaryDisplayEntry[]
 
 function getProgressSnapshot(item: CulturalItem) {
   if (item.category === "games") {
-    return item.timePlayed || item.platform || "";
+    return item.timePlayed || getGamePlatform(item) || "";
   }
 
   if (item.category === "books") {
@@ -727,7 +730,7 @@ function getProgressSnapshot(item: CulturalItem) {
 function detailSections(item: CulturalItem): Array<{ title: string; fields: Array<[string, string]> }> {
   if (item.category === "games") {
     return [
-      { title: "Ficha técnica", fields: visibleFields([["Plataforma", item.platform], ["Desenvolvedora", item.developer], ["Publicadora", item.publisher], ["Ano de lançamento", item.releaseYear], ["Gênero", item.genre]]) },
+      { title: "Ficha técnica", fields: visibleFields([["Plataforma", getGamePlatform(item)], ["Desenvolvedora", item.developer], ["Publicadora", item.publisher], ["Ano de lançamento", item.releaseYear], ["Gênero", item.genre]]) },
       { title: "Progresso", fields: visibleFields([["Status", item.status], ["Início", item.startDate], ["Conclusão/abandono", item.endDate], ["Tempo jogado", item.timePlayed]]) },
     ];
   }

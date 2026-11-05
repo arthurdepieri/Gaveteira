@@ -1,0 +1,47 @@
+{
+  "version": "0.6.10-beta",
+  "date": "2026-06-14",
+  "title": "Capas ampliadas e acabamento das fichas",
+  "archivePath": "releases/Gaveteira-0.6.10-beta.zip",
+  "archiveSizeBytes": 4240127,
+  "archiveSha256": "47abb1f3761688e2fe42574e229cb17d51e1e37b3b1ccec621742333cb904300",
+  "shortNotes": {
+    "summary": "Versao beta focada em melhorar a experiencia dentro das fichas e dar mais controle sobre as capas no computador e no celular.",
+    "highlights": [
+      "Visualizador de capa em tela ampliada para cards e fichas abertas.",
+      "Botao `Ver capa` sobre imagens de capa, com comportamento adaptado para toque no celular.",
+      "Entrada de camera para definir capas no celular, tanto ao criar/editar fichas quanto ao trocar capa na ficha aberta.",
+      "Interior das fichas padrao aproximado da linguagem visual das fichas sazonais, preservando a paleta normal.",
+      "Ajustes equivalentes para modo noturno nos paineis, chips, controles, blocos e diario."
+    ]
+  },
+  "drive": {
+    "folderName": "Gaveteira Versions",
+    "finalFileName": "Gaveteira-0.6.10-beta.zip",
+    "archivePath": "releases/Gaveteira-0.6.10-beta.zip",
+    "notesFileName": "Gaveteira-0.6.10-beta-release-notes.md",
+    "uploadScript": "npm run release:drive -- 0.6.10-beta",
+    "status": "uploaded",
+    "notesPath": "releases/notes/Gaveteira-0.6.10-beta-release-notes.md",
+    "handoffPath": "releases/drive/Gaveteira-0.6.10-beta-drive-handoff.json",
+    "folderId": "1C9mDGDaAKA1NGfhdXj9_4Kg9S1IQSP6p",
+    "folderUrl": "https://drive.google.com/drive/folders/1C9mDGDaAKA1NGfhdXj9_4Kg9S1IQSP6p",
+    "uploadedAt": "2026-06-17T13:01:40.130Z",
+    "uploadedFiles": [
+      {
+        "kind": "archive",
+        "id": "1ZRYGl_MXJy4UoqAv-9mupXD3ELLzfbV9",
+        "name": "Gaveteira-0.6.10-beta.zip",
+        "mimeType": "application/zip",
+        "webViewLink": "https://drive.google.com/file/d/1ZRYGl_MXJy4UoqAv-9mupXD3ELLzfbV9/view?usp=drivesdk"
+      },
+      {
+        "kind": "notes",
+        "id": "1KvmRyAmst-EPICcKesh4ShkVbbWRIiJC",
+        "name": "Gaveteira-0.6.10-beta-release-notes.md",
+        "mimeType": "text/markdown",
+        "webViewLink": "https://drive.google.com/file/d/1KvmRyAmst-EPICcKesh4ShkVbbWRIiJC/view?usp=drivesdk"
+      }
+    ]
+  }
+}
