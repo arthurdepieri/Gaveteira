@@ -1,0 +1,28 @@
+{
+  "version": "0.6.13-beta",
+  "date": "2026-11-05",
+  "title": "Conquistas e controle dos jogos",
+  "archivePath": "releases/Gaveteira-0.6.13-beta.zip",
+  "archiveSizeBytes": 4766248,
+  "archiveSha256": "14177733de3b9094eb012c881dfcbe29fd833b63028307a5ac89be42cbcd0bb3",
+  "shortNotes": {
+    "summary": "Atualização que reúne as conquistas dos jogos, o controle manual de plataforma e tempo jogado e os conteúdos locais que ainda aguardavam publicação.",
+    "highlights": [
+      "Status Platinado nos jogos, medalhas de conclusão em todas as gavetas e diamantes nos jogos platinados, visíveis nos cards e nas fichas.",
+      "Plataforma escolhida pelo usuário entre PlayStation, Xbox, Computador e Nintendo Switch, com ícones nos cards e nas fichas; APIs não preenchem nem alteram esse campo.",
+      "Tempo jogado editado em horas e minutos, preservando a leitura dos registros antigos e limitando minutos a 0–59.",
+      "Remoção da curadoria administrativa e publicação dos modelos visuais do Canva e do backup documental da navegação.",
+      "Diagnóstico seguro do RAWG, com status HTTP, timeout e indicação de chave ausente, sem registrar credenciais."
+    ]
+  },
+  "drive": {
+    "folderName": "Gaveteira Versions",
+    "finalFileName": "Gaveteira-0.6.13-beta.zip",
+    "archivePath": "releases/Gaveteira-0.6.13-beta.zip",
+    "notesFileName": "Gaveteira-0.6.13-beta-release-notes.md",
+    "uploadScript": "npm run release:drive -- 0.6.13-beta",
+    "status": "pending",
+    "notesPath": "releases/notes/Gaveteira-0.6.13-beta-release-notes.md",
+    "handoffPath": "releases/drive/Gaveteira-0.6.13-beta-drive-handoff.json"
+  }
+}

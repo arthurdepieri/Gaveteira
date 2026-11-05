@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.6.13-beta - Conquistas e controle dos jogos - 2026-11-05
+
+Atualização que reúne as conquistas dos jogos, o controle manual de plataforma e tempo jogado e os conteúdos locais que ainda aguardavam publicação.
+
+### Destaques
+
+- Status Platinado nos jogos, medalhas de conclusão em todas as gavetas e diamantes nos jogos platinados, visíveis nos cards e nas fichas.
+- Plataforma escolhida pelo usuário entre PlayStation, Xbox, Computador e Nintendo Switch, com ícones nos cards e nas fichas; APIs não preenchem nem alteram esse campo.
+- Tempo jogado editado em horas e minutos, preservando a leitura dos registros antigos e limitando minutos a 0–59.
+- Remoção da curadoria administrativa e publicação dos modelos visuais do Canva e do backup documental da navegação.
+- Diagnóstico seguro do RAWG, com status HTTP, timeout e indicação de chave ausente, sem registrar credenciais.
+
+### Observações
+
+- Preserva o menu-gaveta, o onboarding simplificado e os ajustes de navegação publicados na versão 0.6.12-beta.
+- Jogos platinados contam como concluídos nas estatísticas.
+- O bloqueio da plataforma importada funciona no aplicativo mesmo antes de atualizar a Edge Function; alterações de backend exigem publicação própria no Supabase.
+- Pacote local: `releases/Gaveteira-0.6.13-beta.zip`.
+
+## 0.6.12-beta - Menu-gaveta e acabamento da navegação - 2026-07-24
+
+Versão beta focada em dar mais respiro à página inicial, simplificar a navegação e tornar o primeiro cadastro mais direto.
+
+### Destaques
+
+- Navegação principal transformada em uma gaveta lateral sobreposta, com gesto de arrastar e grupos recolhíveis.
+- Puxador visual removido em favor de uma marcação lateral discreta; a barra de rolagem da gaveta fica oculta sem impedir o scroll.
+- Página inicial com margens internas, conteúdo mais centralizado e painéis arredondados seguindo a linguagem visual do Feed.
+- Primeiro cadastro reduzido a duas etapas, priorizando os dados essenciais da ficha.
+- Cartão persistente de sincronização removido do menu; falhas aparecem em um aviso compacto na parte inferior da tela.
+- Comportamento responsivo unificado entre computador e celular, preservando as áreas Social e Administração.
+
+### Observações
+
+- Esta versão é uma subversão visual e de fluxo da linha `0.6.x`, sem migração de dados ou alteração de backend.
+- O pacote de release desta versão fica em `releases/Gaveteira-0.6.12-beta.zip`.
+
 ## 0.6.11-beta - Home editorial - 2026-07-22
 
 Versão beta focada em dar mais personalidade à página inicial e aproximar a Gaveteira de um arquivo cultural pessoal, com menos caixas repetidas e mais protagonismo para as capas.

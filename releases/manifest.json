@@ -1,6 +1,54 @@
 {
-  "latest": "0.6.11-beta",
+  "latest": "0.6.13-beta",
   "releases": [
+    {
+      "version": "0.6.13-beta",
+      "date": "2026-11-05",
+      "title": "Conquistas e controle dos jogos",
+      "notes": "Atualização que reúne as conquistas dos jogos, o controle manual de plataforma e tempo jogado e os conteúdos locais que ainda aguardavam publicação.\n\n### Destaques\n\n- Status Platinado nos jogos, medalhas de conclusão em todas as gavetas e diamantes nos jogos platinados, visíveis nos cards e nas fichas.\n- Plataforma escolhida pelo usuário entre PlayStation, Xbox, Computador e Nintendo Switch, com ícones nos cards e nas fichas; APIs não preenchem nem alteram esse campo.\n- Tempo jogado editado em horas e minutos, preservando a leitura dos registros antigos e limitando minutos a 0–59.\n- Remoção da curadoria administrativa e publicação dos modelos visuais do Canva e do backup documental da navegação.\n- Diagnóstico seguro do RAWG, com status HTTP, timeout e indicação de chave ausente, sem registrar credenciais.\n\n### Observações\n\n- Preserva o menu-gaveta, o onboarding simplificado e os ajustes de navegação publicados na versão 0.6.12-beta.\n- Jogos platinados contam como concluídos nas estatísticas.\n- O bloqueio da plataforma importada funciona no aplicativo mesmo antes de atualizar a Edge Function; alterações de backend exigem publicação própria no Supabase.\n- Pacote local: `releases/Gaveteira-0.6.13-beta.zip`.",
+      "shortNotes": {
+        "summary": "Atualização que reúne as conquistas dos jogos, o controle manual de plataforma e tempo jogado e os conteúdos locais que ainda aguardavam publicação.",
+        "highlights": [
+          "Status Platinado nos jogos, medalhas de conclusão em todas as gavetas e diamantes nos jogos platinados, visíveis nos cards e nas fichas.",
+          "Plataforma escolhida pelo usuário entre PlayStation, Xbox, Computador e Nintendo Switch, com ícones nos cards e nas fichas; APIs não preenchem nem alteram esse campo.",
+          "Tempo jogado editado em horas e minutos, preservando a leitura dos registros antigos e limitando minutos a 0–59.",
+          "Remoção da curadoria administrativa e publicação dos modelos visuais do Canva e do backup documental da navegação.",
+          "Diagnóstico seguro do RAWG, com status HTTP, timeout e indicação de chave ausente, sem registrar credenciais."
+        ]
+      },
+      "archivePath": "releases/Gaveteira-0.6.13-beta.zip",
+      "archiveSizeBytes": 4766248,
+      "archiveSha256": "14177733de3b9094eb012c881dfcbe29fd833b63028307a5ac89be42cbcd0bb3",
+      "drive": {
+        "folderName": "Gaveteira Versions",
+        "finalFileName": "Gaveteira-0.6.13-beta.zip",
+        "archivePath": "releases/Gaveteira-0.6.13-beta.zip",
+        "notesFileName": "Gaveteira-0.6.13-beta-release-notes.md",
+        "uploadScript": "npm run release:drive -- 0.6.13-beta",
+        "status": "pending",
+        "notesPath": "releases/notes/Gaveteira-0.6.13-beta-release-notes.md",
+        "handoffPath": "releases/drive/Gaveteira-0.6.13-beta-drive-handoff.json"
+      }
+    },
+    {
+      "version": "0.6.12-beta",
+      "date": "2026-07-24",
+      "title": "Menu-gaveta e acabamento da navegação",
+      "notes": "Versão beta focada em dar mais respiro à página inicial, simplificar a navegação e tornar o primeiro cadastro mais direto.\n\n### Destaques\n\n- Navegação principal transformada em uma gaveta lateral sobreposta, com gesto de arrastar e grupos recolhíveis.\n- Puxador visual removido em favor de uma marcação lateral discreta; a barra de rolagem da gaveta fica oculta sem impedir o scroll.\n- Página inicial com margens internas, conteúdo mais centralizado e painéis arredondados seguindo a linguagem visual do Feed.\n- Primeiro cadastro reduzido a duas etapas, priorizando os dados essenciais da ficha.\n- Cartão persistente de sincronização removido do menu; falhas aparecem em um aviso compacto na parte inferior da tela.\n- Comportamento responsivo unificado entre computador e celular, preservando as áreas Social e Administração.\n\n### Observações\n\n- Esta versão é uma subversão visual e de fluxo da linha `0.6.x`, sem migração de dados ou alteração de backend.\n- O pacote de release desta versão fica em `releases/Gaveteira-0.6.12-beta.zip`.",
+      "shortNotes": {
+        "summary": "Versão beta focada em dar mais respiro à página inicial, simplificar a navegação e tornar o primeiro cadastro mais direto.",
+        "highlights": [
+          "Navegação principal transformada em uma gaveta lateral sobreposta, com gesto de arrastar e grupos recolhíveis.",
+          "Puxador visual removido em favor de uma marcação lateral discreta; a barra de rolagem da gaveta fica oculta sem impedir o scroll.",
+          "Página inicial com margens internas, conteúdo mais centralizado e painéis arredondados seguindo a linguagem visual do Feed.",
+          "Primeiro cadastro reduzido a duas etapas, priorizando os dados essenciais da ficha.",
+          "Cartão persistente de sincronização removido do menu; falhas aparecem em um aviso compacto na parte inferior da tela."
+        ]
+      },
+      "archivePath": "releases/Gaveteira-0.6.12-beta.zip",
+      "archiveSizeBytes": 4682121,
+      "archiveSha256": "dd6b9ecfe1ae14b33e2cc3fc835cdcb9b0b9437a057cdc02bfd0dc1f2ac58de"
+    },
     {
       "version": "0.6.11-beta",
       "date": "2026-07-22",
@@ -35,48 +83,7 @@
       "date": "2026-06-14",
       "title": "Capas ampliadas e acabamento das fichas",
       "notes": "Versao beta focada em melhorar a experiencia dentro das fichas e dar mais controle sobre as capas no computador e no celular.\n\n### Destaques\n\n- Visualizador de capa em tela ampliada para cards e fichas abertas.\n- Botao `Ver capa` sobre imagens de capa, com comportamento adaptado para toque no celular.\n- Entrada de camera para definir capas no celular, tanto ao criar/editar fichas quanto ao trocar capa na ficha aberta.\n- Interior das fichas padrao aproximado da linguagem visual das fichas sazonais, preservando a paleta normal.\n- Ajustes equivalentes para modo noturno nos paineis, chips, controles, blocos e diario.\n- Feed social com deduplicacao de eventos para reduzir repeticoes entre dados locais e eventos da nuvem.\n\n### Observacoes\n\n- Esta versao e uma subversao de experiencia e polimento da linha `0.6.x`, sem exigir migracao manual de dados.\n- O pacote de release desta versao fica em `releases/Gaveteira-0.6.10-beta.zip`.",
-      "archivePath": "releases/Gaveteira-0.6.10-beta.zip",
-      "shortNotes": {
-        "summary": "Versao beta focada em melhorar a experiencia dentro das fichas e dar mais controle sobre as capas no computador e no celular.",
-        "highlights": [
-          "Visualizador de capa em tela ampliada para cards e fichas abertas.",
-          "Botao `Ver capa` sobre imagens de capa, com comportamento adaptado para toque no celular.",
-          "Entrada de camera para definir capas no celular, tanto ao criar/editar fichas quanto ao trocar capa na ficha aberta.",
-          "Interior das fichas padrao aproximado da linguagem visual das fichas sazonais, preservando a paleta normal.",
-          "Ajustes equivalentes para modo noturno nos paineis, chips, controles, blocos e diario."
-        ]
-      },
-      "archiveSizeBytes": 4240127,
-      "archiveSha256": "47abb1f3761688e2fe42574e229cb17d51e1e37b3b1ccec621742333cb904300",
-      "drive": {
-        "folderName": "Gaveteira Versions",
-        "finalFileName": "Gaveteira-0.6.10-beta.zip",
-        "archivePath": "releases/Gaveteira-0.6.10-beta.zip",
-        "notesFileName": "Gaveteira-0.6.10-beta-release-notes.md",
-        "uploadScript": "npm run release:drive -- 0.6.10-beta",
-        "status": "uploaded",
-        "notesPath": "releases/notes/Gaveteira-0.6.10-beta-release-notes.md",
-        "handoffPath": "releases/drive/Gaveteira-0.6.10-beta-drive-handoff.json",
-        "folderId": "1C9mDGDaAKA1NGfhdXj9_4Kg9S1IQSP6p",
-        "folderUrl": "https://drive.google.com/drive/folders/1C9mDGDaAKA1NGfhdXj9_4Kg9S1IQSP6p",
-        "uploadedAt": "2026-06-17T13:01:40.130Z",
-        "uploadedFiles": [
-          {
-            "kind": "archive",
-            "id": "1ZRYGl_MXJy4UoqAv-9mupXD3ELLzfbV9",
-            "name": "Gaveteira-0.6.10-beta.zip",
-            "mimeType": "application/zip",
-            "webViewLink": "https://drive.google.com/file/d/1ZRYGl_MXJy4UoqAv-9mupXD3ELLzfbV9/view?usp=drivesdk"
-          },
-          {
-            "kind": "notes",
-            "id": "1KvmRyAmst-EPICcKesh4ShkVbbWRIiJC",
-            "name": "Gaveteira-0.6.10-beta-release-notes.md",
-            "mimeType": "text/markdown",
-            "webViewLink": "https://drive.google.com/file/d/1KvmRyAmst-EPICcKesh4ShkVbbWRIiJC/view?usp=drivesdk"
-          }
-        ]
-      }
+      "archivePath": "releases/Gaveteira-0.6.10-beta.zip"
     },
     {
       "version": "0.6.9-beta",
