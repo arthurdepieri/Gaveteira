@@ -1,6 +1,34 @@
 {
-  "latest": "0.6.13-beta",
+  "latest": "0.6.14-beta",
   "releases": [
+    {
+      "version": "0.6.14-beta",
+      "date": "2026-11-05",
+      "title": "Ferramentas das gavetas",
+      "notes": "Tier list, Cronômetro e Pomodoro chegam às cinco gavetas pelo menu Ferramentas.\n\n### Destaques\n\n- Classifique cards de S a D arrastando suas capas entre as fileiras de cada gaveta.\n- Escolha um card pela capa e use o Cronômetro para somar o tempo das sessões ao seu total.\n- Use o Pomodoro com 25 minutos de foco e 5 de pausa. Apenas o foco conta para o tempo do card.\n- Cadastre um novo card sem sair da ferramenta, inclusive em gavetas vazias.",
+      "shortNotes": {
+        "summary": "Tier list, Cronômetro e Pomodoro chegam às cinco gavetas pelo menu Ferramentas.",
+        "highlights": [
+          "Classifique cards de S a D arrastando suas capas entre as fileiras de cada gaveta.",
+          "Escolha um card pela capa e use o Cronômetro para somar o tempo das sessões ao seu total.",
+          "Use o Pomodoro com 25 minutos de foco e 5 de pausa. Apenas o foco conta para o tempo do card.",
+          "Cadastre um novo card sem sair da ferramenta, inclusive em gavetas vazias."
+        ]
+      },
+      "archivePath": "releases/Gaveteira-0.6.14-beta.zip",
+      "archiveSizeBytes": 4769392,
+      "archiveSha256": "8097ea7d00375be60412e12991e53e4eb88cafa11ac00e7b7fb96e2856bdb6b4",
+      "drive": {
+        "folderName": "Gaveteira Versions",
+        "finalFileName": "Gaveteira-0.6.14-beta.zip",
+        "archivePath": "releases/Gaveteira-0.6.14-beta.zip",
+        "notesFileName": "Gaveteira-0.6.14-beta-release-notes.md",
+        "uploadScript": "npm run release:drive -- 0.6.14-beta",
+        "status": "pending",
+        "notesPath": "releases/notes/Gaveteira-0.6.14-beta-release-notes.md",
+        "handoffPath": "releases/drive/Gaveteira-0.6.14-beta-drive-handoff.json"
+      }
+    },
     {
       "version": "0.6.13-beta",
       "date": "2026-11-05",

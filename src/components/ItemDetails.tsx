@@ -1,3 +1,4 @@
+import { contentTime, formatDuration } from "../utils/contentTimer";
 import { BookOpenText, Camera, Edit3, ExternalLink, ImageIcon, Lock, Megaphone, Plus, Search, Sparkles, Trash2, X } from "lucide-react";
 import type { CSSProperties } from "react";
 import { useState } from "react";
@@ -164,6 +165,7 @@ export function ItemDetails({
             <PlatformIndicator item={item} />
             <h1>{getTitle(item)}</h1>
             <div className="detail-summary">
+              {(item.timerMilliseconds !== undefined || item.timerStartedAt) && <span>Tempo acumulado: {formatDuration(contentTime(item))}{item.timerStartedAt ? " · Sessão em andamento" : ""}</span>}
               {year ? <span>{year}</span> : null}
               {item.genre ? <span>{item.genre}</span> : null}
               {ownerName ? <span>{ownerName}</span> : null}

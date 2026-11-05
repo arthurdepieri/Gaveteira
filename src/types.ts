@@ -1,5 +1,5 @@
 export type Category = "games" | "books" | "albums" | "movies" | "series";
-export type ViewKey = Category | "home" | "wishlist" | "progress" | "feed" | "stats" | "family" | "adminDesign" | "adminMembers" | "settings";
+export type ViewKey = Category | "tiers" | "timer" | "pomodoro" | "home" | "wishlist" | "progress" | "feed" | "stats" | "family" | "adminDesign" | "adminMembers" | "settings";
 export type SocialVisibility = "private" | "friends" | "group" | "public";
 export type ProfileRole = "user" | "admin";
 
@@ -32,7 +32,13 @@ export interface ExternalLink {
   url: string;
 }
 
+export type Tier = "S" | "A" | "B" | "C" | "D";
+
 export interface SharedFields {
+  tier?: Tier;
+  pomodoro?: { phase: "focus" | "break"; start: number };
+  timerStartedAt?: number;
+  timerMilliseconds?: number;
   id: string;
   category: Category;
   visibility?: SocialVisibility;

@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.6.14-beta - Ferramentas das gavetas - 2026-11-05
+
+Tier list, Cronômetro e Pomodoro chegam às cinco gavetas pelo menu Ferramentas.
+
+### Destaques
+
+- Classifique cards de S a D arrastando suas capas entre as fileiras de cada gaveta.
+- Escolha um card pela capa e use o Cronômetro para somar o tempo das sessões ao seu total.
+- Use o Pomodoro com 25 minutos de foco e 5 de pausa. Apenas o foco conta para o tempo do card.
+- Cadastre um novo card sem sair da ferramenta, inclusive em gavetas vazias.
+
 ## 0.6.13-beta - Conquistas e controle dos jogos - 2026-11-05
 
 Atualização que reúne as conquistas dos jogos, o controle manual de plataforma e tempo jogado e os conteúdos locais que ainda aguardavam publicação.

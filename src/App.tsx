@@ -1,3 +1,5 @@
+import { pomodoroEnd, settlePomodoro } from "./utils/pomodoro";
+import { CollectionTools } from "./components/CollectionTools";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, ElementType, PointerEvent as ReactPointerEvent } from "react";
 import { AlertTriangle, Archive, BarChart3, BookOpen, CheckCircle2, ChevronDown, CloudOff, Disc3, Download, FileText, Film, Gamepad2, Home, Library, ListChecks, Loader2, LogIn, LogOut, MessageSquare, Palette, RefreshCw, RotateCcw, Settings, Share, ShieldCheck, Tv, UserCheck, UserPlus, Users, WifiOff, X } from "lucide-react";
@@ -71,7 +73,7 @@ interface PwaUpdateNotice {
   generatedAt?: string;
 }
 
-type DrawerGroupKey = "drawers" | "social" | "admin";
+type DrawerGroupKey = "tools" | "drawers" | "social" | "admin";
 
 interface DrawerGesture {
   pointerId: number;
@@ -128,6 +130,7 @@ function App() {
   const [socialSection, setSocialSection] = useState<"profile" | "friends">("profile");
   const [navigationDrawerOpen, setNavigationDrawerOpen] = useState(false);
   const [expandedDrawerGroups, setExpandedDrawerGroups] = useState<Record<DrawerGroupKey, boolean>>({
+    tools: false,
     drawers: false,
     social: false,
     admin: false,
@@ -199,7 +202,7 @@ function App() {
   }, [data, storageReady]);
 
   useEffect(() => {
-    const activeGroup: DrawerGroupKey | null = view in categoryLabels
+    const activeGroup: DrawerGroupKey | null = view === "tiers" || view === "timer" || view === "pomodoro" ? "tools" : view in categoryLabels
       ? "drawers"
       : view === "family"
         ? "social"
@@ -541,7 +544,7 @@ function App() {
     ));
   }
 
-  function upsertItem(item: CulturalItem) {
+  function saveCollectionItem(item: CulturalItem) {
     setData((current) => ({
       ...current,
       items: current.items.some((entry) => entry.id === item.id)
@@ -549,6 +552,26 @@ function App() {
         : [item, ...current.items],
     }));
     enqueueUpsert(item);
+  }
+
+  useEffect(() => {
+    if (!cloudBootstrapped) return;
+    const pending = data.items.filter(item => item.pomodoro);
+    if (!pending.length) return;
+    const deadline = Math.min(...pending.map(item => pomodoroEnd(item.pomodoro!)));
+    const settle = () => {
+      const now = Date.now();
+      for (const item of pending) {
+        if (pomodoroEnd(item.pomodoro!) <= now) saveCollectionItem(settlePomodoro(item, now));
+      }
+    };
+    const timeout = window.setTimeout(settle, Math.max(0, deadline - Date.now()));
+    window.addEventListener("focus", settle);
+    return () => { window.clearTimeout(timeout); window.removeEventListener("focus", settle); };
+  }, [data.items, cloudBootstrapped]);
+
+  function upsertItem(item: CulturalItem) {
+    saveCollectionItem(item);
     setActiveItemId(item.id);
   }
 
@@ -671,6 +694,7 @@ function App() {
   }
 
   const mainView = () => {
+    if (view === "tiers" || view === "timer" || view === "pomodoro") return <CollectionTools key={view} mode={view} items={data.items} onSave={saveCollectionItem} onAdd={addItem} />;
     if (view === "home" && cloudSession && cloudBootstrapped && !data.items.length && !activeItem) {
       return <FirstCardStart onChoose={startFirstCard} />;
     }
@@ -1227,6 +1251,14 @@ function App() {
                     </button>
                   );
                 })}
+              </div>
+            </div>
+            <div className={`drawer-nav${expandedDrawerGroups.tools ? " expanded" : ""}`}>
+              <button type="button" className="drawer-nav-trigger" aria-expanded={expandedDrawerGroups.tools} aria-controls="tools-menu" onClick={() => toggleDrawerGroup("tools")}>
+                <ListChecks size={18} /><span>Ferramentas</span><ChevronDown size={16} />
+              </button>
+              <div id="tools-menu" className="drawer-nav-menu" aria-hidden={!expandedDrawerGroups.tools}>
+                {(["tiers", "timer", "pomodoro"] as const).map(key => <button type="button" key={key} className={view === key ? "active" : ""} tabIndex={expandedDrawerGroups.tools ? 0 : -1} onClick={() => selectView(key)}>{key === "tiers" ? "Tier list" : key === "timer" ? "Cronômetro" : "Pomodoro"}</button>)}
               </div>
             </div>
             <div className={`drawer-nav${view === "family" ? " active" : ""}${expandedDrawerGroups.social ? " expanded" : ""}`}>
